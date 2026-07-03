@@ -1,28 +1,53 @@
-# BiNChE2
+# ChEBI-N
 
-BiNChE2 is an updated version of [BiNChE](https://github.com/pcm32/BiNCheWeb/wiki/BiNChE#graph-pruning-strategies). It is a tool for ontology-based chemical enrichment analysis. It is based on the [ChEBI](https://www.ebi.ac.uk/chebi/) ontology of chemical entities.
+ChEBI-N is an updated version of [BiNChE](https://github.com/pcm32/BiNCheWeb/wiki/BiNChE#graph-pruning-strategies). It is a tool for ontology-based chemical enrichment analysis and uses the [ChEBI](https://www.ebi.ac.uk/chebi/) ontology of chemical entities as its background population.
 
-## The Web Application
+## The Application
 The web application is available at https://binche2.hastingslab.org/.
 
 ### Running The Analysis
-
 The web application is hosted at https://binche2.hastingslab.org/. To run calculations locally, execute `website/app.py`. Note that all necessary data files must be generated beforehand for local execution (as described in the [Workflow](#workflow) section below).
 
 ### Study Set
-On the home page, enter your study set as ChEBI IDs (one per line), as shown in the example. You can optionally provide weights for each compound (tab or space-separated). Instead of ChEBI IDs, SMILES can be used to represent a molecular entity. Each SMILES is resolved to a ChEBI ID in this order: (1) an exact string match against the local table of ChEBI leaf classes, (2) a match via the InChIKey computed from the SMILES, (3) a direct lookup through the [Chebifier](https://chebifier.hastingslab.org/) API. If none of these resolve, its predicted direct parent classes (also from Chebifier) can optionally be used for enrichment calculations instead.
+On the home page, you can your study set as ChEBI IDs (one per line) or SMILES. You can optionally provide weights for each compound (tab or space-separated). If SMILES are used, each SMILES is resolved to a ChEBI ID in this order: (1) an exact string match against the local table of ChEBI leaf classes, (2) a match via the InChIKey computed from the SMILES, (3) a direct lookup through the [Chebifier](https://chebifier.hastingslab.org/) API. If none of these resolve, its predicted direct parent classes (also from Chebifier) can optionally be used for enrichment calculations instead.
 
-Then specify the target of enrichment:
+### Background
+Using the whole ChEBI ontology as a background population is the standard option, alternatively using only the 'Structure' or 'Role' hierarchy as target of enrichment:
 
-- **Structure:** Enrichment based on ChEBI structural classification (molecular composition and connectivity)
-- **Role:** Enrichment based on ChEBI role classification (biological context or intended use)
-- **Both:** Union of structure and role classifications (note: structural classification is significantly larger)
+- **Structure:** Enrichment based on ChEBI structural classification. This target is based on classes descending from the root node 'chemical entity', filtered to include everything under its children 'chemical substance', and 'molecular entity' (and not under 'atom' and 'group')
+- **Role:** Enrichment based on ChEBI role classification. This is based on classes descending from the root node 'role'.
+- **Both:** Union of structure and role classifications (note: the structure classification is significantly larger)
+
+The option of using a narrower, more specified, background is also provided. For each narrow background a set of leaf classes for specified using external sources, as explained below. Then all of the ascending classes of these leaves in the ChEBI ontology were used as the background populations: thus only using subsets of the ontology.
+
+#### Human background 1 (LOTUS and HMDB)
+
+Compounds from HMDB and LOTUS (taxonomy = Homos sapiens) were mapped to ChEBI leaf classes to serve as a background for enrichment. These are entities that have been measured from human samples.
+
+Matching to a ChEBI ID was attempted in this order: (1) a ChEBI ID already present in the source data, (2) an exact SMILES match against the local table of ChEBI leaf classes (Wikidata only), (3) an InChIKey lookup against the same local table, (4) the Chebifier API, which performs both a direct lookup and parent-class classification — for parent-class matches, the deepest class in the ChEBI hierarchy was kept to avoid overly broad annotations. Where a matched ChEBI ID corresponded to a non-leaf class in the ontology, it was expanded to its leaf descendants; classes with more than 150 leaf descendants were excluded to prevent high-level classes from disproportionately inflating the background. The resulting set of leaf classes were used to form the narrow background used in the enrichment analysis.
+
+#### Human background 2 (Recon3D)
+
+A second, narrower human background was built from [Recon3D](http://bigg.ucsd.edu/models/Recon3D), a genome-scale reconstruction of human metabolism, downloaded as JSON from [BiGG Models](http://bigg.ucsd.edu/). Unlike the Human background above, this one is restricted to metabolites that participate in modelled human metabolic reactions, so it excludes externally-sourced human-associated compounds (e.g. drugs, diet).
+
+Recon3D represents each metabolite once per cellular compartment it appears in (e.g. `10fthf_c`, `10fthf_m` for the cytosolic and mitochondrial pools of the same compound), so compartment-specific entries sharing a base BiGG ID were first collapsed into a single compound record — these always carry identical formula, charge, and database cross-references, confirming they are the same chemical species. This reduced Recon3D's 5,835 metabolite entries to 2,797 unique compounds.
+
+Each compound's listed ChEBI ID(s) were then resolved to leaf classes as follows:
+
+1. If any listed ChEBI ID is already a leaf, **all** such leaf candidates were kept. BiGG often lists several ChEBI IDs for one compound (e.g. different protonation or tautomer states), and these are typically genuinely distinct structures rather than duplicates, so none were discarded in favour of a single "primary" one.
+2. If none of the listed IDs is a leaf, each was expanded to its leaf descendants, excluding any class with more than 150 leaf descendants (the same cutoff used for the Human background, to avoid over-generic classes).
+3. For compounds with no ChEBI annotation at all, a ChEBI cross-reference was attempted via [UniChem](https://www.ebi.ac.uk/unichem/), first by InChIKey, then by HMDB ID (Recon3D stores HMDB IDs in an older 5-digit format, which was zero-padded to UniChem's expected 7-digit format before lookup). Any ChEBI IDs found this way were resolved to leaves using rules 1–2 above.
+
+Compounds for which none of the above resolved to a leaf were left out of the background. In practice these are largely abstract macromolecule/generic placeholders (e.g. `Rtotal` fatty-acyl chains, cytochromes, thioredoxin, procollagen) rather than discrete chemical structures, so they would not have been usable in a ChEBI structure-based background regardless of the matching method.
+
+#### Arabidopsis thaliana Background
+This background also uses data from LOTUS but with taxonomy = Arabidopsis thaliana. Mapping was done in the same way as for the first human background.
 
 ### Correction Method
-For multiple hypothesis testing correction, p-value correction methods are available. The options are Benjamini-Hochberg, Bonferroni, and None. Benjamini-Hochberg is recommended.
+For multiple hypothesis testing correction, p-value correction methods are available. The options are Benjamini-Hochberg, Bonferroni, and None. Benjamini-Hochberg is generally recommended.
 
 ### Pruning Strategies
-Pruning options are available to make the graph less cluttered. The following pruners are available and found in visualitations_and_pruning.py:
+Pruning options are available to make the graph less cluttered. The following pruners are available (and found in `visualitations_and_pruning.py`):
 
 * **Root Children Pruner:** Removes the roots and their children up to a defined level (number of levels being an adaptable parameter). This allows removal of more general, and less meaningful, entities in the ontology. For example, levels set to 2 will remove the roots and one level of their descendants.
 
@@ -40,48 +65,43 @@ If you manually choose which pruning strategies to apply, they will be implement
 For multiple hypothesis testing correction, p-value correction methods are available.
 To perform enrichment analysis calculations, Fisher's exact test is used for p-value calculations. For weighted enrichment analysis however, a SaddleSum method is used. All weights must be real and positive numbers.
 
-Have used code (translated from c to python) from https://ftp.ncbi.nlm.nih.gov/pub/qmbpmn/SaddleSum/src/, version [SaddleSum-standalone-1.2.2.tar.gz](https://ftp.ncbi.nlm.nih.gov/pub/qmbpmn/SaddleSum/src/SaddleSum-standalone-1.2.2.tar.gz) 2010-08-11 17:55  1.3M
+For the SaddleSum method, the code has been largely inspired by https://ftp.ncbi.nlm.nih.gov/pub/qmbpmn/SaddleSum/src/, version [SaddleSum-standalone-1.2.2.tar.gz](https://ftp.ncbi.nlm.nih.gov/pub/qmbpmn/SaddleSum/src/SaddleSum-standalone-1.2.2.tar.gz) 2010-08-11 17:55  1.3M
+
+The code was translated from c to python.
+
+After calculations have been conducted, a table with the raw and corrected p-values is provided. Under the table, information on for example which nodes have been removed through pruning is available.
 
 ### The Graph
 
-The coloring based on the significance of the p-value is dependent on the values in that session; it is relative by default. Making the coloring absolute can currently only be done by changing the code (not available on the online webpage). To make this change in your local version, go to `website/templates/graph.html` and change the following line:
+On the next page, a graph based on the enrichment analysis is displayed. The colouring of the nodes is based on the significance of the p-values. It is dependent on the values in that session; it is relative by default. Making the colour scale absolute can currently only be done by changing the code (not available on the online webpage). To make this change in your local version, go to `website/templates/graph.html` and change the following line:
 
 ```const colourScaleMode = 'relative'; // 'absolute' or 'relative'```
 
-The corrected p-value is used for the coloring if available. 
+The corrected p-value is used for the colouring if it is available.  
 
-Hovering over a node displays more detailed information about it. Both raw and corrected p-values are shown, as well as its ChEBI identity number. 
+The graph will initially show only the most relevant branches. This means that all nodes with p-values under or equal to 0.05 will be shown, including all nodes in the paths from these nodes up to the root. If all nodes have a higher p-value, the same will be done but for nodes with p-values lower than 1. If there only exists nodes where all p-values are 1 or N/A, then all nodes will be shown.
 
-Nodes can be selected by clicking on them. Right-clicking on a node provides options such as 'Select first neighbors' and 'Select descendants'. 
+There are options to choose the layout of the graph, which nodes are shown, and how to export the graph. 
 
-The graph will initially show only the most relevant branches. This means that all nodes with p-value under 0.05 will be shown, including all nodes in the paths from these nodes up to the root. If all nodes have a higher p-value, the same will be done but for nodes with p-value lower than 1. If there only exists nodes where all p-values are 1 or N/A, then all nodes will be shown.
+Re-running all calculations with new settings, such as with different pruning options, can be done by clicking on 'Settings'. The previously used options will be pre-selected.
 
-There are options to choose the layout of the graph, which nodes are shown, and how to export it. Note that if you change the target of enrichment or pruning options under Settings, all calculations will run again. 
+Hovering over a node displays more detailed information about it. Both raw and corrected p-values are shown, as well as its ChEBI ID. 
 
-## Human background
+Nodes can be selected by clicking on them. Right-clicking on a node provides options such as 'Select first neighbors' and 'Select descendants'.
 
-Compounds from HMDB and Wikidata (LOTUS) were mapped to ChEBI leaf classes to serve as a background for enrichment. Matching to a ChEBI ID was attempted in this order: (1) a ChEBI ID already present in the source data, (2) an exact SMILES match against the local table of ChEBI leaf classes (Wikidata only), (3) an InChIKey lookup against the same local table, (4) the Chebifier API, which performs both a direct lookup and parent-class classification — for parent-class matches, the deepest class in the ChEBI hierarchy was kept to avoid overly broad annotations. Where a matched ChEBI ID corresponded to a non-leaf class in the ontology, it was expanded to its leaf descendants; classes with more than 150 leaf descendants were excluded to prevent high-level classes from disproportionately inflating the background. The resulting set of leaf classes were used to form the narrow background used in the enrichment analysis.
 
-## Endogenous human background (Recon3D)
+## Workflow - How the data files are created
+This explains in further detail how the data files have been created and filtered. Most necessary files can simply be obtained by running `create_files.py` or `jobs/run_create_files.sh`, whereas one has to be downloaded manually:
 
-A second, narrower human background was built from [Recon3D](http://bigg.ucsd.edu/models/Recon3D), a genome-scale reconstruction of human metabolism, downloaded as JSON from [BiGG Models](http://bigg.ucsd.edu/). Unlike the Human background above, this one is restricted to metabolites that participate in modelled human metabolic reactions, so it excludes externally-sourced human-associated compounds (e.g. drugs, diet).
+- `data/hmdb_metabolites.xml` — the 'All Metabolites' XML from [HMDB](https://hmdb.ca/downloads) (see [step 6.3](#6-needed-for-human-dataset) below).
 
-Recon3D represents each metabolite once per cellular compartment it appears in (e.g. `10fthf_c`, `10fthf_m` for the cytosolic and mitochondrial pools of the same compound), so compartment-specific entries sharing a base BiGG ID were first collapsed into a single compound record — these always carry identical formula, charge, and database cross-references, confirming they are the same chemical species. This reduced Recon3D's 5,835 metabolite entries to 2,797 unique compounds.
+This is already done for the web application where the files are updated automatically once every month.
 
-Each compound's listed ChEBI ID(s) were then resolved to leaf classes as follows:
-
-1. If any listed ChEBI ID is already a leaf, **all** such leaf candidates were kept. BiGG often lists several ChEBI IDs for one compound (e.g. different protonation or tautomer states), and these are typically genuinely distinct structures rather than duplicates, so none were discarded in favour of a single "primary" one.
-2. If none of the listed IDs is a leaf, each was expanded to its leaf descendants, excluding any class with more than 150 leaf descendants (the same cutoff used for the Human background, to avoid over-generic classes).
-3. For compounds with no ChEBI annotation at all, a ChEBI cross-reference was attempted via [UniChem](https://www.ebi.ac.uk/unichem/), first by InChIKey, then by HMDB ID (Recon3D stores HMDB IDs in an older 5-digit format, which was zero-padded to UniChem's expected 7-digit format before lookup). Any ChEBI IDs found this way were resolved to leaves using rules 1–2 above.
-
-Compounds for which none of the above resolved to a leaf were left out of the background. In practice these are largely abstract macromolecule/generic placeholders (e.g. `Rtotal` fatty-acyl chains, cytochromes, thioredoxin, procollagen) rather than discrete chemical structures, so they would not have been usable in a ChEBI structure-based background regardless of the matching method.
-
-## Workflow
 
 #### 0. UV environment
 A uv environment with the following installations was used:
 
-```uv pip install py-horned-owl rdkit networkx matplotlib pandas tqdm flask flask_sqlalchemy scipy requests```
+```uv pip install py-horned-owl rdkit networkx pandas numpy tqdm flask scipy requests```
 
 #### 1. Load ChEBI
 Download and load the ChEBI ontology by running `load_chebi.py`. In the script, the OWL file is downloaded from https://ftp.ebi.ac.uk/pub/databases/chebi/ontology/chebi.owl and cached as `data/chebi.owl`. Re-running the script will not re-download the file if it already exists; delete `data/chebi.owl` if you want to attain a newer version. The version used in the webapplication is automatically updated on the 1st of every month.
@@ -95,7 +115,7 @@ To identify leaf classes and flatten the hierarchy, use `pruning_smiles.py`.
 
 Run task *"remove_leaves_with_smiles"* to find leaf classes, splice the hierarchy, and filter out deprecated classes. The following files are created:
 
-- A filtered OWL file with the remaining classes (from `save_filtered_owl`). The current file in this workspace is `data/data_owl/filtered_chebi_no_leaves_with_smiles_no_deprecated.owl`.
+- A filtered OWL file with the remaining classes (from `save_filtered_owl`). The current file in this workspace is `data/filtered_chebi_no_leaves_with_smiles_no_deprecated.owl`.
 - A **flattened** subclass map JSON file (`data/chebi_subclass_map.json`) mapping all classes to their direct subclasses after the splice (from `find_leaf_classes_with_smiles_and_deprecated`). Leaves have no subclasses here; the file also includes deprecated classes.
 - A leaf-to-parents map JSON file mapping each leaf class to all of its **non-leaf** ancestors (from `find_leaf_classes_with_smiles_and_deprecated`). This file is used in later calculations.
 
@@ -136,11 +156,14 @@ Here, each class is mapped to its direct roles, roles inherited from ancestor cl
 
 
 #### 3. Split up the ontology based on structure
-To split the ontology classes into functional vs structural, use `pruning_split_up_structure.py` and run task *"split_structural_functional"*.
+Classes are sorted into structural vs. functional (role) sets by `identify_structural_vs_functional()` in `pruning_split_up_structure.py`, which walks the descendants of the structural and role root classes and returns three sets of class IRIs: `structural_classes`, `functional_classes`, and `unknown_classes` (classes under neither root, kept only for troubleshooting). These three sets are what feeds the `Classification` column of the CSV created in step 4 below.
 
-- This creates three versions of the previously filtered ontology: `_structural.owl`, `_functional.owl`, and `_unknown.owl` (the last contains classes that are not classified by the two roots, and has just been used for trouble shooting). The current workspace includes:
-	- `data/data_owl/filtered_chebi_no_leaves_with_smiles_no_deprecated_structural.owl`
-	- `data/data_owl/filtered_chebi_no_leaves_with_smiles_no_deprecated_functional.owl`
+There are two ways to obtain these sets, and `create_files.py` uses the fast one:
+
+- **Automated (fast) path — used by `create_files.py`:** `identify_structural_vs_functional()` is called with the already-in-memory flattened subclass map (`data/chebi_subclass_map.json`, built in step 2), so descendants are found via plain dict lookups instead of per-node ontology API calls. The resulting class sets are passed straight into `save_leaf_classes_with_smiles()` (step 4) without ever touching disk — no OWL files are written for this step.
+- **Manual path — `pruning_split_up_structure.py`, task *"split_structural_functional"*:** Run standalone, the function is called without the subclass map, so it falls back to the slower ontology API. The three class sets are then written out as separate OWL files via `split_owl_by_type()`, creating `_structural.owl`, `_functional.owl`, and `_unknown.owl` versions of the previously filtered ontology (e.g. `data/filtered_chebi_no_leaves_with_smiles_no_deprecated_structural.owl`). `pruning_smiles.py`'s *"save_removed_leaf_classes"* task (step 4) can then load these OWL files back in to recover the same three class sets, if run outside of `create_files.py`.
+
+Since the splice in step 2 preserves every class's reachable non-leaf ancestors, descendant sets for these (non-leaf) roots are the same whether collected from the flattened subclass map or from live ontology traversal — so the two paths produce identical class sets. The OWL files are just an on-disk, human-inspectable form of the same information, useful for manual runs or debugging.
 
 #### 4. Save a file with the removed leaf classes
 Go back to `pruning_smiles.py` and run task *"save_removed_leaf_classes"* to save the removed leaf classes in a CSV file. The current file in this workspace is 
