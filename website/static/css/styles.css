@@ -79,17 +79,18 @@ a:hover {
    Graph and menu
    ============================================================ */
 .graph-wrapper {
-  max-width: min(1600px, calc(100vw - 48px));
-  margin: 40px auto;
-  height: calc(100vh - 280px);
+  width: 100%;
+  margin: 0;
+  height: calc(100vh - 200px);
   min-height: 480px;
   position: relative;
   padding: 20px;
   box-sizing: border-box;
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow-sm);
+}
+
+/* On the graph page, tuck the footer right under the graph (no top gap) */
+body:has(.graph-wrapper) .site-footer {
+  margin-top: 0;
 }
 
 #cy {
