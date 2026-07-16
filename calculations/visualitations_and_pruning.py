@@ -1,20 +1,13 @@
 import os
-import sys
 import networkx as nx
+from preparing_data.load_chebi import load_ontology, load_chebi
 import xml.etree.ElementTree as ET
 from tqdm import tqdm
 from math import inf
 import json
 import time
 from collections import Counter
-from pathlib import Path
 from networkx.readwrite import json_graph
-
-REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
-
-from preparing_data.load_chebi import load_ontology, load_chebi
 
 def id_to_name(class_id):
     id_to_name_map_file = "data/chebi_id_to_name_map.json" 
