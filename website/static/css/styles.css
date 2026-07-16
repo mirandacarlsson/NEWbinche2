@@ -1,47 +1,95 @@
+/* ============================================================
+   Design tokens
+   ============================================================ */
+:root {
+  /* Brand */
+  --maroon: #800020;
+  --maroon-dark: #660019;
+  --maroon-hover: #a73e6f;
+  --teal: #0f808d;
+  --teal-hover: #3da8b8;
+
+  /* Neutrals */
+  --page-bg: #f7f7f9;
+  --card-bg: #ffffff;
+  --border: #e5e7eb;
+  --border-strong: #d5d8dd;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --code-bg: #f4f2f3;
+
+  /* Shape & elevation */
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.04), 0 1px 3px rgba(16, 24, 40, 0.08);
+  --shadow-md: 0 4px 6px -1px rgba(16, 24, 40, 0.08), 0 2px 4px -2px rgba(16, 24, 40, 0.06);
+  --shadow-lg: 0 10px 20px -4px rgba(16, 24, 40, 0.12), 0 4px 8px -4px rgba(16, 24, 40, 0.08);
+}
+
+/* ============================================================
+   Base
+   ============================================================ */
 body {
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  background-color: var(--page-bg);
+  color: var(--text);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
 }
 
+h1, h2, h3, h4, h5, h6 {
+  color: var(--text);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
 
-/* body {
-    background-color: #f5f5f5;
-    margin: 0;
-    padding: 0;
-} */
-
-/* h1 {
-    color: black;
-    text-align: center;
-    font-family: 'general_font';
-}
-h2 {
-    color: grey;
-    font-family: 'general_font';
-}
-p {
-    color: grey;
-    font-family: 'general_font';
-}
 a {
-    font-family: 'general_font';
-    text-decoration: none;
+  color: var(--teal);
 }
-button 
-{
-    font-family: 'general_font';
-    font-size: 18px;
-} */
 
-/* Graph and menu */
+a:hover {
+  color: var(--teal-hover);
+}
 
+/* Centered content wrapper for the form/results pages (NOT the graph page) */
+.page-container {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 32px 32px 56px;
+}
+
+@media (max-width: 576px) {
+  .page-container {
+    padding: 24px 20px 40px;
+  }
+}
+
+/* ============================================================
+   Cards
+   ============================================================ */
+.content-card {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  padding: 28px 32px;
+}
+
+/* ============================================================
+   Graph and menu
+   ============================================================ */
 .graph-wrapper {
-  width: calc(100vw - 40px);
-  margin: 0;
-  height: calc(100vh - 40px - 64px);
-  border: none;
+  max-width: min(1600px, calc(100vw - 48px));
+  margin: 40px auto;
+  height: calc(100vh - 280px);
+  min-height: 480px;
   position: relative;
   padding: 20px;
   box-sizing: border-box;
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
 }
 
 #cy {
@@ -51,34 +99,49 @@ button
   border: none;
 }
 
+/* ============================================================
+   Navbar
+   ============================================================ */
 .custom-navbar {
   overflow: hidden;
-  background-color: #800020;
-
+  background-color: var(--maroon);
 }
 
 .navbar {
-  background-color: #800020;
+  background-color: var(--maroon);
   color: white;
+  box-shadow: var(--shadow-md);
+  padding-top: 0.6rem;
+  padding-bottom: 0.6rem;
+}
 
+.navbar .navbar-brand {
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #ffffff;
 }
 
 .navbar .nav-link {
-  color: rgba(255, 255, 255, 0.8) !important;
+  color: rgba(255, 255, 255, 0.82) !important;
   padding: 0.5rem 1rem !important;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 .navbar .nav-link:hover {
   color: rgba(255, 255, 255, 1) !important;
+  background-color: rgba(255, 255, 255, 0.12);
 }
 
 .navbar .dropdown-menu {
-  background-color: #f9f9f9;
-  border-color: #ddd;
+  background-color: #ffffff;
+  border-color: var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
 }
 
 .navbar .dropdown-item:hover {
-  background-color: #e0e0e0;
+  background-color: #f1f1f3;
 }
 
 .custom-navbar .popup {
@@ -112,7 +175,7 @@ button
 
 .custom-navbar a:hover,
 .custom-dropdown:hover .custom-dropbtn {
-  background-color: #a73e6f;
+  background-color: var(--maroon-hover);
 }
 
 .custom-dropdown-content {
@@ -141,8 +204,9 @@ button
   display: block;
 }
 
-/* Color legend styles */
-
+/* ============================================================
+   Color legend (graph page)
+   ============================================================ */
 #color-legend {
   position: absolute;
   top: 0px;
@@ -163,9 +227,7 @@ button
 
 .legend-container {
   display: flex;
-  /* puts gradient and labels side by side */
   align-items: stretch;
-  /* makes them same height */
 }
 
 .legend-gradient {
@@ -173,9 +235,7 @@ button
   height: 130px;
   background: linear-gradient(to bottom,
       rgba(202, 57, 0, 1),
-      rgba(202, 57, 0, 0.1)
-      /* from red (high significance) to transparent (low significance) */
-    );
+      rgba(202, 57, 0, 0.1));
   border: 1px solid #999;
   margin-right: 10px;
 }
@@ -189,16 +249,15 @@ button
   font-weight: bold;
 }
 
-/* Pruning popup styles */
-/* New wrapper that breaks out of overflow */
+/* ============================================================
+   Pruning popup styles (graph page navbar)
+   ============================================================ */
 .popup-wrapper {
   float: left;
   position: relative;
   z-index: 1001;
-  /* Above other navbar items */
 }
 
-/* Popup container */
 .popup {
   float: left;
   font-size: 16px;
@@ -208,18 +267,14 @@ button
 }
 
 .popup:hover {
-  background-color: #a73e6f;
+  background-color: var(--maroon-hover);
 }
 
-/* The actual popup (appears on top) */
 .popup .popuptext {
   visibility: hidden;
   min-width: 160px;
-  /* Minimum width */
   max-width: 400px;
-  /* Maximum width */
   width: max-content;
-  /* Auto-size to content */
   background-color: rgb(232, 232, 232);
   color: black;
   text-align: left;
@@ -229,43 +284,32 @@ button
   z-index: 1002;
   margin-top: 5px;
   white-space: nowrap;
-  /* Keeps text on one line */
 }
 
-
-/* Toggle this class when clicking on the popup container (hide and show the popup) */
 .popuptext.show {
   visibility: visible;
   -webkit-animation: fadeIn 1s;
-  animation: fadeIn 1s
+  animation: fadeIn 1s;
 }
 
-/* Add animation (fade in the popup) */
 @-webkit-keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
+/* ============================================================
+   Form / info two-column layout
+   ============================================================ */
 .main-container {
-
   display: grid;
-  gap: 40px;
-  grid-template-columns: 1fr;
+  gap: 32px;
+  grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+  align-items: start;
 }
 
 .main-form {
@@ -274,43 +318,194 @@ button
 
 .info-container {
   grid-column: 2;
-  margin-left: 40px;
-  margin-right: 90px;
 }
 
+@media (max-width: 992px) {
+  .main-container {
+    grid-template-columns: 1fr;
+  }
+  .main-form,
+  .info-container {
+    grid-column: 1;
+  }
+}
+
+/* ============================================================
+   Buttons
+   ============================================================ */
 .btn-primary,
 .form-check-input:checked {
-  background-color: #800020;
-  border-color: #800020;
+  background-color: var(--maroon);
+  border-color: var(--maroon);
+}
+
+.btn-primary {
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 1.4rem;
+  font-weight: 500;
+  box-shadow: var(--shadow-sm);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease, transform 0.05s ease;
 }
 
 .btn-primary:focus,
 .form-check-input:checked:focus {
-  box-shadow: 0 0 0 0.25rem rgba(128, 0, 32, 0.5);
-  background-color: #800020;
-  border-color: #800020;
+  box-shadow: 0 0 0 0.25rem rgba(128, 0, 32, 0.35);
+  background-color: var(--maroon);
+  border-color: var(--maroon);
 }
+
 .btn-primary:active,
 .btn-primary:focus-visible,
 .btn-primary:active:focus {
-  background-color: #800020 !important;
-  border-color: #800020 !important;
-  box-shadow: 0 0 0 0.25rem rgba(128, 0, 32, 0.5) !important;
+  background-color: var(--maroon-dark) !important;
+  border-color: var(--maroon-dark) !important;
+  box-shadow: 0 0 0 0.25rem rgba(128, 0, 32, 0.35) !important;
 }
 
 .btn-primary:hover,
 .form-check-input:checked:hover {
-  background-color: #8d5670;
-  border-color: #8d5670;
+  background-color: var(--maroon-hover);
+  border-color: var(--maroon-hover);
+  box-shadow: var(--shadow-md);
+}
+
+/* Teal secondary action (e.g. Download CSV) */
+.btn-teal {
+  background-color: var(--teal);
+  border-color: var(--teal);
+  color: #fff;
+  border-radius: var(--radius-sm);
+  padding: 0.5rem 1.4rem;
+  font-weight: 500;
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-teal:hover,
+.btn-teal:focus {
+  background-color: var(--teal-hover);
+  border-color: var(--teal-hover);
+  color: #fff;
+}
+
+/* ============================================================
+   Form controls
+   ============================================================ */
+.form-control:focus,
+.form-select:focus {
+  border-color: var(--maroon-hover);
+  box-shadow: 0 0 0 0.2rem rgba(128, 0, 32, 0.15);
+}
+
+.form-check-input:focus {
+  border-color: var(--maroon-hover);
+  box-shadow: 0 0 0 0.2rem rgba(128, 0, 32, 0.15);
 }
 
 .study-set {
-  font-family: monospace !important;
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace !important;
+  width: 100%;
+  max-width: 760px;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  background: var(--card-bg);
 }
 
+/* Example code blocks */
+pre {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 16px;
+  font-size: 0.9rem;
+  color: var(--text);
+}
 
+/* ============================================================
+   Collapsible info toggles (shared by index & submission pages)
+   ============================================================ */
+.info-button {
+  text-decoration: none;
+}
+
+.info-button:hover {
+  text-decoration: none;
+}
+
+/* Keep the info icon from breaking onto its own line after a label */
+.form-check .info-button {
+  white-space: nowrap;
+}
+
+.info-toggle {
+  padding: 0;
+  border: none;
+  background: none;
+  font-size: inherit;
+  font-weight: inherit;
+  color: inherit;
+  text-align: left;
+  width: 100%;
+}
+
+.info-toggle:hover,
+.info-toggle:focus {
+  color: var(--maroon);
+}
+
+.info-toggle-icon {
+  transition: transform 0.2s ease-in-out;
+  font-size: 0.8em;
+  color: var(--maroon);
+}
+
+.info-toggle[aria-expanded="true"] .info-toggle-icon {
+  transform: rotate(90deg);
+}
+
+/* Info panel accent: give the whole info column a gentle left accent */
+.info-container {
+  border-left: 3px solid var(--teal);
+  padding-left: 24px;
+}
+
+@media (max-width: 992px) {
+  .info-container {
+    border-left: none;
+    padding-left: 0;
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+  }
+}
+
+/* ============================================================
+   Tables
+   ============================================================ */
 .table {
   width: auto;
+  margin-bottom: 0;
+}
+
+.table-wrapper {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  overflow-x: auto;
+  box-shadow: var(--shadow-sm);
+  background: var(--card-bg);
+  display: inline-block;
+  max-width: 100%;
+}
+
+.results-table thead th {
+  background-color: #f3eef0;
+  color: var(--maroon-dark);
+  border-bottom: 2px solid var(--border-strong);
+  font-weight: 600;
+}
+
+.results-table tbody tr:hover {
+  background-color: #faf6f7;
 }
 
 th:nth-child(2), td:nth-child(2) {
@@ -318,3 +513,51 @@ th:nth-child(2), td:nth-child(2) {
   padding-right: 32px;
 }
 
+/* ============================================================
+   Footer
+   ============================================================ */
+.site-footer {
+  background-color: #ffffff;
+  padding: 30px 40px;
+  margin-top: 40px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  justify-content: space-between;
+  align-items: end;
+  gap: 24px;
+  flex-wrap: wrap;
+}
+
+.footer-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  max-width: 1500px;
+}
+
+.site-footer p {
+  margin: 0;
+  font-size: 0.95rem;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.site-footer p + p {
+  margin-top: 10px;
+}
+
+.site-footer a {
+  color: var(--teal);
+  text-decoration: none;
+}
+
+.site-footer a:hover {
+  color: var(--teal-hover);
+  text-decoration: underline;
+}
+
+.site-footer .footer-version {
+  flex: 0 0 auto;
+  font-size: 0.9rem;
+  color: var(--muted);
+  white-space: nowrap;
+}

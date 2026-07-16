@@ -7,7 +7,7 @@
 {% block body %}
 
 {% if user_study_set %}
-<div style="padding: 20px 40px;">
+<div class="page-container">
     <!-- <h3 class="mb-3">You submitted:</h3> -->
     <!-- <p class="mb-4 text-body">{{ user_study_set.replace('\r\n', ', ').replace('\n', ', ') }}</p> -->
     <!-- <pre class="study-set mb-4">{{ user_study_set }}</pre> -->
@@ -15,7 +15,7 @@
     <h3 class="mt-4 mb-3">Pruning Strategies</h3>
 
     <div class="main-container">
-    <form action="/run_analysis" method="POST" class="main-form needs-validation">
+    <form action="/run_analysis" method="POST" class="main-form content-card needs-validation">
         <p>
         Either choose the existing looping pruning strategy or configure pruning options and correction method
         manually below.
@@ -44,7 +44,7 @@
         </div>
 
         <!-- P-VALUE CORRECTION METHOD -->
-        <h4 class="mt-4 mb-3">Choose p-value correction method:</h4>
+        <h4 class="mt-4 mb-3">Choose p-Value Correction Method</h4>
         <div class="mb-4">
             <label for="p_value_correction_method" class="form-label">P-value correction method:</label>
             <select name="p_value_correction_method" id="p_value_correction_method" class="form-select" style="max-width: 300px;">
@@ -54,7 +54,7 @@
             </select>
         </div>
 
-        <h4 class="mt-4 mb-3">Choose pruning methods:</h4>
+        <h4 class="mt-4 mb-3">Choose Pruning Methods</h4>
         <!-- ROOT CHILDREN PRUNE -->
         <div class="form-check form-switch mb-2">
             <input type="checkbox" name="root_children_prune" value="true" class="form-check-input"
@@ -115,7 +115,7 @@
         </div>
     </form>
 
-    <div class="info-container">
+    <aside class="info-container">
         <h4 class="mb-2">
             <button class="btn info-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#pruning-methods-info" aria-expanded="false" aria-controls="pruning-methods-info">
                 <i class="fa fa-chevron-right info-toggle-icon"></i> Pruning methods
@@ -168,7 +168,7 @@
             </p>
             <!-- The text above is copied directly from the ChEBI-N ReadMe -->
         </div>
-    </div>
+    </aside>
     </div>
     {% else %}
     <div class="alert alert-warning mt-4" role="alert">
@@ -180,36 +180,6 @@
     </div>
     {% endif %}
 </div>
-
-<style>
-    .info-button {
-        text-decoration: none;
-    }
-    .info-button:hover {
-        text-decoration: none;
-    }
-    .info-toggle {
-        padding: 0;
-        border: none;
-        background: none;
-        font-size: inherit;
-        font-weight: inherit;
-        color: inherit;
-        text-align: left;
-        width: 100%;
-    }
-    .info-toggle:hover,
-    .info-toggle:focus {
-        color: #800020;
-    }
-    .info-toggle-icon {
-        transition: transform 0.2s ease-in-out;
-        font-size: 0.8em;
-    }
-    .info-toggle[aria-expanded="true"] .info-toggle-icon {
-        transform: rotate(90deg);
-    }
-</style>
 
 <script>
     // Initialize Bootstrap popovers

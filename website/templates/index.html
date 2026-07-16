@@ -5,11 +5,11 @@
 {% endblock %}
 
 {% block body %}
-<div style="padding: 20px 40px;">
+<div class="page-container">
     <h3 class="mt-2 mb-3">Submission Page</h3>
-    
+
     <div class="main-container">
-    <form action="/submission" method="POST" class="main-form">
+    <form action="/submission" method="POST" class="main-form content-card">
 
         <p>Welcome to ChEBI-N!</p>
         <p>Here, you can submit your study set for enrichment analysis based on the <a href="https://www.ebi.ac.uk/chebi/" style="color: #0f808d; text-decoration: none;">ChEBI ontology</a>. </p>
@@ -112,7 +112,7 @@ CHEBI:46816	0.7465
         <button class="btn btn-primary" type="submit">Submit</button>
     </form>
 
-    <div class="info-container">
+    <aside class="info-container">
         <h4 class="mb-2">
             <button class="btn info-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#target-enrichment-info" aria-expanded="false" aria-controls="target-enrichment-info">
                 <i class="fa fa-chevron-right info-toggle-icon"></i> Selecting target of enrichment
@@ -180,39 +180,9 @@ CHEBI:46816	0.7465
             </p>
         </div>
 
-    </div>
+    </aside>
     </div>
 </div>
-
-<style>
-    .info-button {
-        text-decoration: none;
-    }
-    .info-button:hover {
-        text-decoration: none;
-    }
-    .info-toggle {
-        padding: 0;
-        border: none;
-        background: none;
-        font-size: inherit;
-        font-weight: inherit;
-        color: inherit;
-        text-align: left;
-        width: 100%;
-    }
-    .info-toggle:hover,
-    .info-toggle:focus {
-        color: #800020;
-    }
-    .info-toggle-icon {
-        transition: transform 0.2s ease-in-out;
-        font-size: 0.8em;
-    }
-    .info-toggle[aria-expanded="true"] .info-toggle-icon {
-        transform: rotate(90deg);
-    }
-</style>
 
 <script>
     // Initialize Bootstrap popovers
