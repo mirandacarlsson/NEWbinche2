@@ -2,10 +2,10 @@ import sys
 import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from flask import Flask, render_template, request, redirect, url_for, session, Response
-from fishers_calculations import run_enrichment_analysis, run_enrichment_analysis_plain_enrich_pruning_strategy
-from wikidata.narrow_background_fishers import run_narrow_background_enrichment_analysis, run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy
-from weighted_calculations import run_weighted_enrichment_analysis, run_weighted_enrichment_analysis_plain_enrich_pruning_strategy, run_weighted_narrow_background_enrichment_analysis, run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy, auto_scale_weights
-from visualitations_and_pruning import graph_to_cytospace_json
+from calculations.fishers_calculations import run_enrichment_analysis, run_enrichment_analysis_plain_enrich_pruning_strategy
+from preparing_data.wikidata.narrow_background_fishers import run_narrow_background_enrichment_analysis, run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy
+from calculations.weighted_calculations import run_weighted_enrichment_analysis, run_weighted_enrichment_analysis_plain_enrich_pruning_strategy, run_weighted_narrow_background_enrichment_analysis, run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy, auto_scale_weights
+from calculations.visualitations_and_pruning import graph_to_cytospace_json
 import re
 import csv
 from io import StringIO
@@ -22,6 +22,8 @@ app = Flask(__name__)
 app.secret_key = 'your_secret_key'  # Replace with a secure secret key
 
 BASE_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.argv[0] = os.path.abspath(sys.argv[0])  # keep Werkzeug's debug-reloader re-exec working after chdir below
+os.chdir(BASE_DIR)
 LOCAL_LOOKUP_FILE = os.path.join(BASE_DIR, 'data', 'removed_leaf_classes_with_inchikeys.csv')
 
 # Maps a "background" form value to its narrow-background leaves JSON file.

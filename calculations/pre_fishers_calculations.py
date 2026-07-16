@@ -4,8 +4,7 @@
 
 from sqlite3 import Time
 from symtable import Class
-from load_chebi import load_chebi, load_ontology
-from pruning_split_up_structure import get_descendants
+import sys
 import xml.etree.ElementTree as ET
 import os
 import pandas as pd
@@ -13,8 +12,16 @@ import time
 import json
 import logging
 from collections import defaultdict
+from pathlib import Path
 from tqdm import tqdm
 from collections import deque
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from preparing_data.load_chebi import load_chebi, load_ontology
+from preparing_data.pruning_split_up_structure import get_descendants
 
 logger = logging.getLogger(__name__)
 _MISSING_ROLE_WARNING_LIMIT = 5

@@ -19,6 +19,6 @@ source bincheEnv/bin/activate
 # Optional first arg selects the source preset: wikidata_hs (default), hmdb, or wikidata_at
 SOURCE=${1:-wikidata_hs}
 
-python wikidata/find_missing_chebis.py --source "$SOURCE"
+python preparing_data/wikidata/find_missing_chebis.py --source "$SOURCE"
 
 echo Done!

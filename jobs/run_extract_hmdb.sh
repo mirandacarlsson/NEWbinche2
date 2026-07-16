@@ -16,6 +16,6 @@ cd /idiap/temp/mcarlsson/binche2
 
 source bincheEnv/bin/activate
 
-python hmdb/extract_hmdb.py
+python preparing_data/hmdb/extract_hmdb.py
 
 echo Done!

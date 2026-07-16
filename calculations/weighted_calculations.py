@@ -11,13 +11,19 @@ Reference: Stojmirovic & Yu (2010), ArXiv:1004.5088
 import json
 import logging
 import math
+import sys
 import time
 from collections import Counter
+from pathlib import Path
 import numpy as np
 import pandas as pd
 from scipy.special import ndtr
 
-from visualitations_and_pruning import (
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from calculations.visualitations_and_pruning import (
     root_children_pruner,
     linear_branch_collapser_pruner_remove_less,
     high_p_value_branch_pruner,
@@ -25,23 +31,23 @@ from visualitations_and_pruning import (
     create_graph_with_roles_and_structures,
     id_to_name,
 )
-from fishers_calculations import (
+from calculations.fishers_calculations import (
     get_leaves,
     get_ancestors_for_inputs,
     normalize_id,
     print_enrichment_results,
 )
-from pre_fishers_calculations import (
+from calculations.pre_fishers_calculations import (
     count_removed_leaves,
     count_removed_classes_for_class,
     count_removed_classes_for_roles,
     get_structural_leaf_ids,
 )
-from multiple_test_corrections import (
+from calculations.multiple_test_corrections import (
     bonferroni_correction,
     benjamini_hochberg_fdr_correction,
 )
-from wikidata.narrow_background_fishers import (
+from preparing_data.wikidata.narrow_background_fishers import (
     get_studyset_leaves_narrow,
     count_narrow_leaves,
     count_narrow_leaves_for_class,

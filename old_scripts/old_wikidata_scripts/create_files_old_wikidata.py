@@ -1,30 +1,30 @@
 import os
 import shutil
 from pathlib import Path
-from load_chebi import load_chebi, load_ontology
-from pruning_smiles import (
+from preparing_data.load_chebi import load_chebi, load_ontology
+from preparing_data.pruning_smiles import (
     find_leaf_classes_with_smiles_and_deprecated,
     save_leaf_classes_with_smiles,
     build_parent_map,
     map_names_to_classes,
 )
-from prepare_role_calculations import (
+from calculations.prepare_role_calculations import (
     find_has_role_connections_from_owl,
     create_leaves_to_all_roles_map,
     create_roles_to_all_leaves_map,
     create_class_to_all_roles_map,
 )
-from pruning_split_up_structure import identify_structural_vs_functional
-from pre_fishers_calculations import build_class_to_leaf_map
+from preparing_data.pruning_split_up_structure import identify_structural_vs_functional
+from calculations.pre_fishers_calculations import build_class_to_leaf_map
 
-from wikidata.get_wikidata_lotus import create_wikidata_output_files, keep_taxon_compounds
-from wikidata.get_inchikeys import convert_smiles_file
-from hmdb.extract_hmdb import extract_hmdb_to_file
-from hmdb.filter_hmdb_statuses import filter_hmdb_statuses_main
-from wikidata.find_missing_chebis import run_find_missing_chebis
-from wikidata.combine_human_datasets import combine_datasets
-from wikidata.narrow_background_fishers import gather_narrow_leaves
-from BiGG.get_model import download_model_json, gather_recon3d_leaves
+from preparing_data.wikidata.get_wikidata_lotus import create_wikidata_output_files, keep_taxon_compounds
+from preparing_data.wikidata.get_inchikeys import convert_smiles_file
+from preparing_data.hmdb.extract_hmdb import extract_hmdb_to_file
+from preparing_data.hmdb.filter_hmdb_statuses import filter_hmdb_statuses_main
+from preparing_data.wikidata.find_missing_chebis import run_find_missing_chebis
+from preparing_data.wikidata.combine_human_datasets import combine_datasets
+from preparing_data.wikidata.narrow_background_fishers import gather_narrow_leaves
+from preparing_data.BiGG.get_model import download_model_json, gather_recon3d_leaves
 
 
 

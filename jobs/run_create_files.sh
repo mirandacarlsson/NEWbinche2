@@ -16,6 +16,6 @@ cd /idiap/temp/mcarlsson/binche2
 
 source bincheEnv/bin/activate
 
-python create_files.py 
+python preparing_data/create_files.py
 
 echo Done!

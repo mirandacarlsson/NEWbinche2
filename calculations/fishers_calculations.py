@@ -2,12 +2,19 @@ from math import inf
 from scipy.stats import fisher_exact
 import pandas as pd
 import json
-import copy 
+import copy
 import math
-from visualitations_and_pruning import root_children_pruner, linear_branch_collapser_pruner_remove_less, high_p_value_branch_pruner, zero_degree_pruner, create_graph_from_map, id_to_name, create_graph_with_roles_and_structures
-from pre_fishers_calculations import count_removed_classes_for_class, count_removed_leaves, count_removed_classes_for_roles, get_structural_leaf_ids
-from multiple_test_corrections import bonferroni_correction, benjamini_hochberg_fdr_correction
+import sys
 import time
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from calculations.visualitations_and_pruning import root_children_pruner, linear_branch_collapser_pruner_remove_less, high_p_value_branch_pruner, zero_degree_pruner, create_graph_from_map, id_to_name, create_graph_with_roles_and_structures
+from calculations.pre_fishers_calculations import count_removed_classes_for_class, count_removed_leaves, count_removed_classes_for_roles, get_structural_leaf_ids
+from calculations.multiple_test_corrections import bonferroni_correction, benjamini_hochberg_fdr_correction
 
 """
 from goat-tools:

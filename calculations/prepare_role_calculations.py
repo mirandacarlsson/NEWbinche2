@@ -1,7 +1,14 @@
-from load_chebi import load_ontology, load_chebi, download_chebi
+import sys
 from collections import defaultdict
 import json
 import xml.etree.ElementTree as ET
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[1]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from preparing_data.load_chebi import load_ontology, load_chebi, download_chebi
 
 def _normalize_iri(value):
     return str(value).strip("<>")

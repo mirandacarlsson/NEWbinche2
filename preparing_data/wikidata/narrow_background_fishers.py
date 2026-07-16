@@ -9,14 +9,14 @@ import pandas as pd
 from pathlib import Path
 import time
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from fishers_calculations import normalize_id, calculate_p_value, get_ancestors_for_inputs, get_n_ss_annotated, get_n_ss_annotated_for_roles, print_enrichment_results
-from visualitations_and_pruning import root_children_pruner, linear_branch_collapser_pruner_remove_less, high_p_value_branch_pruner, zero_degree_pruner, create_graph_from_map, id_to_name, create_graph_with_roles_and_structures
-from pre_fishers_calculations import count_removed_classes_for_class, count_removed_classes_for_roles
-from multiple_test_corrections import bonferroni_correction, benjamini_hochberg_fdr_correction
+from calculations.fishers_calculations import normalize_id, calculate_p_value, get_ancestors_for_inputs, get_n_ss_annotated, get_n_ss_annotated_for_roles, print_enrichment_results
+from calculations.visualitations_and_pruning import root_children_pruner, linear_branch_collapser_pruner_remove_less, high_p_value_branch_pruner, zero_degree_pruner, create_graph_from_map, id_to_name, create_graph_with_roles_and_structures
+from calculations.pre_fishers_calculations import count_removed_classes_for_class, count_removed_classes_for_roles
+from calculations.multiple_test_corrections import bonferroni_correction, benjamini_hochberg_fdr_correction
 
 # n_ss_leaves = total number of input classes in the study set (if they are all leaf classes, otherwise count corresponding leaf classes)
 # n_ss_annotated = number of the input classes that are descendants of the given class

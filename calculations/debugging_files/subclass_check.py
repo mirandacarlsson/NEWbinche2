@@ -1,7 +1,14 @@
 # Fucntion to check subclasses of a given class through different json files
+import sys
 import pandas as pd
 import json
-from pre_fishers_calculations import count_removed_classes_for_class
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+
+from calculations.pre_fishers_calculations import count_removed_classes_for_class
 
 def count_connected_classes(class_iri):
     chebi_subclass_json = 'data/chebi_subclass_map.json'

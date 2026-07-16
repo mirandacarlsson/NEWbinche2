@@ -1,12 +1,12 @@
 import numpy as np
 from scipy.special import erf
 from scipy.optimize import brentq, newton
-from fishers_calculations import get_n_ss_annotated
-from pre_fishers_calculations import count_removed_classes_for_class
+from calculations.fishers_calculations import get_n_ss_annotated
+from calculations.pre_fishers_calculations import count_removed_classes_for_class
 from math import inf
 import json
-from fishers_calculations import get_leaves, get_ancestors_for_inputs, count_removed_leaves, print_enrichment_results
-from visualitations_and_pruning import (
+from calculations.fishers_calculations import get_leaves, get_ancestors_for_inputs, count_removed_leaves, print_enrichment_results
+from calculations.visualitations_and_pruning import (
     root_children_pruner,
     linear_branch_collapser_pruner_remove_less,
     high_p_value_branch_pruner,
@@ -14,7 +14,7 @@ from visualitations_and_pruning import (
     create_graph_from_map,
     id_to_name,
     )
-from multiple_test_corrections import bonferroni_correction, benjamini_hochberg_fdr_correction
+from calculations.multiple_test_corrections import bonferroni_correction, benjamini_hochberg_fdr_correction
 
 
 """Using SaddleSum for weighted enrichment calculations"""

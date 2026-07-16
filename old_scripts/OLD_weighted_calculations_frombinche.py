@@ -15,7 +15,7 @@ import numpy as np
 import pandas as pd
 from scipy.special import ndtr
 
-from visualitations_and_pruning import (
+from calculations.visualitations_and_pruning import (
     root_children_pruner,
     linear_branch_collapser_pruner_remove_less,
     high_p_value_branch_pruner,
@@ -23,18 +23,18 @@ from visualitations_and_pruning import (
     create_graph_with_roles_and_structures,
     id_to_name,
 )
-from fishers_calculations import (
+from calculations.fishers_calculations import (
     get_leaves,
     get_ancestors_for_inputs,
     normalize_id,
     print_enrichment_results,
 )
-from pre_fishers_calculations import (
+from calculations.pre_fishers_calculations import (
     count_removed_leaves,
     count_removed_classes_for_class,
     count_removed_classes_for_roles,
 )
-from multiple_test_corrections import (
+from calculations.multiple_test_corrections import (
     bonferroni_correction,
     benjamini_hochberg_fdr_correction,
 )
