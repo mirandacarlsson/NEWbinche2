@@ -1,12 +1,6 @@
 import os
 import shutil
-import sys
 from pathlib import Path
-
-REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
-
 from preparing_data.load_chebi import load_chebi, load_ontology
 from preparing_data.pruning_smiles import (
     find_leaf_classes_with_smiles_and_deprecated,
