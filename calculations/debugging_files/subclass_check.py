@@ -1,4 +1,4 @@
-# Fucntion to check subclasses of a given class through different json files
+# Function to check subclasses of a given class through different json files
 import sys
 import pandas as pd
 import json
