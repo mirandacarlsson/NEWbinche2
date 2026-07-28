@@ -3,10 +3,10 @@
 ChEBI-N is an updated version of [BiNChE](https://github.com/pcm32/BiNCheWeb/wiki/BiNChE#graph-pruning-strategies). It is a tool for ontology-based chemical enrichment analysis and uses the [ChEBI](https://www.ebi.ac.uk/chebi/) ontology of chemical entities as its background population.
 
 ## The Application
-The web application is available at https://binche2.hastingslab.org/.
+The web application is available at https://chebin.hastingslab.org/.
 
 ### Running The Analysis
-The web application is hosted at https://binche2.hastingslab.org/. To run calculations locally, execute `website/app.py`. Note that all necessary data files must be generated beforehand for local execution (as described in the [Workflow](#workflow) section below).
+The web application is hosted at https://chebin.hastingslab.org/. To run calculations locally, execute `website/app.py`. Note that all necessary data files must be generated beforehand for local execution (as described in the [Workflow](#workflow) section below).
 
 ### Study Set
 On the home page, you can your study set as ChEBI IDs (one per line) or SMILES. You can optionally provide weights for each compound (tab or space-separated). If SMILES are used, each SMILES is resolved to a ChEBI ID in this order: (1) an exact string match against the local table of ChEBI leaf classes, (2) a match via the InChIKey computed from the SMILES, (3) a direct lookup through the [Chebifier](https://chebifier.hastingslab.org/) API. If none of these resolve, its predicted direct parent classes (also from Chebifier) can optionally be used for enrichment calculations instead.
