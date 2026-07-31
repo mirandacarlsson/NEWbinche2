@@ -112,14 +112,14 @@ body:has(.graph-wrapper) .site-footer {
   background-color: var(--maroon);
   color: white;
   box-shadow: var(--shadow-md);
-  padding-top: 0.6rem;
-  padding-bottom: 0.6rem;
+  padding-top: 0;
+  padding-bottom: 0;
 }
 
-.navbar .navbar-brand {
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  color: #ffffff;
+.navbar .navbar-brand img {
+  height: 52px;
+  width: auto;
+  display: block;
 }
 
 .navbar .nav-link {
@@ -468,6 +468,17 @@ pre {
 .info-container {
   border-left: 3px solid var(--teal);
   padding-left: 24px;
+}
+
+.home-logo {
+  margin-top: 32px;
+  text-align: left;
+}
+
+.home-logo img {
+  width: 200px;
+  max-width: 100%;
+  height: auto;
 }
 
 @media (max-width: 992px) {
