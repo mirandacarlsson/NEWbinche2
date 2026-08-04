@@ -1,20 +1,26 @@
-import sys
-from collections import defaultdict
 import json
+import sys
 import xml.etree.ElementTree as ET
+from collections import defaultdict
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from preparing_data.load_chebi import load_ontology, load_chebi, download_chebi
+from preparing_data.load_chebi import download_chebi
+
 
 def _normalize_iri(value):
     return str(value).strip("<>")
 
 
-def find_has_role_connections_from_owl(owl_file, has_role_property, deprecated_property, roles_map_json):
+def find_has_role_connections_from_owl(
+    owl_file,
+    has_role_property,
+    deprecated_property,
+    roles_map_json,
+):
     """Parse OWL XML directly to find has_role restrictions (streaming to save memory)."""
     roles_map = defaultdict(set)
 
@@ -50,7 +56,10 @@ def find_has_role_connections_from_owl(owl_file, has_role_property, deprecated_p
 
         # Skip deprecated classes if flagged
         deprecated_elem = elem.find(deprecated_tag)
-        if deprecated_elem is not None and (deprecated_elem.text or "").strip().lower() == "true":
+        if (
+            deprecated_elem is not None
+            and (deprecated_elem.text or "").strip().lower() == "true"
+        ):
             elem.clear()
             continue
 
@@ -89,24 +98,32 @@ def find_has_role_connections_from_owl(owl_file, has_role_property, deprecated_p
     with open(roles_map_json, "w") as f:
         json.dump(roles_map_serializable, f, indent=2)
 
-    print(f"Saved roles map with {len(roles_map_serializable)} classes to {roles_map_json} (OWL XML fallback).")
+    print(
+        f"Saved roles map with {len(roles_map_serializable)} classes to {roles_map_json} (OWL XML fallback).",
+    )
     return roles_map
 
-def create_leaves_to_all_roles_map(roles_map_json, leaves_to_all_parents_json, leaves_to_all_roles_json, parent_map_json):
+
+def create_leaves_to_all_roles_map(
+    roles_map_json,
+    leaves_to_all_parents_json,
+    leaves_to_all_roles_json,
+    parent_map_json,
+):
     """Create a map from each leaf class to all roles associated with it via its ancestors and directly.
 
     Includes role ancestors (via parent map) so if a leaf has role X, then all ancestors of X are also included.
     """
 
-    with open(roles_map_json, "r") as f:
+    with open(roles_map_json) as f:
         roles_map = json.load(f)
 
-    with open(leaves_to_all_parents_json, "r") as f:
+    with open(leaves_to_all_parents_json) as f:
         leaves_to_all_parents = json.load(f)
 
-    with open(parent_map_json, "r") as f:
-        parent_map = json.load(f) # All classes to direct parents
-    
+    with open(parent_map_json) as f:
+        parent_map = json.load(f)  # All classes to direct parents
+
     role_ancestor_cache = {}
 
     def get_role_ancestors(role_iri):
@@ -159,22 +176,27 @@ def create_leaves_to_all_roles_map(roles_map_json, leaves_to_all_parents_json, l
     with open(leaves_to_all_roles_json, "w") as f:
         json.dump(leaves_to_all_roles, f, indent=2)
 
-def create_class_to_all_roles_map(roles_map_json, parent_map_json, class_to_all_roles_json):
+
+def create_class_to_all_roles_map(
+    roles_map_json,
+    parent_map_json,
+    class_to_all_roles_json,
+):
     """Create a map from each class to all roles associated with it (direct + inherited from ancestors).
 
     Includes direct roles on the class, direct roles on ancestor classes,
     and all descendants of those roles (role hierarchy expansion).
     """
 
-    with open(roles_map_json, "r") as f:
+    with open(roles_map_json) as f:
         roles_map = json.load(f)
 
-    with open(parent_map_json, "r") as f:
+    with open(parent_map_json) as f:
         parent_map = json.load(f)
-    
+
     # Build ancestor cache for classes
     class_ancestor_cache = {}
-    
+
     def get_class_ancestors(class_iri):
         if class_iri in class_ancestor_cache:
             return class_ancestor_cache[class_iri]
@@ -196,7 +218,7 @@ def create_class_to_all_roles_map(roles_map_json, parent_map_json, class_to_all_
 
         class_ancestor_cache[class_iri] = ancestors
         return ancestors
-    
+
     # Build role descendant cache
     role_descendant_cache = {}
 
@@ -230,16 +252,16 @@ def create_class_to_all_roles_map(roles_map_json, parent_map_json, class_to_all_
 
     # Collect all unique classes (from roles_map and parent_map)
     all_classes = set(roles_map.keys()) | set(parent_map.keys())
-    
+
     class_to_all_roles = {}
 
     for class_iri in all_classes:
         all_roles = set()
-        
+
         # Include direct roles on the class itself
         if class_iri in roles_map:
             all_roles.update(roles_map[class_iri])
-        
+
         # Include roles from all ancestors
         for ancestor in get_class_ancestors(class_iri):
             if ancestor in roles_map:
@@ -258,10 +280,11 @@ def create_class_to_all_roles_map(roles_map_json, parent_map_json, class_to_all_
     with open(class_to_all_roles_json, "w") as f:
         json.dump(class_to_all_roles, f, indent=2)
 
+
 def create_roles_to_all_leaves_map(leaves_to_all_roles_json, roles_to_all_leaves_json):
     """Create a map from each role to all leaf classes associated with it via descendants."""
 
-    with open(leaves_to_all_roles_json, "r") as f:
+    with open(leaves_to_all_roles_json) as f:
         leaves_to_all_roles = json.load(f)
 
     roles_to_all_leaves = defaultdict(set)
@@ -272,98 +295,121 @@ def create_roles_to_all_leaves_map(leaves_to_all_roles_json, roles_to_all_leaves
 
     # Convert sets to lists for JSON serialization
     roles_to_all_leaves_json_serializable = {
-        role: list(leaves)
-        for role, leaves in roles_to_all_leaves.items()
+        role: list(leaves) for role, leaves in roles_to_all_leaves.items()
     }
 
-    print(f"Built roles to all leaves map with {len(roles_to_all_leaves_json_serializable)} roles.")
+    print(
+        f"Built roles to all leaves map with {len(roles_to_all_leaves_json_serializable)} roles.",
+    )
 
     with open(roles_to_all_leaves_json, "w") as f:
         json.dump(roles_to_all_leaves_json_serializable, f, indent=2)
 
-if __name__ == "__main__":
 
-    task = "build class to all roles map" # Options: "find has_role connections", "build leaf to all roles map", "build class to all roles map"
+if __name__ == "__main__":
+    task = "build class to all roles map"  # Options: "find has_role connections", "build leaf to all roles map", "build class to all roles map"
     # Order of tasks:
-    # task "find has_role connections" will parse the OWL XML directly to find has_role restrictions and build the roles map. The ouput file is then used in the next step.
+    # task "find has_role connections" will parse the OWL XML directly to find has_role restrictions and build the roles map. The output file is then used in the next step.
     # task "build leaf to all roles map" will use the roles map and the leaf->all parents map to build a leaf->all roles map (via ancestors). The reverse map from roles->all leaves is also be built here.
     # task "build class to all roles map" will use the roles map and the parent map to build a class->all roles map (via ancestors) for ALL classes.
 
     has_role_property = "http://purl.obolibrary.org/obo/RO_0000087"
     deprecated_property = "http://www.w3.org/2002/07/owl#deprecated"
 
-    roles_map_json = "data/class_to_direct_roles_map.json" # output file for roles map
+    roles_map_json = "data/class_to_direct_roles_map.json"  # output file for roles map
     leaves_to_all_parents_json = "data/removed_leaf_classes_to_ALL_parents_map.json"
-    leaves_to_all_roles_json = "data/removed_leaf_classes_to_ALL_roles_map.json" # output file for leaves to all roles map
+    leaves_to_all_roles_json = "data/removed_leaf_classes_to_ALL_roles_map.json"  # output file for leaves to all roles map
     parent_map_json = "data/chebi_parent_map.json"
-    roles_to_all_leaves_json = "data/roles_to_leaves_map.json" # output file for roles to all leaves map
-    class_to_all_roles_json = "data/class_to_all_roles_map.json" # output file for class to all roles map
+    roles_to_all_leaves_json = (
+        "data/roles_to_leaves_map.json"  # output file for roles to all leaves map
+    )
+    class_to_all_roles_json = (
+        "data/class_to_all_roles_map.json"  # output file for class to all roles map
+    )
 
     if task == "find has_role connections":
+        print("=" * 80 + "\n")
 
-        print("="*80 + "\n")
-        
         # Run OWL XML parsing directly (more reliable for has_role restrictions)
         owl_file = download_chebi()
-        roles_map = find_has_role_connections_from_owl(owl_file, has_role_property, deprecated_property, roles_map_json)
-        
+        roles_map = find_has_role_connections_from_owl(
+            owl_file,
+            has_role_property,
+            deprecated_property,
+            roles_map_json,
+        )
+
         # Summary statistics
-        print(f"\n{'='*80}")
+        print(f"\n{'=' * 80}")
         print("SUMMARY STATISTICS")
-        print(f"{'='*80}")
+        print(f"{'=' * 80}")
         print(f"Total classes with roles: {len(roles_map)}")
-        
+
         if len(roles_map) > 0:
             total_role_connections = sum(len(roles) for roles in roles_map.values())
             print(f"Total role connections: {total_role_connections}")
             avg_roles = total_role_connections / len(roles_map)
             print(f"Average roles per class: {avg_roles:.2f}")
-            
+
             max_roles_class = max(roles_map.items(), key=lambda x: len(x[1]))
-            print(f"Class with most roles: {max_roles_class[0]} ({len(max_roles_class[1])} roles)")
-        
+            print(
+                f"Class with most roles: {max_roles_class[0]} ({len(max_roles_class[1])} roles)",
+            )
+
         # Build leaf -> all roles map using leaf->parents JSON (done below)
         # create_leaves_to_all_roles_map(roles_map_json, leaves_to_all_parents_json, leaves_to_all_roles_json, parent_map_json)
 
         # Verification test for function find_has_role_connections_from_owl
         test_class_iri = "http://purl.obolibrary.org/obo/CHEBI_10002"
-        
+
         if test_class_iri in roles_map:
-            print(f"\n{'='*80}")
-            print(f"VERIFICATION TEST: CHEBI_10002")
-            print(f"{'='*80}")
+            print(f"\n{'=' * 80}")
+            print("VERIFICATION TEST: CHEBI_10002")
+            print(f"{'=' * 80}")
             print(f"Found {len(roles_map[test_class_iri])} roles:")
             for role in roles_map[test_class_iri]:
                 print(f"  - {role}")
-            
+
             expected = {
                 "http://purl.obolibrary.org/obo/CHEBI_140378",
                 "http://purl.obolibrary.org/obo/CHEBI_35620",
                 "http://purl.obolibrary.org/obo/CHEBI_35674",
-                "http://purl.obolibrary.org/obo/CHEBI_38231"
+                "http://purl.obolibrary.org/obo/CHEBI_38231",
             }
-            
+
             found = set(roles_map[test_class_iri])
-            
+
             if found == expected:
-                print(f"\n✅ SUCCESS! All expected roles found.")
+                print("\n✅ SUCCESS! All expected roles found.")
             elif found.issuperset(expected):
-                print(f"\n✅ SUCCESS! All expected roles found (plus {len(found - expected)} more).")
+                print(
+                    f"\n✅ SUCCESS! All expected roles found (plus {len(found - expected)} more).",
+                )
             else:
-                print(f"\n⚠️  WARNING: Missing roles!")
+                print("\n⚠️  WARNING: Missing roles!")
                 print(f"Expected but not found: {expected - found}")
                 print(f"Found but not expected: {found - expected}")
         else:
-            print(f"\n❌ ERROR: CHEBI_10002 not found in roles_map!")
-        
+            print("\n❌ ERROR: CHEBI_10002 not found in roles_map!")
+
     elif task == "build leaf to all roles map":
-        
-        create_leaves_to_all_roles_map(roles_map_json, leaves_to_all_parents_json, leaves_to_all_roles_json, parent_map_json)
-        create_roles_to_all_leaves_map(leaves_to_all_roles_json, roles_to_all_leaves_json)
+        create_leaves_to_all_roles_map(
+            roles_map_json,
+            leaves_to_all_parents_json,
+            leaves_to_all_roles_json,
+            parent_map_json,
+        )
+        create_roles_to_all_leaves_map(
+            leaves_to_all_roles_json,
+            roles_to_all_leaves_json,
+        )
 
     elif task == "build class to all roles map":
-        
-        create_class_to_all_roles_map(roles_map_json, parent_map_json, class_to_all_roles_json)
+        create_class_to_all_roles_map(
+            roles_map_json,
+            parent_map_json,
+            class_to_all_roles_json,
+        )
 
     else:
         print(f"Unknown task: {task}. Please select a valid task.")

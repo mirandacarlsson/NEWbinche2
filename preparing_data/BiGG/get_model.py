@@ -47,7 +47,15 @@ def load_unique_compounds(model_json_path):
     for met in data["metabolites"]:
         base_id = re.sub(r"_[a-z0-9]+$", "", met["id"])
         ann = met.get("annotation", {})
-        rec = compounds.setdefault(base_id, {"name": met.get("name", ""), "chebi": set(), "hmdb": set(), "inchi_key": set()})
+        rec = compounds.setdefault(
+            base_id,
+            {
+                "name": met.get("name", ""),
+                "chebi": set(),
+                "hmdb": set(),
+                "inchi_key": set(),
+            },
+        )
         rec["chebi"].update(ann.get("chebi", []))
         rec["hmdb"].update(ann.get("hmdb", []))
         rec["inchi_key"].update(ann.get("inchi_key", []))
@@ -78,7 +86,13 @@ def _query_unichem(body):
 
 def query_unichem_by_hmdb(hmdb_id):
     """Cross-reference an HMDB ID to ChEBI IDs via UniChem (exact structure match)."""
-    return _query_unichem({"type": "sourceID", "compound": normalize_hmdb_id(hmdb_id), "sourceID": UNICHEM_HMDB_SOURCE_ID})
+    return _query_unichem(
+        {
+            "type": "sourceID",
+            "compound": normalize_hmdb_id(hmdb_id),
+            "sourceID": UNICHEM_HMDB_SOURCE_ID,
+        },
+    )
 
 
 def query_unichem_by_inchikey(inchi_key):
@@ -86,7 +100,12 @@ def query_unichem_by_inchikey(inchi_key):
     return _query_unichem({"type": "inchikey", "compound": inchi_key.strip()})
 
 
-def resolve_to_leaves(candidate_chebi_ids, leaf_ids, class_to_leaf_map, max_descendants=MAX_LEAF_DESCENDANTS):
+def resolve_to_leaves(
+    candidate_chebi_ids,
+    leaf_ids,
+    class_to_leaf_map,
+    max_descendants=MAX_LEAF_DESCENDANTS,
+):
     """Keep candidates that are already leaves; if none are, expand non-leaf
     candidates to their leaf descendants, skipping any class with more than
     `max_descendants` (too generic to usefully narrow the background).
@@ -192,14 +211,30 @@ def gather_recon3d_leaves(
         json.dump(payload, f, indent=2)
 
     print(f"Total compounds (BiGG, compartments collapsed): {len(compounds)}")
-    print(f"  Resolved directly (BiGG ChEBI ID is already a leaf):       {counts['resolved_leaf_direct']}")
-    print(f"  Resolved via parent expansion (<= {MAX_LEAF_DESCENDANTS} leaf descendants):   {counts['resolved_via_expansion']}")
-    print(f"  Resolved via UniChem InChIKey -> already a leaf:           {counts['resolved_via_unichem_inchikey_leaf']}")
-    print(f"  Resolved via UniChem InChIKey -> expanded to leaves:       {counts['resolved_via_unichem_inchikey_expansion']}")
-    print(f"  Resolved via UniChem HMDB     -> already a leaf:           {counts['resolved_via_unichem_hmdb_leaf']}")
-    print(f"  Resolved via UniChem HMDB     -> expanded to leaves:       {counts['resolved_via_unichem_hmdb_expansion']}")
-    print(f"  Unresolved (left out of the background):                   {counts['unresolved']}")
-    print(f"Total leaf ChEBI classes in the resulting background: {len(recon3d_leaves)}")
+    print(
+        f"  Resolved directly (BiGG ChEBI ID is already a leaf):       {counts['resolved_leaf_direct']}",
+    )
+    print(
+        f"  Resolved via parent expansion (<= {MAX_LEAF_DESCENDANTS} leaf descendants):   {counts['resolved_via_expansion']}",
+    )
+    print(
+        f"  Resolved via UniChem InChIKey -> already a leaf:           {counts['resolved_via_unichem_inchikey_leaf']}",
+    )
+    print(
+        f"  Resolved via UniChem InChIKey -> expanded to leaves:       {counts['resolved_via_unichem_inchikey_expansion']}",
+    )
+    print(
+        f"  Resolved via UniChem HMDB     -> already a leaf:           {counts['resolved_via_unichem_hmdb_leaf']}",
+    )
+    print(
+        f"  Resolved via UniChem HMDB     -> expanded to leaves:       {counts['resolved_via_unichem_hmdb_expansion']}",
+    )
+    print(
+        f"  Unresolved (left out of the background):                   {counts['unresolved']}",
+    )
+    print(
+        f"Total leaf ChEBI classes in the resulting background: {len(recon3d_leaves)}",
+    )
     print(f"Saved to {output_json}.")
 
     return recon3d_leaves, unresolved

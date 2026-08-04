@@ -1,41 +1,41 @@
+import json
 import os
 import shutil
+import time
 from pathlib import Path
-from preparing_data.load_chebi import load_chebi, load_ontology
-from preparing_data.pruning_smiles import (
-    find_leaf_classes_with_smiles_and_deprecated,
-    save_leaf_classes_with_smiles,
-    build_parent_map,
-    map_names_to_classes,
-)
+
+from calculations.pre_fishers_calculations import build_class_to_leaf_map
 from calculations.prepare_role_calculations import (
-    find_has_role_connections_from_owl,
+    create_class_to_all_roles_map,
     create_leaves_to_all_roles_map,
     create_roles_to_all_leaves_map,
-    create_class_to_all_roles_map,
+    find_has_role_connections_from_owl,
 )
-from preparing_data.pruning_split_up_structure import identify_structural_vs_functional
-from calculations.pre_fishers_calculations import build_class_to_leaf_map
-
-from preparing_data.wikidata.get_wikidata_lotus import connect_lotus_csv_to_chebi_ids
-from preparing_data.wikidata.get_lotus import download_lotus_homo_sapiens, download_lotus_arabidopsis_thaliana
-from preparing_data.wikidata.get_inchikeys import convert_smiles_file
+from preparing_data.BiGG.get_model import download_model_json, gather_recon3d_leaves
 from preparing_data.hmdb.extract_hmdb import extract_hmdb_to_file
 from preparing_data.hmdb.filter_hmdb_statuses import filter_hmdb_statuses_main
-from preparing_data.wikidata.find_missing_chebis import run_find_missing_chebis
+from preparing_data.load_chebi import load_chebi
+from preparing_data.pruning_smiles import (
+    build_parent_map,
+    find_leaf_classes_with_smiles_and_deprecated,
+    map_names_to_classes,
+    save_leaf_classes_with_smiles,
+)
+from preparing_data.pruning_split_up_structure import identify_structural_vs_functional
 from preparing_data.wikidata.combine_human_datasets import combine_datasets
+from preparing_data.wikidata.find_missing_chebis import run_find_missing_chebis
+from preparing_data.wikidata.get_inchikeys import convert_smiles_file
+from preparing_data.wikidata.get_lotus import (
+    download_lotus_arabidopsis_thaliana,
+    download_lotus_homo_sapiens,
+)
+from preparing_data.wikidata.get_wikidata_lotus import connect_lotus_csv_to_chebi_ids
 from preparing_data.wikidata.narrow_background_fishers import gather_narrow_leaves
-from preparing_data.BiGG.get_model import download_model_json, gather_recon3d_leaves
-
-
-
-import time
-import json
 
 start_time = time.time()
 
 """
-A script for creating all necessary files for the project. 
+A script for creating all necessary files for the project.
 The old data is moved to a timestamped folder.
 If there are more than three folders with old data, the oldest ones are deleted to keep only the three most recent.
 """
@@ -47,7 +47,7 @@ def _run_stage(stage_name, stage_timings, func, *args, **kwargs):
     result = func(*args, **kwargs)
     elapsed = time.time() - stage_start
     stage_timings.append((stage_name, elapsed))
-    print(f"[TIMING] {stage_name}: {elapsed:.2f}s ({elapsed/60:.2f} min)")
+    print(f"[TIMING] {stage_name}: {elapsed:.2f}s ({elapsed / 60:.2f} min)")
     return result
 
 
@@ -64,7 +64,7 @@ def _print_timing_summary(stage_timings, total_elapsed):
     for stage_name, elapsed in sorted_timings:
         pct = (elapsed / total_elapsed) * 100
         print(
-            f"{stage_name}: {elapsed:.2f}s ({elapsed/60:.2f} min, {pct:.2f}% of total)"
+            f"{stage_name}: {elapsed:.2f}s ({elapsed / 60:.2f} min, {pct:.2f}% of total)",
         )
 
     measured_total = sum(elapsed for _, elapsed in stage_timings)
@@ -72,18 +72,19 @@ def _print_timing_summary(stage_timings, total_elapsed):
     overhead_pct = (overhead / total_elapsed) * 100
     print("-" * 80)
     print(
-        f"Untracked/overhead: {overhead:.2f}s ({overhead/60:.2f} min, {overhead_pct:.2f}% of total)"
+        f"Untracked/overhead: {overhead:.2f}s ({overhead / 60:.2f} min, {overhead_pct:.2f}% of total)",
     )
     print("=" * 80)
+
 
 def rename_folder(old_name, new_name):
     """
     Rename a folder from old_name to new_name.
-    
+
     Args:
         old_name (str): Current folder name
         new_name (str): New folder name
-    
+
     Returns:
         bool: True if rename was successful, False otherwise
     """
@@ -99,6 +100,7 @@ def rename_folder(old_name, new_name):
         print(f"Error renaming folder: {e}")
         return False
 
+
 def create_temp_data_folder():
     """
     Create a temporary 'data_new' folder for new files.
@@ -106,9 +108,11 @@ def create_temp_data_folder():
     if os.path.exists("data_new"):
         print("Warning: 'data_new' already exists. Removing it.")
         import shutil
+
         shutil.rmtree("data_new")
     os.makedirs("data_new")
     print("Created temporary 'data_new' folder")
+
 
 def finalize_folder_structure():
     """
@@ -117,9 +121,9 @@ def finalize_folder_structure():
     2. data_new -> data
     """
     import datetime
-    
+
     timestamp = datetime.datetime.now().strftime("%Y.%m.%d")
-    
+
     # Rename old data folder if it exists
     if os.path.exists("data"):
         base_name = f"data_last_used_{timestamp}"
@@ -129,10 +133,11 @@ def finalize_folder_structure():
             old_data_name = f"{base_name}_{counter}"
             counter += 1
         rename_folder("data", old_data_name)
-    
+
     # Rename data_new to data
     if os.path.exists("data_new"):
         rename_folder("data_new", "data")
+
 
 def cleanup_old_data_folders(max_folders=3):
     """
@@ -165,6 +170,7 @@ def cleanup_old_data_folders(max_folders=3):
         print(f"Deleting old data folder: {folder}")
         shutil.rmtree(folder)
 
+
 if __name__ == "__main__":
     stage_timings = []
 
@@ -178,16 +184,22 @@ if __name__ == "__main__":
     has_role_property = "http://purl.obolibrary.org/obo/RO_0000087"
 
     chebi_file = "data_new/chebi.owl"
-    subclass_map_file = "data_new/chebi_subclass_map.json" 
+    subclass_map_file = "data_new/chebi_subclass_map.json"
     leaf_parents_map_file = "data_new/removed_leaf_classes_to_ALL_parents_map.json"
     removed_leaf_classes_file = "data_new/removed_leaf_classes_with_smiles.csv"
 
-    roles_map_json = "data_new/class_to_direct_roles_map.json" # output file for roles map
+    roles_map_json = (
+        "data_new/class_to_direct_roles_map.json"  # output file for roles map
+    )
     leaves_to_all_parents_json = "data_new/removed_leaf_classes_to_ALL_parents_map.json"
-    leaves_to_all_roles_json = "data_new/removed_leaf_classes_to_ALL_roles_map.json" # output file for leaves to all roles map
+    leaves_to_all_roles_json = "data_new/removed_leaf_classes_to_ALL_roles_map.json"  # output file for leaves to all roles map
     parent_map_json = "data_new/chebi_parent_map.json"
-    roles_to_all_leaves_json = "data_new/roles_to_leaves_map.json" # output file for roles to all leaves map
-    class_to_all_roles_json = "data_new/class_to_all_roles_map.json" # output file for class to all roles map
+    roles_to_all_leaves_json = (
+        "data_new/roles_to_leaves_map.json"  # output file for roles to all leaves map
+    )
+    class_to_all_roles_json = (
+        "data_new/class_to_all_roles_map.json"  # output file for class to all roles map
+    )
     id_to_name_map_json = "data_new/chebi_id_to_name_map.json"
 
     leaf_to_ancestors_file = "data_new/removed_leaf_classes_to_ALL_parents_map.json"
@@ -285,7 +297,7 @@ if __name__ == "__main__":
     ### subclass map instead of the slow per-node ontology API). The flattened map written by
     ### find_leaf_classes gives identical descendant sets for the (non-leaf) roots.
     print("Identifying structural vs functional classes...")
-    with open(subclass_map_file, "r") as f:
+    with open(subclass_map_file) as f:
         subclass_map_for_classification = json.load(f)
     structural_classes, functional_classes, unknown_classes = _run_stage(
         "identify_structural_vs_functional",
@@ -294,7 +306,7 @@ if __name__ == "__main__":
         chebi_ontology,
         subclass_map_for_classification,
     )
-    
+
     print(f"Identified {len(structural_classes)} structural classes")
     print(f"Identified {len(functional_classes)} functional classes")
     print(f"Identified {len(unknown_classes)} unknown classes")
@@ -313,7 +325,7 @@ if __name__ == "__main__":
         functional_classes,
         owl_file=chebi_file,  # OPTIMIZATION: Pass OWL file for fast XML parsing of SMILES
         parent_map_file=parent_map_json,  # OPTIMIZATION: Use already-created parent map instead of ontology API
-    )  
+    )
 
     ### Build a JSON map from each class IRI to ALL its leaf descendants
     print("Building class to leaf descendants map...")
@@ -329,12 +341,14 @@ if __name__ == "__main__":
     print("Copying HMDB XML to temporary data folder...")
     hmdb_xml_src = "data/hmdb_metabolites.xml"
     hmdb_xml_dst = "data_new/hmdb_metabolites.xml"
-    print(f"Copying HMDB XML to data_new...")
+    print("Copying HMDB XML to data_new...")
     if os.path.exists(hmdb_xml_src):
         shutil.copy2(hmdb_xml_src, hmdb_xml_dst)
         print(f"Copied {hmdb_xml_src} to {hmdb_xml_dst}")
     else:
-        raise FileNotFoundError(f"{hmdb_xml_src} not found. Please download it before running.")
+        raise FileNotFoundError(
+            f"{hmdb_xml_src} not found. Please download it before running.",
+        )
 
     # Download LOTUS explorer CSVs from Wikidata (via QLever) into data_new
     print("Downloading LOTUS explorer CSVs...")
@@ -350,7 +364,6 @@ if __name__ == "__main__":
         download_lotus_arabidopsis_thaliana,
         "data_new/lotus_arabidopsis_thaliana.csv",
     )
-
 
     ### Finalize folder structure: rename old data and move data_new to data
     print("Finalizing folder structure...")
@@ -483,18 +496,6 @@ if __name__ == "__main__":
     end_time = time.time()
     elapsed_time = end_time - start_time
     _print_timing_summary(stage_timings, elapsed_time)
-    print(f"Total execution time: {elapsed_time:.2f} seconds or {elapsed_time/60:.2f} minutes or {elapsed_time/3600:.2f} hours")
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+    print(
+        f"Total execution time: {elapsed_time:.2f} seconds or {elapsed_time / 60:.2f} minutes or {elapsed_time / 3600:.2f} hours",
+    )

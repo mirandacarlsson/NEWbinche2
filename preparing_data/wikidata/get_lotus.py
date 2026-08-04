@@ -1,6 +1,5 @@
-import urllib.request
 import urllib.parse
-
+import urllib.request
 
 SPARQL_TEMPLATE = """\
 PREFIX xsd:    <http://www.w3.org/2001/XMLSchema#>
@@ -90,11 +89,13 @@ def download_lotus_csv(taxon_qid: str, output_path: str) -> None:
     """
     query = SPARQL_TEMPLATE.format(taxon_qid=taxon_qid)
     filename = output_path.split("/")[-1]
-    body = urllib.parse.urlencode({
-        "query": query,
-        "action": "csv_export",
-        "filename": filename,
-    }).encode("utf-8")
+    body = urllib.parse.urlencode(
+        {
+            "query": query,
+            "action": "csv_export",
+            "filename": filename,
+        },
+    ).encode("utf-8")
 
     req = urllib.request.Request(
         QLEVER_API,
@@ -118,6 +119,7 @@ def download_lotus_arabidopsis_thaliana(output_path: str) -> None:
 
 if __name__ == "__main__":
     import os
+
     os.makedirs("data", exist_ok=True)
     download_lotus_homo_sapiens("data/lotus_homo_sapiens.csv")
     download_lotus_arabidopsis_thaliana("data/lotus_arabidopsis_thaliana.csv")

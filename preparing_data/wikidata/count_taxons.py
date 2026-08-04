@@ -2,8 +2,8 @@
 
 import pandas as pd
 
-taxon_file = 'data/wikidata/compound_reference_taxon.tsv'
-taxon_names_file = 'data/wikidata/taxa.tsv'
+taxon_file = "data/wikidata/compound_reference_taxon.tsv"
+taxon_names_file = "data/wikidata/taxa.tsv"
 
 
 def top_n_taxons(n=5):
@@ -21,6 +21,7 @@ def top_n_taxons(n=5):
 
     return top_counts
 
+
 # Count the number of classes in class_file.tsv
 def count_classes_in_file(class_file):
     df = pd.read_csv(class_file, sep="\t")
@@ -32,9 +33,10 @@ def count_classes_in_file(class_file):
 if __name__ == "__main__":
     top_n_taxons(5)
 
-    class_file_hs = 'data/wikidata/created/compounds_with_chebi_ids_homo_sapiens.tsv'
+    class_file_hs = "data/wikidata/created/compounds_with_chebi_ids_homo_sapiens.tsv"
     count_classes_in_file(class_file_hs)
 
-    class_file_at = 'data/wikidata/created/compounds_with_chebi_ids_arabidopsis_thaliana.tsv'
+    class_file_at = (
+        "data/wikidata/created/compounds_with_chebi_ids_arabidopsis_thaliana.tsv"
+    )
     count_classes_in_file(class_file_at)
-    

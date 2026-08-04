@@ -1,27 +1,20 @@
 "I need to count classes removed from a given class. This will only be based on the structural split."
+
 "The total number of classes in the structural split will also be counted."
 "OBS: Need to make sure to only count a removed class once."
 
-from sqlite3 import Time
-from symtable import Class
-import sys
-import xml.etree.ElementTree as ET
-import os
-import pandas as pd
-import time
 import json
 import logging
+import sys
 from collections import defaultdict
 from pathlib import Path
-from tqdm import tqdm
-from collections import deque
+
+import pandas as pd
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from preparing_data.load_chebi import load_chebi, load_ontology
-from preparing_data.pruning_split_up_structure import get_descendants
 
 logger = logging.getLogger(__name__)
 _MISSING_ROLE_WARNING_LIMIT = 5
@@ -29,6 +22,7 @@ _missing_role_warning_count = 0
 _missing_role_warning_suppressed = 0
 
 _structural_leaf_ids_cache = {}
+
 
 def get_structural_leaf_ids(removed_classes_csv):
     """
@@ -43,18 +37,20 @@ def get_structural_leaf_ids(removed_classes_csv):
         _structural_leaf_ids_cache[removed_classes_csv] = set(structural["IRI"])
     return _structural_leaf_ids_cache[removed_classes_csv]
 
+
 def count_removed_leaves(removed_classes_csv):
     return len(get_structural_leaf_ids(removed_classes_csv))
 
+
 def build_class_to_leaf_map(leaf_to_ancestors_file, class_to_leaf_output_file):
-    """ Build a JSON map from each class IRI to ALL its leaf descendants using an existing leaf-to-ancestors map."""
+    """Build a JSON map from each class IRI to ALL its leaf descendants using an existing leaf-to-ancestors map."""
 
     print(f"Loading leaf to ancestors map from {leaf_to_ancestors_file}...")
-    with open(leaf_to_ancestors_file, 'r') as f:
+    with open(leaf_to_ancestors_file) as f:
         leaf_to_ancestors = json.load(f)
     print(f"Loaded leaf to ancestors map with {len(leaf_to_ancestors)} leaf classes.")
 
-    class_to_leafs = defaultdict(set)
+    class_to_leaves = defaultdict(set)
     print("Building class to leaf descendants map...")
 
     # Collect all leaf classes
@@ -63,26 +59,34 @@ def build_class_to_leaf_map(leaf_to_ancestors_file, class_to_leaf_output_file):
     # For each leaf, add it to all its ancestors
     for leaf, ancestors in leaf_to_ancestors.items():
         for ancestor in ancestors:
-            class_to_leafs[ancestor].add(leaf)
+            class_to_leaves[ancestor].add(leaf)
 
-    ### Include if I also want leaf classes to appear in the map. Now these will give the same output as something not in the ontology at all. 
+    ### Include if I also want leaf classes to appear in the map. Now these will give the same output as something not in the ontology at all.
     # # Ensure all leaf classes appear with empty lists
     # for leaf in all_leaf_classes:
-    #     if leaf not in class_to_leafs:
-    #         class_to_leafs[leaf] = set()
-    
+    #     if leaf not in class_to_leaves:
+    #         class_to_leaves[leaf] = set()
+
     # Convert sets to lists for JSON serialization
-    class_to_leaf_json = {
-        cls: list(leafs)
-        for cls, leafs in class_to_leafs.items()} 
-    
+    class_to_leaf_json = {cls: list(leaves) for cls, leaves in class_to_leaves.items()}
+
     # Save to JSON
-    with open(class_to_leaf_output_file, 'w') as f:
+    with open(class_to_leaf_output_file, "w") as f:
         json.dump(class_to_leaf_json, f, indent=2)
 
-    print(f"Saved class to leaf descendants map with {len(class_to_leaf_json)} classes to {class_to_leaf_output_file}.")
-    
-def count_removed_classes_for_class(class_iri, leaf_descendants_map, classification, class_to_all_roles_map, roles_to_leaves_map, structural_leaf_ids=None):
+    print(
+        f"Saved class to leaf descendants map with {len(class_to_leaf_json)} classes to {class_to_leaf_output_file}.",
+    )
+
+
+def count_removed_classes_for_class(
+    class_iri,
+    leaf_descendants_map,
+    classification,
+    class_to_all_roles_map,
+    roles_to_leaves_map,
+    structural_leaf_ids=None,
+):
     """
     Count how many leaf classes are associated with the given class_iri.
 
@@ -101,17 +105,18 @@ def count_removed_classes_for_class(class_iri, leaf_descendants_map, classificat
     """
 
     # if classification not in ["structural", "functional", "full"]:
-        # print("Classification must be either 'structural', 'functional' or 'full'.")
-        # return 0, 0
+    # print("Classification must be either 'structural', 'functional' or 'full'.")
+    # return 0, 0
 
     leaves = set()
 
     if classification in ["structural", "full"]:
-
         if str(class_iri) not in leaf_descendants_map:
             print(f"⚠️ Class {class_iri} is not found in map file.")
             return 0, 0
-        elif len(leaf_descendants_map[str(class_iri)]) == 0: # Should not happen since then it would be a leaf
+        elif (
+            len(leaf_descendants_map[str(class_iri)]) == 0
+        ):  # Should not happen since then it would be a leaf
             print(f"⚠️ Class {class_iri} has no descendants in full ontology.")
             return 0, 0
 
@@ -121,7 +126,7 @@ def count_removed_classes_for_class(class_iri, leaf_descendants_map, classificat
 
         if structural_leaf_ids is not None:
             leaves &= structural_leaf_ids
-    
+
     else:
         print(f"Classification {classification} is not supported for counting classes.")
         return 0, 0
@@ -144,14 +149,19 @@ def count_removed_classes_for_class(class_iri, leaf_descendants_map, classificat
     #         print(f"Class {class_iri} has {len(all_roles)} roles.")
     #     else:
     #         print(f"⚠️ Class {class_iri} has no associated roles in class_to_all_roles_map.")
-        
 
     n_leaves = len(leaves)
 
     return leaves, n_leaves
 
-def count_removed_classes_for_roles(class_iri, leaf_descendants_map, classification, roles_to_leaves_map):
-    
+
+def count_removed_classes_for_roles(
+    class_iri,
+    leaf_descendants_map,
+    classification,
+    roles_to_leaves_map,
+):
+
     if classification not in ["functional", "full"]:
         print(f"Classification {classification} is not supported for counting roles.")
         return 0, 0
@@ -166,13 +176,13 @@ def count_removed_classes_for_roles(class_iri, leaf_descendants_map, classificat
 
     return leaves, n_leaves
 
-if __name__ == "__main__":
 
-    """ Select task to perform. To calculate the removed leaf classes for a given class, 
+if __name__ == "__main__":
+    """ Select task to perform. To calculate the removed leaf classes for a given class,
     the file with the class to leaf descendants map must be created first.
     This is done in "build_class_to_leaf_map" task. """
 
-    task = "other" 
+    task = "other"
     # Options: "count_total_removed_leaves" "count_removed_classes_for_class" "build_class_to_leaf_map" "enrichment_analysis_plain"
 
     # Variables used in "count_removed_classes_for_class":
@@ -185,11 +195,11 @@ if __name__ == "__main__":
     # - classification, class_iri, (check_leaf_classes)
 
     # Relevant for task "count_removed_classes_for_class"
-    classification = "structural" # "functional" or "structural" or "full"
-    check_leaf_classes = True # Checks that the found the leaf classes are of the exppected type (Functional or Structural)
+    classification = "structural"  # "functional" or "structural" or "full"
+    check_leaf_classes = True  # Checks that the found the leaf classes are of the exppected type (Functional or Structural)
     class_iri = "http://purl.obolibrary.org/obo/CHEBI_83822"
     # Not found in map: "http://purl.obolibrary.org/obo/CHEBI_38870"
-    #Children for "http://purl.obolibrary.org/obo/CHEBI_38867" are not found in the csv but are found in map
+    # Children for "http://purl.obolibrary.org/obo/CHEBI_38867" are not found in the csv but are found in map
 
     # Files
     removed_leaves_csv = "data/removed_leaf_classes_with_smiles.csv"
@@ -199,22 +209,22 @@ if __name__ == "__main__":
     class_to_all_roles_json = "data/class_to_all_roles_map.json"
     roles_to_leaves_map_json = "data/roles_to_leaves_map.json"
 
-    with open(class_to_all_roles_json, "r") as f:
+    with open(class_to_all_roles_json) as f:
         class_to_all_roles_map = json.load(f)
-    with open(roles_to_leaves_map_json, "r") as f:
+    with open(roles_to_leaves_map_json) as f:
         roles_to_leaves_map = json.load(f)
 
     if task == "count_total_removed_leaves":
-
         n_removed_leaves = count_removed_leaves(removed_leaves_csv)
-        print(f"Total number of removed {classification} leaf classes: {n_removed_leaves}")
+        print(
+            f"Total number of removed {classification} leaf classes: {n_removed_leaves}",
+        )
 
         # Output
         # - Total number of removed structural leaf classes: 184 436
         # - Total number of removed functional leaf classes: 41
 
     elif task == "count_removed_classes_for_class":
-
         subclasses, n_subclasses = count_removed_classes_for_class(
             class_iri,
             map_file,
@@ -222,18 +232,18 @@ if __name__ == "__main__":
             class_to_all_roles_map,
             roles_to_leaves_map,
         )
-        print(f"Class {class_iri} has {n_subclasses} removed subclasses in the ontology.")
+        print(
+            f"Class {class_iri} has {n_subclasses} removed subclasses in the ontology.",
+        )
 
-        if subclasses and n_subclasses < 50: 
+        if subclasses and n_subclasses < 50:
             for sub in subclasses:
                 print(f" - {sub}")
 
     elif task == "build_class_to_leaf_map":
-
         build_class_to_leaf_map(leaf_to_ancestors_file, class_to_leaf_output_file)
 
-    elif task == "enrichment_analysis_plain": # to be removed
-
+    elif task == "enrichment_analysis_plain":  # to be removed
         _, n_subclasses = count_removed_classes_for_class(
             class_iri,
             map_file,
@@ -243,12 +253,14 @@ if __name__ == "__main__":
         )
         n_tot_removed_leaves = count_removed_leaves(removed_leaves_csv)
 
-        print(f"Calulated for {classification} ontology for {class_iri} (make sure classification is correct):")
+        print(
+            f"Calculated for {classification} ontology for {class_iri} (make sure classification is correct):",
+        )
         prob_of_success = n_subclasses / n_tot_removed_leaves
 
-        print(f" The probability of success value for class {class_iri} is: {prob_of_success:.4g} ({n_subclasses} / {n_tot_removed_leaves})")
+        print(
+            f" The probability of success value for class {class_iri} is: {prob_of_success:.4g} ({n_subclasses} / {n_tot_removed_leaves})",
+        )
 
     else:
         print("No valid task selected.")
-
-        

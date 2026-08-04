@@ -1,23 +1,33 @@
-import numpy as np
-from scipy.special import erf
-from scipy.optimize import brentq, newton
-from calculations.fishers_calculations import get_n_ss_annotated
-from calculations.pre_fishers_calculations import count_removed_classes_for_class
-from math import inf
 import json
-from calculations.fishers_calculations import get_leaves, get_ancestors_for_inputs, count_removed_leaves, print_enrichment_results
-from calculations.visualitations_and_pruning import (
-    root_children_pruner,
-    linear_branch_collapser_pruner_remove_less,
-    high_p_value_branch_pruner,
-    zero_degree_pruner,
-    create_graph_from_map,
-    id_to_name,
-    )
-from calculations.multiple_test_corrections import bonferroni_correction, benjamini_hochberg_fdr_correction
+from math import inf
 
+import numpy as np
+from scipy.optimize import brentq, newton
+from scipy.special import erf
+
+from calculations.fishers_calculations import (
+    count_removed_leaves,
+    get_ancestors_for_inputs,
+    get_leaves,
+    get_n_ss_annotated,
+    print_enrichment_results,
+)
+from calculations.multiple_test_corrections import (
+    benjamini_hochberg_fdr_correction,
+    bonferroni_correction,
+)
+from calculations.pre_fishers_calculations import count_removed_classes_for_class
+from calculations.visualitations_and_pruning import (
+    create_graph_from_map,
+    high_p_value_branch_pruner,
+    id_to_name,
+    linear_branch_collapser_pruner_remove_less,
+    root_children_pruner,
+    zero_degree_pruner,
+)
 
 """Using SaddleSum for weighted enrichment calculations"""
+
 
 def normalize_id(raw_id: str) -> str:
     value = raw_id.strip().replace('"', "")
@@ -32,6 +42,7 @@ def normalize_id(raw_id: str) -> str:
         return f"http://purl.obolibrary.org/obo/{value}"
     return value
 
+
 def calc_cgf_derivatives(lambda_val, weights_dict, N_tot):
     """
     The Cumulant Generating Function (CGF) K(λ) describes the distribution of random sums.
@@ -44,7 +55,7 @@ def calc_cgf_derivatives(lambda_val, weights_dict, N_tot):
             {element_id: weight} for elements with known weights
         N_tot : int
             Total population size (including elements with weight 0)
-    
+
     Returns:
         d1k : float
             First derivative K'(λ) - relates to mean
@@ -57,15 +68,15 @@ def calc_cgf_derivatives(lambda_val, weights_dict, N_tot):
         # Handle edge case of no weights
         print("Warning: No weights provided in weights_dict.")
         return 0.0, 1.0, 0.0, 1.0
-    
+
     wmax = max(weights_dict.values())
-    
+
     n_with_weights = len(weights_dict)
     n_without_weights = N_tot - n_with_weights
-    
-    rho_sum = 0.0      # Numerically stabilized sum
-    d1_sum = 0.0       # For ρ'(t)
-    d2_sum = 0.0       # For ρ''(t)
+
+    rho_sum = 0.0  # Numerically stabilized sum
+    d1_sum = 0.0  # For ρ'(t)
+    d2_sum = 0.0  # For ρ''(t)
 
     # Sum over elements with known weights using wmax stabilization
     # This prevents overflow: exp(t*(w-wmax)) is always <= 1 for w <= wmax
@@ -77,17 +88,17 @@ def calc_cgf_derivatives(lambda_val, weights_dict, N_tot):
 
     # Add contribution from elements without weights (background, weight = 0)
     rho_sum += n_without_weights * np.exp(lambda_val * (-wmax))
-    
+
     # Convert stabilized sums back to actual ρ(t)
     # True ρ(t) = (1/N_tot) * Σ exp(t*w)
     # With stabilization: rho_sum = Σ exp(t*(w-wmax))
     # So true ρ(t) = (1/N_tot) * exp(t*wmax) * rho_sum
     # Therefore K(t) = ln(ρ(t)) = -ln(N_tot) + t*wmax + ln(rho_sum)
-    kt =  -np.log(N_tot) + lambda_val * wmax + np.log(rho_sum)
-    
+    kt = -np.log(N_tot) + lambda_val * wmax + np.log(rho_sum)
+
     # K'(t) = ρ'(t)/ρ(t)
     d1k = d1_sum / rho_sum
-    
+
     # K''(t) = ρ''(t)/ρ(t) - (K'(t))²
     d2k = d2_sum / rho_sum - d1k * d1k
 
@@ -97,7 +108,7 @@ def calc_cgf_derivatives(lambda_val, weights_dict, N_tot):
 def saddlepoint_equation(lambda_val, m, sum_weights, weights_dict, N_tot):
     """
     The saddlepoint equation: m * K'(λ) - sum_weights = 0
-    
+
     We're solving for λ such that the expected sum under the tilted distribution
     equals the observed sum.
 
@@ -112,7 +123,7 @@ def saddlepoint_equation(lambda_val, m, sum_weights, weights_dict, N_tot):
             {element_id: weight} for elements with known weights
         N_tot : int
             Total population size (including elements with weight 0)
-    
+
     Returns:
         float : Value of equation (should be ~0 when λ is correct)
     """
@@ -134,7 +145,7 @@ def saddlepoint_equation_derivative(lambda_val, m, weights_dict, N_tot):
             {element_id: weight} for elements with known weights
         N_tot : int
             Total population size (including elements with weight 0)
-    
+
     Returns:
         float : Derivative value
     """
@@ -145,7 +156,7 @@ def saddlepoint_equation_derivative(lambda_val, m, weights_dict, N_tot):
 def find_lambda(m, sum_weights, weights_dict, N_tot):
     """
     Find the λ parameter that satisfies the saddlepoint equation: m * K'(λ) = sum_weights
-    
+
     Uses two-stage optimization:
     1. Bisection method (brentq) - Robust but slower, finds initial interval
     2. Newton-Raphson method (newton) - Faster convergence, refines solution
@@ -159,7 +170,7 @@ def find_lambda(m, sum_weights, weights_dict, N_tot):
             {element_id: weight} for elements with known weights
         N_tot : int
             Total population size (including elements with weight 0)
-    
+
     Returns:
         float : Optimal λ value
     """
@@ -169,7 +180,7 @@ def find_lambda(m, sum_weights, weights_dict, N_tot):
             lambda l: saddlepoint_equation(l, m, sum_weights, weights_dict, N_tot),
             0.00001,
             5.0,
-            maxiter=100
+            maxiter=100,
         )
     except ValueError:
         # Bisection failed - equation may not have root in this range
@@ -183,11 +194,13 @@ def find_lambda(m, sum_weights, weights_dict, N_tot):
             x0=lambda_init,
             fprime=lambda l: saddlepoint_equation_derivative(l, m, weights_dict, N_tot),
             tol=0.01,
-            maxiter=50
+            maxiter=50,
         )
     except RuntimeError:
         # Newton failed to converge
-        print(f"Warning: Newton-Raphson failed to converge for m={m}, sum_weights={sum_weights}")
+        print(
+            f"Warning: Newton-Raphson failed to converge for m={m}, sum_weights={sum_weights}",
+        )
         lambda_optimal = lambda_init  # Use bisection result
 
     return lambda_optimal
@@ -196,12 +209,12 @@ def find_lambda(m, sum_weights, weights_dict, N_tot):
 def lugannani_rice_pvalue(lambda_val, m, sum_observed_weights, weights_dict, N_tot):
     """
     Calculate p-value using the Lugannani-Rice saddlepoint approximation.
-    
+
     This implements Equation 4 from the SaddleSum article:
     z = sign(t̂) × √(2[t̂Ŝ - mK(t̂)])
     C = t̂√(mK''(t̂))
     P-value ≈ Φ(z) + φ(z)[1/C - 1/z]
-    
+
     Parameters:
         lambda_val : float
             The saddlepoint parameter t̂ (solution to saddlepoint equation)
@@ -213,75 +226,82 @@ def lugannani_rice_pvalue(lambda_val, m, sum_observed_weights, weights_dict, N_t
             {element_id: weight} for elements with known weights
         N_tot : int
             Total population size (including elements with weight 0)
-    
+
     Returns:
         float : P-value (probability in [0, 1])
     """
     if len(weights_dict) == 0 or m == 0:
         return 1.0
-    
+
     # Get CGF K(t̂), K'(t̂), K''(t̂) at the saddlepoint
     d1k, d2k, kt, rho_t = calc_cgf_derivatives(lambda_val, weights_dict, N_tot)
-    
+
     # Calculate z according to Equation 4: z = sign(t̂) × √(2[t̂Ŝ - mK(t̂)])
     z_squared_arg = lambda_val * sum_observed_weights - m * kt
-    
+
     if z_squared_arg < 0:
         # This means we're not in the enrichment tail (observed sum too small)
         return 1.0
-    
+
     z = np.sign(lambda_val) * np.sqrt(2 * z_squared_arg)
-    
+
     # Calculate C according to Equation 4: C = t̂√(mK''(t̂))
     if d2k <= 0:
         # Invalid variance, return non-significant
         return 1.0
-    
+
     C = lambda_val * np.sqrt(m * d2k)
-    
+
     if abs(C) < 1e-10:  # Avoid division by very small numbers
         return 1.0
-    
+
     # Calculate Φ(z) - upper tail of standard normal
     # For enrichment (upper tail), we want P(Z ≥ z)
     # Standard normal CDF: Φ(z) = (1 + erf(z/√2))/2
     # Upper tail: 1 - Φ(z) = (1 - erf(z/√2))/2
     phi_z_upper = (1 - erf(z / np.sqrt(2))) / 2
-    
+
     # Calculate φ(z) - standard normal PDF
     # φ(z) = (1/√(2π)) exp(-z²/2)
-    phi_density = np.exp(-z*z / 2) / np.sqrt(2 * np.pi)
-    
+    phi_density = np.exp(-z * z / 2) / np.sqrt(2 * np.pi)
+
     # Calculate correction term: φ(z)[1/C - 1/z]
     if abs(z) < 1e-10:  # Near zero z, use approximation or return simple result
         correction = 0
     else:
-        correction = phi_density * (1/C - 1/z)
-    
+        correction = phi_density * (1 / C - 1 / z)
+
     # Final p-value according to Equation 4
     p_value = phi_z_upper + correction
-    
+
     # Handle numerical issues
     if np.isnan(p_value) or np.isinf(p_value):
         return 1.0
-    
+
     # Clamp to valid probability range [0, 1]
     p_value = max(0.0, min(1.0, p_value))
-    
+
     return p_value
 
 
-def calculate_weighted_pvalue(studyset_leaves, class_to_check, class_to_leaf_map,
-                              weights_dict, N_total, classification,
-                              class_to_all_roles_map, roles_to_leaves_map):
+def calculate_weighted_pvalue(
+    studyset_leaves,
+    class_to_check,
+    class_to_leaf_map,
+    weights_dict,
+    N_total,
+    classification,
+    class_to_all_roles_map,
+    roles_to_leaves_map,
+):
     """
     Main function to calculate weighted enrichment p-value for a single category.
-    
+
     This integrates all the saddlepoint calculations to produce a final p-value
     similar to Fisher's exact test, but accounting for element weights.
-    
+
     Parameters:
-        studyset_leaves : Element IDs in the study set 
+        studyset_leaves : Element IDs in the study set
         class_to_check : Category/class IRI to test for enrichment
         class_to_leaf_map : Mapping from class IRI to its leaf descendants
         weights_dict : {element_id: weight} for DETECTED elements only
@@ -294,106 +314,130 @@ def calculate_weighted_pvalue(studyset_leaves, class_to_check, class_to_leaf_map
             Mapping from class to all its roles (direct + inherited + role descendants)
         roles_to_leaves_map : dict
             Mapping from role IRI to leaf classes with that role
-    
+
     Returns:
         Weighted enrichment p-value
     """
     # Get all leaf descendants of this category based on classification
     leaves = set()
-    
+
     if classification in ["structural", "full"]:
         leaf_descendants_structural = set(class_to_leaf_map.get(class_to_check, []))
         leaves.update(leaf_descendants_structural)
-    
+
     if classification in ["functional", "full"]:
         # Get all roles (direct + inherited from ancestors + role descendants)
         all_roles = class_to_all_roles_map.get(class_to_check, [])
         for role in all_roles:
             leaves.update(roles_to_leaves_map.get(role, []))
-    
+
     leaf_descendants = leaves
-    
+
     if len(leaf_descendants) == 0:
         return None  # No descendants, no enrichment
-    
+
     # Find overlap: elements in both study set AND this category
     studyset_set = set(studyset_leaves)
     overlap = studyset_set & leaf_descendants
-    
+
     # m = number of background elements in this category
     m = len(leaf_descendants)
-    
+
     # n_observed = number of study set elements in this category
     n_observed = len(overlap)
-    
+
     if n_observed == 0:
-        return   # No overlap, no enrichment. Shouldn't happen due to earlier check.
-    
+        return  # No overlap, no enrichment. Shouldn't happen due to earlier check.
+
     # Calculate sum of weights for the overlap
-    sum_observed_weights = sum(weights_dict.get(element_id, 0.0) for element_id in overlap)
-    
+    sum_observed_weights = sum(
+        weights_dict.get(element_id, 0.0) for element_id in overlap
+    )
+
     # Find the saddlepoint parameter λ
     try:
         lambda_optimal = find_lambda(m, sum_observed_weights, weights_dict, N_total)
     except Exception as e:
         print(f"Error finding lambda for {class_to_check}: {e}")
         return None
-    
+
     # Calculate p-value using Lugannani-Rice formula
     # Use observed study-set count (n_observed) like the Java implementation
     try:
-        p_value = lugannani_rice_pvalue(lambda_optimal, n_observed, sum_observed_weights, weights_dict, N_total)
+        p_value = lugannani_rice_pvalue(
+            lambda_optimal,
+            n_observed,
+            sum_observed_weights,
+            weights_dict,
+            N_total,
+        )
     except Exception as e:
         print(f"Error calculating p-value for {class_to_check}: {e}")
         return None
-    
+
     return p_value
 
-def get_enrichment_values_with_weights(removed_leaves_csv, classification, 
-                                       studyset_leaves, studyset_ancestors, 
-                                       class_to_leaf_map, weights_dict,
-                                       class_to_all_roles_map, roles_to_leaves_map):
+
+def get_enrichment_values_with_weights(
+    removed_leaves_csv,
+    classification,
+    studyset_leaves,
+    studyset_ancestors,
+    class_to_leaf_map,
+    weights_dict,
+    class_to_all_roles_map,
+    roles_to_leaves_map,
+):
     """
     Calculate weighted p-values for all categories.
     Optionally applies multiple-testing correction using weighted p-values.
     Returns dict with weighted p-values plus p_value/p_value_corrected.
     """
-    
+
     enrichment_results = {}
-    
+
     n_bg_leaves = count_removed_leaves(removed_leaves_csv)
     n_ss_leaves = len(studyset_leaves)
-    
+
     for class_iri in studyset_ancestors:
         # Calculate counts
-        n_ss_annotated = get_n_ss_annotated( # Just used for reporting, not for p-value calculation
+        n_ss_annotated = (
+            get_n_ss_annotated(  # Just used for reporting, not for p-value calculation
+                studyset_leaves,
+                class_iri,
+                class_to_leaf_map,
+                classification,
+                class_to_all_roles_map,
+                roles_to_leaves_map,
+            )
+        )
+
+        _, n_bg_annotated = (
+            count_removed_classes_for_class(  # Just used for reporting, not for p-value calculation
+                class_iri,
+                class_to_leaf_map,
+                classification,
+                class_to_all_roles_map,
+                roles_to_leaves_map,
+            )
+        )
+
+        # Weighted test
+        p_weighted = calculate_weighted_pvalue(
             studyset_leaves,
             class_iri,
             class_to_leaf_map,
+            weights_dict,
+            n_bg_leaves,
             classification,
             class_to_all_roles_map,
             roles_to_leaves_map,
         )
-        
-        _, n_bg_annotated = count_removed_classes_for_class( # Just used for reporting, not for p-value calculation
-            class_iri,
-            class_to_leaf_map,
-            classification,
-            class_to_all_roles_map,
-            roles_to_leaves_map,
-        )
-        
-        # Weighted test
-        p_weighted = calculate_weighted_pvalue(
-            studyset_leaves, class_iri, class_to_leaf_map,
-            weights_dict, n_bg_leaves, classification,
-            class_to_all_roles_map, roles_to_leaves_map
-        )
-        
+
         if p_weighted is None:
             print(f"Warning: p_weighted is None for {id_to_name(class_iri)}, skipping")
             continue
-        
+
         # Calculate sum of weights in overlap for reporting
         # Use same logic as calculate_weighted_pvalue to get leaves
         leaves_for_sum = set()
@@ -403,27 +447,29 @@ def get_enrichment_values_with_weights(removed_leaves_csv, classification,
             all_roles = class_to_all_roles_map.get(class_iri, [])
             for role in all_roles:
                 leaves_for_sum.update(roles_to_leaves_map.get(role, []))
-        
+
         overlap = set(studyset_leaves) & leaves_for_sum
         sum_weights = sum(weights_dict.get(leaf_id, 0.0) for leaf_id in overlap)
-        
+
         enrichment_results[class_iri] = {
-            'n_ss_annotated': n_ss_annotated,
-            'n_ss_leaves': n_ss_leaves,
-            'n_bg_annotated': n_bg_annotated,
-            'n_bg_leaves': n_bg_leaves,
-            'p_value_weighted': p_weighted,
-            'sum_weights': sum_weights
+            "n_ss_annotated": n_ss_annotated,
+            "n_ss_leaves": n_ss_leaves,
+            "n_bg_annotated": n_bg_annotated,
+            "n_bg_leaves": n_bg_leaves,
+            "p_value_weighted": p_weighted,
+            "sum_weights": sum_weights,
         }
     return enrichment_results
 
 
-def run_weighted_enrichment_analysis_plain_enrich_pruning_strategy(weights_dict,
-                            levels=2, # for root children pruner
-                            n=0, # for linear branch pruner
-                            p_value_threshold=0.05, # for high p-value pruner
-                            classification="structural",
-                            check_leaf_classes=False):
+def run_weighted_enrichment_analysis_plain_enrich_pruning_strategy(
+    weights_dict,
+    levels=2,  # for root children pruner
+    n=0,  # for linear branch pruner
+    p_value_threshold=0.05,  # for high p-value pruner
+    classification="structural",
+    check_leaf_classes=False,
+):
 
     # Files
     removed_leaves_csv = "data/removed_leaf_classes_with_smiles.csv"
@@ -433,11 +479,11 @@ def run_weighted_enrichment_analysis_plain_enrich_pruning_strategy(weights_dict,
     class_to_all_roles_map_json = "data/class_to_all_roles_map.json"
     roles_to_leaves_map_json = "data/roles_to_leaves_map.json"
 
-    with open(class_to_leaf_map_file, 'r') as f:
+    with open(class_to_leaf_map_file) as f:
         class_to_leaf_map = json.load(f)
-    with open(class_to_all_roles_map_json, 'r') as f:
+    with open(class_to_all_roles_map_json) as f:
         class_to_all_roles_map = json.load(f)
-    with open(roles_to_leaves_map_json, 'r') as f:
+    with open(roles_to_leaves_map_json) as f:
         roles_to_leaves_map = json.load(f)
 
     if not weights_dict:
@@ -449,7 +495,10 @@ def run_weighted_enrichment_analysis_plain_enrich_pruning_strategy(weights_dict,
     studyset_leaves = get_leaves(studyset_list, removed_leaves_csv, class_to_leaf_map)
     print(f"Study set leaves: {studyset_leaves}")
 
-    studyset_ancestors = get_ancestors_for_inputs(studyset_leaves, leaf_to_ancestors_map_file)
+    studyset_ancestors = get_ancestors_for_inputs(
+        studyset_leaves,
+        leaf_to_ancestors_map_file,
+    )
     print(f"Study set ancestors: {studyset_ancestors}")
     print(f"Number of study set ancestors: {len(studyset_ancestors)}")
 
@@ -477,12 +526,20 @@ def run_weighted_enrichment_analysis_plain_enrich_pruning_strategy(weights_dict,
     print("Enrichment results after Benjamini-Hochberg correction:")
     print_enrichment_results(enrichment_results)
 
-    pre_pruned_G = create_graph_from_map(studyset_leaves, parent_map_file, max_n_leaf_classes=inf)
+    pre_pruned_G = create_graph_from_map(
+        studyset_leaves,
+        parent_map_file,
+        max_n_leaf_classes=inf,
+    )
     G = pre_pruned_G.copy()
 
     ## Pre-loop phase ##
     print("Starting pre-loop pruning phase.")
-    G, removed_nodes = high_p_value_branch_pruner(G, enrichment_results, p_value_threshold)
+    G, removed_nodes = high_p_value_branch_pruner(
+        G,
+        enrichment_results,
+        p_value_threshold,
+    )
     all_removed_nodes.update(removed_nodes)
     print(f"Removed nodes by high p-value pruner: {removed_nodes}")
 
@@ -490,7 +547,12 @@ def run_weighted_enrichment_analysis_plain_enrich_pruning_strategy(weights_dict,
     all_removed_nodes.update(removed_nodes)
     print(f"Removed nodes by linear branch pruner: {removed_nodes}")
 
-    G, removed_nodes, execution_count = root_children_pruner(G, levels, allow_re_execution = False, execution_count = 0)
+    G, removed_nodes, execution_count = root_children_pruner(
+        G,
+        levels,
+        allow_re_execution=False,
+        execution_count=0,
+    )
     all_removed_nodes.update(removed_nodes)
     print(f"Removed nodes by root children pruner: {removed_nodes}")
 
@@ -501,10 +563,11 @@ def run_weighted_enrichment_analysis_plain_enrich_pruning_strategy(weights_dict,
     size_after = size_before
     first_iteration = True
     iteration = 0
-    
+
     # Initialize current_enrichment before the loop (in case the loop doesn't execute)
     current_enrichment = {
-        cls: vals for cls, vals in enrichment_results.items()
+        cls: vals
+        for cls, vals in enrichment_results.items()
         if cls not in all_removed_nodes and G.has_node(cls)
     }
 
@@ -518,13 +581,18 @@ def run_weighted_enrichment_analysis_plain_enrich_pruning_strategy(weights_dict,
 
         # Remove pruned nodes from enrichment results
         current_enrichment = {
-            cls: vals for cls, vals in enrichment_results.items()
+            cls: vals
+            for cls, vals in enrichment_results.items()
             if cls not in all_removed_nodes and G.has_node(cls)
         }
 
         current_enrichment = benjamini_hochberg_fdr_correction(current_enrichment)
 
-        G, removed_nodes = high_p_value_branch_pruner(G, current_enrichment, p_value_threshold)
+        G, removed_nodes = high_p_value_branch_pruner(
+            G,
+            current_enrichment,
+            p_value_threshold,
+        )
         all_removed_nodes.update(removed_nodes)
         print(f"Removed nodes by high p-value pruner: {removed_nodes}")
 
@@ -543,24 +611,28 @@ def run_weighted_enrichment_analysis_plain_enrich_pruning_strategy(weights_dict,
     results = {
         "study_set": [id_to_name(c) for c in studyset_leaves],
         "removed_nodes": [id_to_name(c) for c in all_removed_nodes],
-        "enrichment_results": {id_to_name(cls): vals for cls, vals in final_enrichment.items()}
+        "enrichment_results": {
+            id_to_name(cls): vals for cls, vals in final_enrichment.items()
+        },
     }
 
     return results, G
 
 
-def run_weighted_enrichment_analysis(weights_dict,
-                            bonferroni_correct=False,
-                            benjamini_hochberg_correct=True,
-                            root_children_prune=False,
-                            levels=2,
-                            linear_branch_prune=False,
-                            n=2,
-                            high_p_value_prune=False,
-                            p_value_threshold=0.05,
-                            zero_degree_prune=False,
-                            classification="structural",
-                            check_leaf_classes=False):
+def run_weighted_enrichment_analysis(
+    weights_dict,
+    bonferroni_correct=False,
+    benjamini_hochberg_correct=True,
+    root_children_prune=False,
+    levels=2,
+    linear_branch_prune=False,
+    n=2,
+    high_p_value_prune=False,
+    p_value_threshold=0.05,
+    zero_degree_prune=False,
+    classification="structural",
+    check_leaf_classes=False,
+):
     """
     Weighted enrichment analysis with flexible pruning options.
     Similar to fishers_calculations.run_enrichment_analysis but for weighted inputs.
@@ -576,11 +648,11 @@ def run_weighted_enrichment_analysis(weights_dict,
     class_to_all_roles_map_json = "data/class_to_all_roles_map.json"
     roles_to_leaves_map_json = "data/roles_to_leaves_map.json"
 
-    with open(class_to_leaf_map_file, 'r') as f:
+    with open(class_to_leaf_map_file) as f:
         class_to_leaf_map = json.load(f)
-    with open(class_to_all_roles_map_json, 'r') as f:
+    with open(class_to_all_roles_map_json) as f:
         class_to_all_roles_map = json.load(f)
-    with open(roles_to_leaves_map_json, 'r') as f:
+    with open(roles_to_leaves_map_json) as f:
         roles_to_leaves_map = json.load(f)
 
     if not weights_dict:
@@ -592,7 +664,10 @@ def run_weighted_enrichment_analysis(weights_dict,
     studyset_leaves = get_leaves(studyset_list, removed_leaves_csv, class_to_leaf_map)
     print(f"Study set leaves: {studyset_leaves}")
 
-    studyset_ancestors_all = get_ancestors_for_inputs(studyset_leaves, leaf_to_ancestors_map_file)
+    studyset_ancestors_all = get_ancestors_for_inputs(
+        studyset_leaves,
+        leaf_to_ancestors_map_file,
+    )
     print(f"Study set ancestors: {studyset_ancestors_all}")
     print(f"Number of study set ancestors: {len(studyset_ancestors_all)}")
 
@@ -604,20 +679,34 @@ def run_weighted_enrichment_analysis(weights_dict,
     if pruning_before_enrichment:
         if root_children_prune:
             print(f"Root children pruner activated, pruning {levels} levels from root")
-            pruned_G, removed_nodes, execution_count = root_children_pruner(pruned_G, levels, allow_re_execution = False, execution_count = 0)
+            pruned_G, removed_nodes, execution_count = root_children_pruner(
+                pruned_G,
+                levels,
+                allow_re_execution=False,
+                execution_count=0,
+            )
             print(f"Removed nodes by root children pruner: {removed_nodes}")
             all_removed_nodes.update(removed_nodes)
 
         if linear_branch_prune:
-            print(f"Linear branch pruner activated, keeping only every {n}-th node in linear branches")
-            pruned_G, removed_nodes = linear_branch_collapser_pruner_remove_less(pruned_G, n)
+            print(
+                f"Linear branch pruner activated, keeping only every {n}-th node in linear branches",
+            )
+            pruned_G, removed_nodes = linear_branch_collapser_pruner_remove_less(
+                pruned_G,
+                n,
+            )
             print(f"Removed nodes by linear branch pruner: {removed_nodes}")
             all_removed_nodes.update(removed_nodes)
 
         # Remove pruned nodes from studyset_ancestors_all
-        studyset_ancestors = [cls for cls in studyset_ancestors_all if cls not in all_removed_nodes]
-        print(f"Number of study set ancestors after before-enrichment pruning: {len(studyset_ancestors)}")
-    
+        studyset_ancestors = [
+            cls for cls in studyset_ancestors_all if cls not in all_removed_nodes
+        ]
+        print(
+            f"Number of study set ancestors after before-enrichment pruning: {len(studyset_ancestors)}",
+        )
+
     else:
         studyset_ancestors = studyset_ancestors_all
 
@@ -647,8 +736,14 @@ def run_weighted_enrichment_analysis(weights_dict,
         enrichment_results = benjamini_hochberg_fdr_correction(enrichment_results)
 
     if high_p_value_prune:
-        print(f"High p-value pruner activated, pruning nodes with p-value above {p_value_threshold}")
-        pruned_G, removed_nodes = high_p_value_branch_pruner(pruned_G, enrichment_results, p_value_threshold)
+        print(
+            f"High p-value pruner activated, pruning nodes with p-value above {p_value_threshold}",
+        )
+        pruned_G, removed_nodes = high_p_value_branch_pruner(
+            pruned_G,
+            enrichment_results,
+            p_value_threshold,
+        )
         print(f"Removed nodes by high p-value pruner: {removed_nodes}")
         all_removed_nodes.update(removed_nodes)
 
@@ -675,11 +770,14 @@ def run_weighted_enrichment_analysis(weights_dict,
     results = {
         "study_set": [id_to_name(c) for c in studyset_leaves],
         "removed_nodes": [id_to_name(c) for c in all_removed_nodes],
-        "enrichment_results": {id_to_name(cls): vals for cls, vals in enrichment_results.items()}
+        "enrichment_results": {
+            id_to_name(cls): vals for cls, vals in enrichment_results.items()
+        },
     }
     return results, pruned_G
 
-# TODO: Adjust so input wth weights works as intended. Maybe a change in website files?
+
+# TODO: Adjust so input with weights works as intended. Maybe a change in website files?
 # TODO: Make sure it functions as intended with weights input.
 # TODO: Add function to website
 # TODO: Check so that it works for all classifications
@@ -689,31 +787,31 @@ def run_weighted_enrichment_analysis(weights_dict,
 def auto_scale_weights(weights_dict, target_max=100):
     """
     Automatically scale weights so the maximum is target_max.
-    
+
     Only scales up if current max is below target_max.
     This ensures the weighted test has enough signal to detect enrichment.
     """
     if not weights_dict:
         return {}
-    
+
     current_max = max(weights_dict.values())
-    
+
     # Only scale if current max is below target
     if current_max < target_max:
         scale_factor = target_max / current_max
-        print(f"Auto-scaling weights by factor {scale_factor:.2f} to set max to {target_max}")
+        print(
+            f"Auto-scaling weights by factor {scale_factor:.2f} to set max to {target_max}",
+        )
         return {k: v * scale_factor for k, v in weights_dict.items()}
-    
+
     # If already >= target_max, return unchanged
-    print(f"No scaling applied. Current max weight {current_max:.2f} is >= target max {target_max}.")
+    print(
+        f"No scaling applied. Current max weight {current_max:.2f} is >= target max {target_max}.",
+    )
     return weights_dict
 
 
-
-
 if __name__ == "__main__":
-
-
     classification = "structural"  # "structural", "functional", or "full"
     removed_leaves_csv = "data/removed_leaf_classes_with_smiles.csv"
 
@@ -736,42 +834,49 @@ if __name__ == "__main__":
     # Optionally, auto-scale weights
     # weights_dict = auto_scale_weights(weights_dict, target_max=100)
     studyset_leaves = list(weights_dict.keys())
-    
+
     # Load class to leaf descendants map
     class_to_leaf_map_file = "data/class_to_leaf_descendants_map.json"
-    with open(class_to_leaf_map_file, "r") as f:
+    with open(class_to_leaf_map_file) as f:
         class_to_leaf_map = json.load(f)
 
     # Load class to all roles map
     class_to_all_roles_json = "data/class_to_all_roles_map.json"
-    with open(class_to_all_roles_json, "r") as f:
+    with open(class_to_all_roles_json) as f:
         class_to_all_roles_map = json.load(f)
 
     # Load roles to leaves map
     roles_to_leaves_map_json = "data/roles_to_leaves_map.json"
-    with open(roles_to_leaves_map_json, "r") as f:
+    with open(roles_to_leaves_map_json) as f:
         roles_to_leaves_map = json.load(f)
 
     # Get all ancestors of the study set leaves
     leaf_to_ancestors_map_file = "data/removed_leaf_classes_to_ALL_parents_map.json"
-    studyset_ancestors = get_ancestors_for_inputs(studyset_leaves, leaf_to_ancestors_map_file)
-    
+    studyset_ancestors = get_ancestors_for_inputs(
+        studyset_leaves,
+        leaf_to_ancestors_map_file,
+    )
+
     print(f"Study set: {len(studyset_leaves)} leaves")
     print(f"Ancestors: {len(studyset_ancestors)} classes")
-    
+
     # Calculate enrichment values
     enrichment_results = get_enrichment_values_with_weights(
-        removed_leaves_csv, classification,
-        studyset_leaves, studyset_ancestors,
-        class_to_leaf_map, weights_dict,
-        class_to_all_roles_map, roles_to_leaves_map
+        removed_leaves_csv,
+        classification,
+        studyset_leaves,
+        studyset_ancestors,
+        class_to_leaf_map,
+        weights_dict,
+        class_to_all_roles_map,
+        roles_to_leaves_map,
     )
-    
+
     print(f"\nFound {len(enrichment_results)} enriched classes:")
     for class_iri, results in enrichment_results.items():
         print(f"\nClass: {class_iri}")
-        if results['p_value_weighted'] is not None:
+        if results["p_value_weighted"] is not None:
             print(f"  Weighted p-value: {results['p_value_weighted']:.4e}")
         else:
-            print(f"  Weighted p-value: N/A (calculation failed)")
+            print("  Weighted p-value: N/A (calculation failed)")
             # print(f"  Sum of weights in overlap: {results['sum_weights']:.2f}")

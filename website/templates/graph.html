@@ -46,7 +46,7 @@
     </a>
     <ul class="dropdown-menu" aria-labelledby="layoutDropdown">
         <li><a href="#" class="dropdown-item layout-option" data-layout="breadthfirst">Breadthfirst</a></li>
-        <li><a href="#" class="dropdown-item layout-option" data-layout="cose">Cose</a></li>
+        <li><a href="#" class="dropdown-item layout-option" data-layout="case">Case</a></li>
         <li><a href="#" class="dropdown-item layout-option" data-layout="grid">Grid</a></li>
         <li><a href="#" class="dropdown-item layout-option" data-layout="circle">Circle</a></li>
     </ul>
@@ -108,7 +108,7 @@
             container: document.getElementById('cy'),
             elements: data.elements,
 
-            selectionType: 'additive', // Allow multiple node selection 
+            selectionType: 'additive', // Allow multiple node selection
 
             style: [
                 {
@@ -142,13 +142,13 @@
                         'width': 2,
                         'line-color': '#888',
                         'target-arrow-color': '#888',
-                        'target-arrow-shape': 'triangle',   
+                        'target-arrow-shape': 'triangle',
                         'curve-style': 'bezier'
                     }
                 }
             ],
             layout: {
-                name: 'cose',
+                name: 'case',
                 directed: true,
                 padding: 10,
             }
@@ -195,7 +195,7 @@
         // Update legend
         document.getElementById('legend-max').textContent =
             `High (p ≤ ${Math.pow(10, -maxExponent).toExponential(1) })`;
-        
+
         const titleDiv = document.getElementById('legend-title');
 
         if (colourScaleMode === 'relative') {
@@ -203,7 +203,7 @@
         } else {
             titleDiv.innerHTML = '<h4 class="mb-1">Significance</h4>';
         }
-                
+
 
 
         // Convert hex to RGB
@@ -228,8 +228,8 @@
         }
 
         // Update node colours based on p-value
-        const colorLow = "#ca3900";  
-        const colorHigh = "#ffffff";  
+        const colorLow = "#ca3900";
+        const colorHigh = "#ffffff";
 
         cy.nodes().forEach(node => {
             const p = node.data('p_value_corrected') ?? node.data('p_value'); // Use corrected p-value if available, else raw p-value
@@ -248,16 +248,16 @@
             node.style('background-color', color);
         });
 
-        
+
         // Add tooltip to hover over nodes
         cy.nodes().forEach(function(node) {
             const pValue = node.data('p_value');
             const pValueCorr = node.data('p_value_corrected');
-            
+
             // Format to 2 decimal places in exponential notation (gives 3 significant figures)
             const formattedPValue = pValue != null ? pValue.toExponential(2) : 'N/A';
             const formattedPValueCorr = pValueCorr != null ? pValueCorr.toExponential(2) : 'N/A';
-            
+
             node.qtip({
                 content: `
                     <b>${node.data('label').replace('CHEBI_', 'CHEBI:')}</b><br>
@@ -280,21 +280,21 @@
         cy.on('cxttap', 'node', function(evt){
             evt.preventDefault();
             selectedNode = evt.target;
-            
+
             // Position menu at mouse coordinates
             contextMenu.style.left = evt.originalEvent.pageX + 'px';
             contextMenu.style.top = evt.originalEvent.pageY + 'px';
-            
+
             //// Build menu content
             // const pValue = selectedNode.data('p_value');
             // const pValueCorr = selectedNode.data('p_value_corrected');
-            
+
             contextMenu.innerHTML = `
                 <div style="padding:8px 16px; cursor:pointer; hover:background:#f0f0f0;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='white'" onclick="window.selectNode()">Select node</div>
                 <div style="padding:8px 16px; cursor:pointer;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='white'" onclick="window.selectNeighbors()">Select first neighbors</div>
                 <div style="padding:8px 16px; cursor:pointer;" onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='white'" onclick="window.selectDescendants()">Select descendants</div>
             `;
-            
+
             contextMenu.style.display = 'block';
         });
 
@@ -514,17 +514,17 @@
         // Default view: Show only significant nodes (p <= 0.05) with their paths to roots
         // If no significant nodes exist, fall back to nodes with p < 1
         // If still no nodes found, show all nodes
-        
+
         // First, hide all nodes and edges
         cy.nodes().style('display', 'none');
         cy.edges().style('display', 'none');
-        
+
         // Find all significant nodes (p <= 0.05)
         let significantNodes = cy.nodes().filter(node => {
             const p = node.data('p_value_corrected') ?? node.data('p_value');
             return p != null && p <= 0.05;
         });
-        
+
         // If no significant nodes found, use nodes with p < 1 instead
         if (significantNodes.length === 0) {
             significantNodes = cy.nodes().filter(node => {
@@ -532,7 +532,7 @@
                 return p != null && p < 1;
             });
         }
-        
+
         // If still no nodes found, show all nodes
         if (significantNodes.length === 0) {
             cy.nodes().style('display', 'element');
@@ -540,16 +540,16 @@
         } else {
             // Set to track all nodes to display
             const nodesToShow = new Set();
-            
+
             // For each significant node, find all paths to roots and mark nodes
             significantNodes.forEach(sigNode => {
                 nodesToShow.add(sigNode.id());
-                
+
                 // Traverse upward to find all ancestors (parents) until reaching a root
                 const traverseToRoot = (node) => {
                     // Get outgoing edges (to parents in this directed graph)
                     const parentEdges = node.outgoers('edge');
-                    
+
                     parentEdges.forEach(edge => {
                         const parent = edge.target();
                         if (!nodesToShow.has(parent.id())) {
@@ -558,10 +558,10 @@
                         }
                     });
                 };
-                
+
                 traverseToRoot(sigNode);
             });
-            
+
             // Show the nodes and their connecting edges
             nodesToShow.forEach(nodeId => {
                 const node = cy.getElementById(nodeId);
@@ -579,9 +579,9 @@
         document.querySelectorAll('.show-hide-option').forEach(item => {
             item.addEventListener('click', e => {
                 e.preventDefault(); // stop link navigation
-                
+
                 const action = e.target.dataset.action;
-                
+
                 switch(action) {
                     case 'hide-unselected':
                         // Hide all nodes that are not selected
@@ -589,19 +589,19 @@
                         // Also hide edges connected to hidden nodes
                         cy.nodes(':unselected').connectedEdges().style('display', 'none');
                         break;
-                        
+
                     case 'hide-selected':
                         // Hide all selected nodes
                         cy.nodes(':selected').style('display', 'none');
                         // Also hide edges connected to hidden nodes
                         cy.nodes(':selected').connectedEdges().style('display', 'none');
                         break;
-                        
+
                     case 'show-all':
                         // Show all nodes and edges
                         cy.nodes().style('display', 'element');
                         cy.edges().style('display', 'element');
-                        
+
                         // Hide leaf nodes with no p-value (all proper leaves)
                         cy.nodes().forEach(node => {
                             const p = node.data('p_value_corrected') ?? node.data('p_value');
@@ -613,7 +613,7 @@
                         break;
 
                     case 'hide-labels':
-                    
+
                         labelsVisible = !labelsVisible;
 
                         cy.style()
@@ -645,17 +645,17 @@
                     case 'show-significant-with-paths':
                         // Show only significant nodes (p <= 0.05) plus all nodes on paths connecting them to roots
                         // If no significant nodes exist, fall back to nodes with p < 1
-                        
+
                         // First, hide all nodes and edges
                         cy.nodes().style('display', 'none');
                         cy.edges().style('display', 'none');
-                        
+
                         // Find all significant nodes (p <= 0.05)
                         let significantNodes = cy.nodes().filter(node => {
                             const p = node.data('p_value_corrected') ?? node.data('p_value');
                             return p != null && p <= 0.05;
                         });
-                        
+
                         // If no significant nodes found, use nodes with p < 1 instead
                         if (significantNodes.length === 0) {
                             significantNodes = cy.nodes().filter(node => {
@@ -664,19 +664,19 @@
                             });
                         }
 
-                        
+
                         // Set to track all nodes to display
                         const nodesToShow = new Set();
-                        
+
                         // For each significant node, find all paths to roots and mark nodes
                         significantNodes.forEach(sigNode => {
                             nodesToShow.add(sigNode.id());
-                            
+
                             // Traverse upward to find all ancestors (parents) until reaching a root
                             const traverseToRoot = (node) => {
                                 // Get outgoing edges (to parents in this directed graph)
                                 const parentEdges = node.outgoers('edge');
-                                
+
                                 parentEdges.forEach(edge => {
                                     const parent = edge.target();
                                     if (!nodesToShow.has(parent.id())) {
@@ -685,10 +685,10 @@
                                     }
                                 });
                             };
-                            
+
                             traverseToRoot(sigNode);
                         });
-                        
+
                         // Show the nodes and their connecting edges
                         nodesToShow.forEach(nodeId => {
                             const node = cy.getElementById(nodeId);
@@ -725,7 +725,7 @@
                     <div class="mb-3">
                         <h6>Background Entity Set:</h6>
                         <div class="form-check">
-                            <input class="form-check-input" type="radio" name="background" id="background_full" value="full" 
+                            <input class="form-check-input" type="radio" name="background" id="background_full" value="full"
                             {% if background == 'full' %} checked {% endif %} required>
                             <label class="form-check-label" for="background_full">
                                 Full background
@@ -775,7 +775,7 @@
                     <div class="mb-3">
                         <h6>Target of Enrichment:</h6>
                         <div class="form-check">
-                            <input class="form-check-input" type="radio" name="classification" id="classification_structural" value="structural" 
+                            <input class="form-check-input" type="radio" name="classification" id="classification_structural" value="structural"
                             {% if classification == 'structural' %} checked {% endif %} required>
                             <label class="form-check-label" for="classification_structural">
                                 Structure
@@ -802,7 +802,7 @@
                     <div class="mb-3">
                         <h6>Looping Pruning Method:</h6>
                         <div class="form-check">
-                            <input class="form-check-input" type="radio" name="looping_prune_method" id="plain_enrich" value="plain_enrich" 
+                            <input class="form-check-input" type="radio" name="looping_prune_method" id="plain_enrich" value="plain_enrich"
                             {% if pruning.get('method') == 'plain_enrich' %} checked {% endif %} required>
                             <label class="form-check-label" for="plain_enrich">
                                 Plain enrichment pruning strategy
@@ -890,7 +890,7 @@
                     <div class="mb-3">
                         <h6>Using SMILES:</h6>
                         <div class="form-check">
-                            <input class="form-check-input" type="radio" name="smiles_option" id="smiles_use_parents" value="use_parents" 
+                            <input class="form-check-input" type="radio" name="smiles_option" id="smiles_use_parents" value="use_parents"
                             {% if smiles_option == 'use_parents' %} checked {% endif %}>
                             <label class="form-check-label" for="smiles_use_parents">
                                 Use the direct parents of any unmapped SMILES

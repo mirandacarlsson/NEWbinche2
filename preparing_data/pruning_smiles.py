@@ -1,14 +1,15 @@
-from platform import node
-from preparing_data.load_chebi import load_chebi, load_ontology
-import xml.etree.ElementTree as ET
-import os
-import sys
 import csv
-import random
-import pandas as pd
 import json
+import os
+import random
+import sys
 import time
+import xml.etree.ElementTree as ET
 from collections import defaultdict
+
+import pandas as pd
+
+from preparing_data.load_chebi import load_chebi, load_ontology
 
 """This script filters the ontology to remove classes that have SMILES and that are leaves"""
 
@@ -21,21 +22,24 @@ def _has_wildcard(smiles):
     all ChEBI SMILES) without parsing. Unlike a full RDKit parse, this keeps real compounds
     whose curated SMILES merely fail strict sanitization (kekulization/valence quirks).
     """
-    return '*' in smiles
+    return "*" in smiles
+
 
 ancestor_cache = {}
+
+
 def get_all_ancestors(chebi_ontology, cls, visited=None):
     """Recursively collect all ancestor classes, using cache to avoid recomputation."""
     cls_str = str(cls)
     if cls_str in ancestor_cache:
         return ancestor_cache[cls_str]
-    
+
     if visited is None:
         visited = set()
-    
+
     ancestors = []
     direct_parents = chebi_ontology.get_superclasses(cls)
-    
+
     for parent in direct_parents:
         parent_str = str(parent)
         if parent_str not in visited:  # Avoid cycles
@@ -46,7 +50,7 @@ def get_all_ancestors(chebi_ontology, cls, visited=None):
 
     ancestors = list(set(ancestors))  # Remove duplicates
     ancestor_cache[cls_str] = ancestors  # Cache the result
-    
+
     return ancestors
 
 
@@ -110,9 +114,9 @@ def _nearest_nonleaf_parents_map(raw_parent_map, leaf_set):
         result = set()
         for p in raw_parent_map.get(node, ()):
             if p not in leaf_set:
-                result.add(p)                          # real (non-leaf) category: stop climbing
+                result.add(p)  # real (non-leaf) category: stop climbing
             else:
-                result |= compute(p, stack | {node})   # leaf parent: climb past it
+                result |= compute(p, stack | {node})  # leaf parent: climb past it
         memo[node] = result
         return result
 
@@ -129,7 +133,9 @@ def _splice_leaves_from_hierarchy(raw_parent_map, leaf_set):
     for child, parents in flattened_parent_map.items():
         for parent in parents:
             flattened_subclass_map[parent].append(child)
-    flattened_subclass_map = {p: sorted(set(kids)) for p, kids in flattened_subclass_map.items()}
+    flattened_subclass_map = {
+        p: sorted(set(kids)) for p, kids in flattened_subclass_map.items()
+    }
     return flattened_subclass_map, flattened_parent_map
 
 
@@ -137,6 +143,7 @@ def _verify_splice(raw_parent_map, flattened_parent_map, leaf_set, sample_size=8
     """Safety net run before any derived file is written. Asserts the splice preserved
     every node's reachable NON-leaf ancestors (no orphaning, no invented connections) and
     that no leaf is left as anyone's parent."""
+
     def closure(node, pm):
         seen = set()
         stack = list(pm.get(node, ()))
@@ -154,12 +161,18 @@ def _verify_splice(raw_parent_map, flattened_parent_map, leaf_set, sample_size=8
     for n in sample:
         raw_nonleaf = {a for a in closure(n, raw_parent_map) if a not in leaf_set}
         spliced = closure(n, flattened_parent_map)
-        assert raw_nonleaf == spliced, f"Splice changed reachable non-leaf ancestors for {n}"
+        assert raw_nonleaf == spliced, (
+            f"Splice changed reachable non-leaf ancestors for {n}"
+        )
 
     for child, parents in flattened_parent_map.items():
-        assert not any(p in leaf_set for p in parents), f"Splice left a leaf as a parent of {child}"
+        assert not any(p in leaf_set for p in parents), (
+            f"Splice left a leaf as a parent of {child}"
+        )
 
-    print(f"Splice verification passed: {len(sample)} sampled nodes, non-leaf ancestor sets preserved.")
+    print(
+        f"Splice verification passed: {len(sample)} sampled nodes, non-leaf ancestor sets preserved.",
+    )
 
 
 def _build_subclass_map_from_axioms(chebi_ontology, all_classes):
@@ -169,7 +182,7 @@ def _build_subclass_map_from_axioms(chebi_ontology, all_classes):
 
     for idx, axiom in enumerate(chebi_ontology.get_axioms()):
         component = axiom.component
-        if type(component).__name__ != 'SubClassOf':
+        if type(component).__name__ != "SubClassOf":
             continue
 
         sub = str(component.sub)
@@ -187,14 +200,16 @@ def _build_subclass_map_from_axioms(chebi_ontology, all_classes):
 
     return dict(subclass_map)
 
+
 def find_leaf_classes_with_smiles_and_deprecated(
-        chebi_ontology, 
-        smiles_property,
-        deprecated_property, 
-        subclass_map_file, 
-        leaf_parents_map_file,
-        use_found_leaf_classes = False,
-        removed_leaf_classes_file = None):
+    chebi_ontology,
+    smiles_property,
+    deprecated_property,
+    subclass_map_file,
+    leaf_parents_map_file,
+    use_found_leaf_classes=False,
+    removed_leaf_classes_file=None,
+):
 
     print("\nFinding leaf classes with SMILES...")
 
@@ -206,15 +221,17 @@ def find_leaf_classes_with_smiles_and_deprecated(
     # Load or build subclass mapping for faster lookup
     try:
         subclass_map_start = time.time()
-        with open(subclass_map_file, 'r') as f:
+        with open(subclass_map_file) as f:
             subclass_map = json.load(f)
         subclass_map_elapsed = time.time() - subclass_map_start
         print(
             f"Loaded subclass mapping from {subclass_map_file} with {len(subclass_map)} entries "
-            f"in {subclass_map_elapsed:.2f} seconds."
+            f"in {subclass_map_elapsed:.2f} seconds.",
         )
     except FileNotFoundError:
-        print("Building subclass mapping from axioms in a single pass (may take a while)...")
+        print(
+            "Building subclass mapping from axioms in a single pass (may take a while)...",
+        )
         subclass_map_start = time.time()
 
         compute_start = time.time()
@@ -222,18 +239,18 @@ def find_leaf_classes_with_smiles_and_deprecated(
         compute_elapsed = time.time() - compute_start
 
         write_start = time.time()
-        with open(subclass_map_file, 'w') as f:
+        with open(subclass_map_file, "w") as f:
             json.dump(subclass_map, f)
         write_elapsed = time.time() - write_start
 
         subclass_map_elapsed = time.time() - subclass_map_start
         print(
             f"Saved subclass mapping to {subclass_map_file} in {subclass_map_elapsed:.2f} seconds "
-            f"({subclass_map_elapsed / 60:.2f} minutes)."
+            f"({subclass_map_elapsed / 60:.2f} minutes).",
         )
         print(
             f"Subclass map timing breakdown: compute={compute_elapsed:.2f}s, "
-            f"json_write={write_elapsed:.2f}s."
+            f"json_write={write_elapsed:.2f}s.",
         )
 
     # Build child -> direct parents map once and reuse it for fast ancestor lookup.
@@ -248,45 +265,56 @@ def find_leaf_classes_with_smiles_and_deprecated(
     deprecated_classes = []
 
     if use_found_leaf_classes and removed_leaf_classes_file:
-        print(f"Loading previously found leaf classes with SMILES from {removed_leaf_classes_file}...")
+        print(
+            f"Loading previously found leaf classes with SMILES from {removed_leaf_classes_file}...",
+        )
         df = pd.read_csv(removed_leaf_classes_file)
         leaf_classes_with_smiles = df["IRI"].tolist()
-        print(f"Loaded {len(leaf_classes_with_smiles)} leaf classes with SMILES from file.")
+        print(
+            f"Loaded {len(leaf_classes_with_smiles)} leaf classes with SMILES from file.",
+        )
 
-    else: # Scan ontology to find leaf classes with SMILES
-
+    else:  # Scan ontology to find leaf classes with SMILES
         # Counters
         i = 0
         j = 0
         k = 0
 
         for cls in all_classes:
-            axioms = chebi_ontology.get_axioms_for_iri(cls) # Get all axioms for the class
+            axioms = chebi_ontology.get_axioms_for_iri(
+                cls,
+            )  # Get all axioms for the class
             cls_str = str(cls)
             is_deprecated = False
             has_smiles = False
             smiles_value = None
 
             for axiom in axioms:
-                component = axiom.component # The component of the axiom can eg be SubClassOf, AnnotationAssertion, etc.
-                if type(component).__name__ == 'AnnotationAssertion': # Check if axiom is an annotation, e.g. a SMILES or deprecated tag
-                    ann = component.ann # Get the annotation
-                    if hasattr(ann, 'ap'): # Check if annotation has an annotation property (ap). This can eg tell us if it is a SMILES string
-                        prop_str = str(ann.ap) # Converts property IRI to string for easier comparison
+                component = axiom.component  # The component of the axiom can eg be SubClassOf, AnnotationAssertion, etc.
+                if (
+                    type(component).__name__ == "AnnotationAssertion"
+                ):  # Check if axiom is an annotation, e.g. a SMILES or deprecated tag
+                    ann = component.ann  # Get the annotation
+                    if hasattr(
+                        ann,
+                        "ap",
+                    ):  # Check if annotation has an annotation property (ap). This can eg tell us if it is a SMILES string
+                        prop_str = str(
+                            ann.ap,
+                        )  # Converts property IRI to string for easier comparison
 
-                        if prop_str == deprecated_prop_str: # Check if deprecated
+                        if prop_str == deprecated_prop_str:  # Check if deprecated
                             is_deprecated = True
                             k += 1
                             if k % 1000 == 0:
                                 print(f"Found {k} deprecated classes so far...")
 
-                        if prop_str == smiles_prop_str: # Check if SMILES property
+                        if prop_str == smiles_prop_str:  # Check if SMILES property
                             has_smiles = True
                             smiles_value = str(ann.av)
                             i += 1
                             if i % 1000 == 0:
                                 print(f"Found {i} classes with SMILES so far...")
-
 
             # Add to correct lists
             if is_deprecated:
@@ -299,22 +327,23 @@ def find_leaf_classes_with_smiles_and_deprecated(
                 # of the hierarchy below so leaves stay terminal. Wildcard/R-group placeholder
                 # SMILES (eg ChEBI's '*') are excluded.
                 if not _has_wildcard(smiles_value):
-
                     leaf_classes_with_smiles.append(cls_str)
 
                     j += 1
                     if j % 10000 == 0:
                         print(f"Found {j} leaf classes with SMILES so far...")
             # Helper function to get all ancestors recursively
-    
+
     # Sanity guard: a near-empty leaf set means leaf detection silently failed (eg SMILES
     # values were not read as expected). Catch it here, because the splice verification below
     # passes trivially when there are no leaves to misplace.
-    if len(classes_with_smiles) > 0 and len(leaf_classes_with_smiles) < 0.5 * len(classes_with_smiles):
+    if len(classes_with_smiles) > 0 and len(leaf_classes_with_smiles) < 0.5 * len(
+        classes_with_smiles,
+    ):
         raise RuntimeError(
             f"Only {len(leaf_classes_with_smiles)} leaf classes found among "
             f"{len(classes_with_smiles)} classes with SMILES — leaf detection likely failed "
-            "(check how SMILES annotation values are being read)."
+            "(check how SMILES annotation values are being read).",
         )
 
     # Flatten the hierarchy so leaves are terminal: every class reconnects to its nearest
@@ -322,12 +351,15 @@ def find_leaf_classes_with_smiles_and_deprecated(
     # After this no leaf is anyone's parent, so leaves become siblings under the real categories.
     leaf_set = set(leaf_classes_with_smiles)
     print("Splicing leaves out of the hierarchy so they become terminal siblings...")
-    flattened_subclass_map, flattened_parent_map = _splice_leaves_from_hierarchy(direct_parent_map, leaf_set)
+    flattened_subclass_map, flattened_parent_map = _splice_leaves_from_hierarchy(
+        direct_parent_map,
+        leaf_set,
+    )
     _verify_splice(direct_parent_map, flattened_parent_map, leaf_set)
 
     # Overwrite the saved subclass map with the flattened version so every downstream artifact
     # (parent map, all-ancestors map, class->leaf map, graph) inherits the sibling structure.
-    with open(subclass_map_file, 'w') as f:
+    with open(subclass_map_file, "w") as f:
         json.dump(flattened_subclass_map, f)
     print(f"Saved flattened subclass map to {subclass_map_file}.")
 
@@ -345,12 +377,14 @@ def find_leaf_classes_with_smiles_and_deprecated(
         i += 1
         if i % 1000 == 0:
             print(f"Processed {i} leaf classes for ancestor mapping...")
-                
+
     # Save leaf to ALL ancestors map
-    with open(leaf_parents_map_file, 'w') as f:
+    with open(leaf_parents_map_file, "w") as f:
         json.dump(leaf_to_parents, f, indent=2)
-    print(f"Saved leaf to all ancestors map to {leaf_parents_map_file} with {len(leaf_to_parents)} entries.")
-                    
+    print(
+        f"Saved leaf to all ancestors map to {leaf_parents_map_file} with {len(leaf_to_parents)} entries.",
+    )
+
     # Summary
     print(f"\nDeprecated classes: {len(deprecated_classes)}")
     print(f"Classes WITH SMILES: {len(classes_with_smiles)}")
@@ -358,30 +392,41 @@ def find_leaf_classes_with_smiles_and_deprecated(
 
     return set(leaf_classes_with_smiles), set(deprecated_classes)
 
-def save_filtered_owl(chebi_file, classes_with_smiles_to_remove, deprecated_classes_to_remove, output_file):
+
+def save_filtered_owl(
+    chebi_file,
+    classes_with_smiles_to_remove,
+    deprecated_classes_to_remove,
+    output_file,
+):
 
     # Check if output file already exists to avoid overwriting
     try:
-        with open(output_file, 'r') as f:
-            print(f"Output file {output_file} already exists. Please remove it or change name before running this function.")
+        with open(output_file) as f:
+            print(
+                f"Output file {output_file} already exists. Please remove it or change name before running this function.",
+            )
             return
     except FileNotFoundError:
         pass  # File does not exist, proceed
 
-
     print(f"\nSaving filtered ontology to {output_file}...")
-    
-    tree = ET.parse(chebi_file) # Parsing the original OWL file to an ElementTree to be able tto remove elements etc
+
+    tree = ET.parse(
+        chebi_file,
+    )  # Parsing the original OWL file to an ElementTree to be able to remove elements etc
     root = tree.getroot()
 
-    classes_to_remove = classes_with_smiles_to_remove.union(deprecated_classes_to_remove)
-    
+    classes_to_remove = classes_with_smiles_to_remove.union(
+        deprecated_classes_to_remove,
+    )
+
     # Define namespaces
     ns = {
-        'owl': 'http://www.w3.org/2002/07/owl#',
-        'rdf': 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+        "owl": "http://www.w3.org/2002/07/owl#",
+        "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
     }
-    
+
     # Collect elements to remove
     elements_to_remove = []
     i = 0
@@ -390,15 +435,15 @@ def save_filtered_owl(chebi_file, classes_with_smiles_to_remove, deprecated_clas
     for elem in list(root):
         # Check if element is a Class
         if elem.tag == f"{{{ns['owl']}}}Class":
-            class_iri = elem.attrib.get(f"{{{ns['rdf']}}}about") # Get the class IRI
-            
+            class_iri = elem.attrib.get(f"{{{ns['rdf']}}}about")  # Get the class IRI
+
             # If class NOT in keep list, mark for removal
             if class_iri and class_iri in classes_to_remove:
                 elements_to_remove.append(elem)
                 i += 1
                 if i % 1000 == 0:
                     print(f"Marked {i} classes for removal so far...")
-    
+
     print(f"Total elements marked for removal: {len(elements_to_remove)}")
 
     # Remove all marked elements
@@ -408,7 +453,7 @@ def save_filtered_owl(chebi_file, classes_with_smiles_to_remove, deprecated_clas
         j += 1
         if j % 5000 == 0:
             print(f"Removed {j} elements so far...")
-    
+
     # Save filtered OWL
     tree.write(output_file, encoding="utf-8", xml_declaration=True)
     print(f"✓ Done! Saved {output_file}")
@@ -417,20 +462,20 @@ def save_filtered_owl(chebi_file, classes_with_smiles_to_remove, deprecated_clas
 def _build_smiles_map_from_owl(owl_file, smiles_property):
     """OPTIMIZATION: Parse OWL XML directly to build SMILES map (much faster than ontology API)."""
     smiles_map = {}
-    
+
     ns = {
         "owl": "http://www.w3.org/2002/07/owl#",
         "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
     }
-    
+
     annotation_tag = f"{{{ns['owl']}}}AnnotationAssertion"
     annotation_prop_tag = f"{{{ns['owl']}}}annotationProperty"
     annotation_target_tag = f"{{{ns['owl']}}}annotationSubject"
     annotation_value_tag = f"{{{ns['owl']}}}annotationValue"
     rdf_resource = f"{{{ns['rdf']}}}resource"
-    
+
     context = ET.iterparse(owl_file, events=("end",))
-    
+
     for event, elem in context:
         if elem.tag == annotation_tag:
             prop_elem = elem.find(annotation_prop_tag)
@@ -445,13 +490,22 @@ def _build_smiles_map_from_owl(owl_file, smiles_property):
                         if class_iri and smiles:
                             smiles_map[class_iri] = smiles
         elem.clear()
-    
+
     return smiles_map
 
 
-def save_leaf_classes_with_smiles(leaf_classes, chebi_ontology, smiles_property, output_file, structural_classes, functional_classes, owl_file=None, parent_map_file=None):
+def save_leaf_classes_with_smiles(
+    leaf_classes,
+    chebi_ontology,
+    smiles_property,
+    output_file,
+    structural_classes,
+    functional_classes,
+    owl_file=None,
+    parent_map_file=None,
+):
     """Save leaf classes with SMILES to a CSV file.
-    
+
     OPTIMIZATION: If owl_file and parent_map_file are provided, uses fast lookups instead of slow ontology API.
     """
 
@@ -460,15 +514,15 @@ def save_leaf_classes_with_smiles(leaf_classes, chebi_ontology, smiles_property,
     # OPTIMIZATION: Load precomputed maps instead of using slow ontology API
     smiles_map = {}
     parent_map = {}
-    
+
     if owl_file and os.path.exists(owl_file):
         print("  Using fast OWL XML parsing for SMILES...")
         smiles_map = _build_smiles_map_from_owl(owl_file, smiles_property)
         print(f"  Loaded {len(smiles_map)} SMILES entries")
-    
+
     if parent_map_file and os.path.exists(parent_map_file):
         print("  Loading parent map from JSON...")
-        with open(parent_map_file, 'r') as f:
+        with open(parent_map_file) as f:
             parent_map = json.load(f)
         print(f"  Loaded {len(parent_map)} parent relationships")
 
@@ -487,9 +541,9 @@ def save_leaf_classes_with_smiles(leaf_classes, chebi_ontology, smiles_property,
             axioms = chebi_ontology.get_axioms_for_iri(cls)
             for axiom in axioms:
                 component = axiom.component
-                if type(component).__name__ == 'AnnotationAssertion':
+                if type(component).__name__ == "AnnotationAssertion":
                     ann = component.ann
-                    if hasattr(ann, 'ap'):
+                    if hasattr(ann, "ap"):
                         prop_str = str(ann.ap)
                         if prop_str == f"<{smiles_property}>":
                             smiles = str(ann.av)
@@ -498,15 +552,15 @@ def save_leaf_classes_with_smiles(leaf_classes, chebi_ontology, smiles_property,
         # Try parent map first, fall back to ontology API
         classification = "neither"
         parents = set(parent_map.get(cls, []))
-        
+
         if not parents and chebi_ontology:
             try:
-                parents = set(str(p) for p in chebi_ontology.get_superclasses(cls))
+                parents = {str(p) for p in chebi_ontology.get_superclasses(cls)}
             except Exception as e:
                 print(f"⚠️ Could not get superclasses for {cls}: {e}")
                 classification = "unknown"
                 parents = set()
-        
+
         if parents:
             if any(p in structural_classes for p in parents):
                 classification = "structural"
@@ -524,6 +578,7 @@ def save_leaf_classes_with_smiles(leaf_classes, chebi_ontology, smiles_property,
     length = len(rows)
     print(f"✓ Done! Saved {length} leaf classes with SMILES to {output_file}")
 
+
 # Only used when deprecated classes were removed in a separate step. Should not be needed now. # Used in build_parent_map
 def find_deprecated_classes(ontology, deprecated_property):
     """Find all deprecated classes in the ontology."""
@@ -536,9 +591,9 @@ def find_deprecated_classes(ontology, deprecated_property):
         axioms = ontology.get_axioms_for_iri(cls)
         for axiom in axioms:
             component = axiom.component
-            if type(component).__name__ == 'AnnotationAssertion':
+            if type(component).__name__ == "AnnotationAssertion":
                 ann = component.ann
-                if hasattr(ann, 'ap'):
+                if hasattr(ann, "ap"):
                     prop_str = str(ann.ap)
                     if prop_str == f"<{deprecated_property}>":
                         deprecated_classes.add(cls)
@@ -549,6 +604,7 @@ def find_deprecated_classes(ontology, deprecated_property):
     print(f"Total deprecated classes found: {len(deprecated_classes)}")
     return deprecated_classes
 
+
 # Only used when deprecated classes were removed in a separate step. Should not be needed now.
 def remove_classes_from_owl(input_file, classes_to_remove, output_file):
     """Remove given classes from OWL file and save a new version."""
@@ -558,8 +614,8 @@ def remove_classes_from_owl(input_file, classes_to_remove, output_file):
     root = tree.getroot()
 
     ns = {
-        'owl': 'http://www.w3.org/2002/07/owl#',
-        'rdf': 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+        "owl": "http://www.w3.org/2002/07/owl#",
+        "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
     }
 
     removed = 0
@@ -576,7 +632,9 @@ def remove_classes_from_owl(input_file, classes_to_remove, output_file):
     print(f"✓ Done! Removed {removed} classes.")
     print(f"Saved to {output_file}")
 
-"""For building parent map""" #maybe move to separate file later
+
+"""For building parent map"""  # maybe move to separate file later
+
 
 def build_parent_map(
     ontology,
@@ -589,7 +647,7 @@ def build_parent_map(
 
     Fast path: if subclass_map_file is available, derive child->parents from that JSON.
     """
-    
+
     # Find deprecated classes first
     if precomputed_deprecated_classes is not None:
         deprecated_classes = {str(c) for c in precomputed_deprecated_classes}
@@ -599,14 +657,16 @@ def build_parent_map(
         deprecated_classes = {str(c) for c in raw_deprecated}
 
     print(f"Excluding {len(deprecated_classes)} deprecated classes")
-    
+
     # Convert deprecated classes to strings for consistent comparison
-    
+
     parent_map = {}
 
     if subclass_map_file and os.path.exists(subclass_map_file):
-        print(f"Loading subclass map from {subclass_map_file} for fast parent-map build...")
-        with open(subclass_map_file, "r") as f:
+        print(
+            f"Loading subclass map from {subclass_map_file} for fast parent-map build...",
+        )
+        with open(subclass_map_file) as f:
             subclass_map = json.load(f)
 
         parent_map_full = _invert_subclass_map(subclass_map)
@@ -640,8 +700,8 @@ def build_parent_map(
             ]
 
             parent_map[cls_id] = parents
-    
-    with open(output_json, 'w') as f:
+
+    with open(output_json, "w") as f:
         json.dump(parent_map, f, indent=2)
 
     # Print statistics
@@ -651,21 +711,23 @@ def build_parent_map(
     print(f"  - {len(parent_map) - len(root_classes)} classes with parents")
     print(f"Saved parent map to {output_json}")
 
+
 def get_name(root, iri, ns):
     """Return the rdfs:label for a class IRI."""
-    for cls in root.findall('owl:Class', ns):
-        about = cls.attrib.get('{http://www.w3.org/1999/02/22-rdf-syntax-ns#}about')
+    for cls in root.findall("owl:Class", ns):
+        about = cls.attrib.get("{http://www.w3.org/1999/02/22-rdf-syntax-ns#}about")
         if about == iri:
-            label_elem = cls.find('rdfs:label', ns)
+            label_elem = cls.find("rdfs:label", ns)
             if label_elem is not None:
                 return label_elem.text.strip()
     return None
 
+
 def shorten_parent_map(input_json, output_json):
-    """ Shorten the IRIs in the parent map by removing the common prefix. """
+    """Shorten the IRIs in the parent map by removing the common prefix."""
     prefix = "http://purl.obolibrary.org/obo/"
 
-    with open(input_json, "r") as f:
+    with open(input_json) as f:
         parent_map = json.load(f)
 
     short_map = {}
@@ -684,11 +746,12 @@ def shorten_parent_map(input_json, output_json):
 
     print(f"Saved shortened parent map → {output_json}")
 
+
 def map_names_to_classes(chebi_ontology, output_json):
     ns = {
-        'owl': 'http://www.w3.org/2002/07/owl#',
-        'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
-        'rdf': 'http://www.w3.org/1999/02/22-rdf-syntax-ns#'
+        "owl": "http://www.w3.org/2002/07/owl#",
+        "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+        "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
     }
 
     tree = ET.parse(chebi_ontology)
@@ -699,18 +762,18 @@ def map_names_to_classes(chebi_ontology, output_json):
     iri_to_name = {}
     i = 0
 
-    for cls in root.findall('owl:Class', ns):
-        iri = cls.attrib.get('{http://www.w3.org/1999/02/22-rdf-syntax-ns#}about')
+    for cls in root.findall("owl:Class", ns):
+        iri = cls.attrib.get("{http://www.w3.org/1999/02/22-rdf-syntax-ns#}about")
         if iri is None:
             continue
 
         # keep only the last part, e.g. CHEBI_12345
         if iri.startswith(prefix):
-            short_id = iri[len(prefix):]
+            short_id = iri[len(prefix) :]
         else:
             short_id = iri  # fallback
 
-        label_elem = cls.find('rdfs:label', ns)
+        label_elem = cls.find("rdfs:label", ns)
         name = label_elem.text.strip() if label_elem is not None else None
 
         iri_to_name[short_id] = name
@@ -724,43 +787,60 @@ def map_names_to_classes(chebi_ontology, output_json):
 
     print(f"Saved short-ID → name mapping to {output_json}")
 
-    
-if __name__ == "__main__":
 
-    task = "build_parent_map" # Options: "remove_leaves_with_smiles", "save_removed_leaf_classes", "build_parent_map", "map_names_to_classes"
+if __name__ == "__main__":
+    task = "build_parent_map"  # Options: "remove_leaves_with_smiles", "save_removed_leaf_classes", "build_parent_map", "map_names_to_classes"
     print(f"Selected task: {task}")
     # property IRI
     smiles_property = "https://w3id.org/chemrof/smiles_string"
     deprecated_property = "http://www.w3.org/2002/07/owl#deprecated"
 
-    if task == "remove_leaves_with_smiles": # Remove leaf classes with SMILES and deprecated classes from OWL 
-                                            # (a new filtered OWL file will be saved)
-        filtered_output_file = "data/filtered_chebi_no_leaves_with_smiles_no_deprecated.owl"
+    if (
+        task == "remove_leaves_with_smiles"
+    ):  # Remove leaf classes with SMILES and deprecated classes from OWL
+        # (a new filtered OWL file will be saved)
+        filtered_output_file = (
+            "data/filtered_chebi_no_leaves_with_smiles_no_deprecated.owl"
+        )
 
         chebi_file = "data/chebi.owl"
-        subclass_map_file = "data/chebi_subclass_map.json" 
+        subclass_map_file = "data/chebi_subclass_map.json"
         leaf_parents_map_file = "data/removed_leaf_classes_to_ALL_parents_map.json"
 
-        use_found_leaf_classes = True # Set to True to use previously found leaf classes with SMILES from CSV file
-        removed_leaf_classes_file = "data/removed_leaf_classes_with_smiles.csv" # Only needed if use_found_leaf_classes is True
+        use_found_leaf_classes = True  # Set to True to use previously found leaf classes with SMILES from CSV file
+        removed_leaf_classes_file = "data/removed_leaf_classes_with_smiles.csv"  # Only needed if use_found_leaf_classes is True
 
         if os.path.exists(filtered_output_file):
-            print(f"Output file {filtered_output_file} already exists. Are you sure you want to overwrite it? If so, please remove it before running this script.")
+            print(
+                f"Output file {filtered_output_file} already exists. Are you sure you want to overwrite it? If so, please remove it before running this script.",
+            )
         else:
-            print("Running code to remove leaf classes with SMILES and deprecated classes...")
+            print(
+                "Running code to remove leaf classes with SMILES and deprecated classes...",
+            )
             chebi_ontology = load_chebi()
-            classes_with_smiles, deprecated_classes = find_leaf_classes_with_smiles_and_deprecated(
-                chebi_ontology,
-                smiles_property, 
-                deprecated_property, 
-                subclass_map_file, 
-                leaf_parents_map_file, 
-                use_found_leaf_classes, 
-                removed_leaf_classes_file)
-    
+            classes_with_smiles, deprecated_classes = (
+                find_leaf_classes_with_smiles_and_deprecated(
+                    chebi_ontology,
+                    smiles_property,
+                    deprecated_property,
+                    subclass_map_file,
+                    leaf_parents_map_file,
+                    use_found_leaf_classes,
+                    removed_leaf_classes_file,
+                )
+            )
+
             # Comment out the next two lines if you do not want to save the filtered OWL in a new file
-            save_filtered_owl(chebi_file, classes_with_smiles, deprecated_classes, filtered_output_file)
-            filtered_ontology = load_ontology(filtered_output_file) # just to confirm it loads
+            save_filtered_owl(
+                chebi_file,
+                classes_with_smiles,
+                deprecated_classes,
+                filtered_output_file,
+            )
+            filtered_ontology = load_ontology(
+                filtered_output_file,
+            )  # just to confirm it loads
 
     elif task == "save_removed_leaf_classes":
         print("Running code to save removed leaf classes with SMILES...")
@@ -768,8 +848,12 @@ if __name__ == "__main__":
         output_file = "data/removed_leaf_classes_with_smiles_new.csv"
         subclass_map_file = "data/chebi_subclass_map.json"
 
-        structural_ontology = load_ontology("data/filtered_chebi_no_leaves_with_smiles_no_deprecated_structural.owl")
-        functional_ontology = load_ontology("data/filtered_chebi_no_leaves_with_smiles_no_deprecated_functional.owl")
+        structural_ontology = load_ontology(
+            "data/filtered_chebi_no_leaves_with_smiles_no_deprecated_structural.owl",
+        )
+        functional_ontology = load_ontology(
+            "data/filtered_chebi_no_leaves_with_smiles_no_deprecated_functional.owl",
+        )
 
         # Extract sets of class IRIs for quick membership checking
         structural_classes = set(structural_ontology.get_classes())
@@ -779,7 +863,12 @@ if __name__ == "__main__":
         print(f"Functional classes loaded: {len(functional_classes)}")
 
         chebi_ontology = load_chebi()
-        classes_with_smiles, _, _ = find_leaf_classes_with_smiles_and_deprecated(chebi_ontology, smiles_property, deprecated_property, subclass_map_file)
+        classes_with_smiles, _, _ = find_leaf_classes_with_smiles_and_deprecated(
+            chebi_ontology,
+            smiles_property,
+            deprecated_property,
+            subclass_map_file,
+        )
 
         # Save CSV with classification
         save_leaf_classes_with_smiles(
@@ -789,7 +878,7 @@ if __name__ == "__main__":
             output_file,
             structural_classes,
             functional_classes,
-        )  
+        )
 
         df = pd.read_csv(output_file)
         print(len(df), "rows total")
@@ -799,12 +888,18 @@ if __name__ == "__main__":
     elif task == "build_parent_map":
         print("Running code to build parent map excluding deprecated classes...")
         ontology = load_chebi()
-        output_json = "data/chebi_parent_map.json" 
+        output_json = "data/chebi_parent_map.json"
         # shortened_output_json = "data/chebi_parent_map_shortened_id.json"
         if os.path.exists(output_json):
-            print(f"Output file {output_json} already exists. Are you sure you want to overwrite it? If so, please remove it before running this script.")
+            print(
+                f"Output file {output_json} already exists. Are you sure you want to overwrite it? If so, please remove it before running this script.",
+            )
         else:
-            build_parent_map(ontology, output_json, deprecated_property) # Depracated classes are removed inside the function
+            build_parent_map(
+                ontology,
+                output_json,
+                deprecated_property,
+            )  # Deprecated classes are removed inside the function
 
         # shortened_output_json = "data/chebi_parent_map_shortened_id.json"
         # if os.path.exists(shortened_output_json):
@@ -812,16 +907,17 @@ if __name__ == "__main__":
         # else:
         #     shorten_parent_map(output_json, shortened_output_json)
         #     print(f"Saved shortened parent map to {shortened_output_json}")
-        
-    
+
     elif task == "map_names_to_classes":
         print("Running code to map names to classes...")
         chebi_ontology = "data/chebi.owl"
         output_json = "data/chebi_id_to_name_map.json"
         if os.path.exists(output_json):
-            print(f"Output file {output_json} already exists. Are you sure you want to overwrite it? If so, please remove it before running this script.")
+            print(
+                f"Output file {output_json} already exists. Are you sure you want to overwrite it? If so, please remove it before running this script.",
+            )
         else:
             map_names_to_classes(chebi_ontology, output_json)
 
-    else: 
+    else:
         print("No valid task selected. Please choose a valid task.")

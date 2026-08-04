@@ -131,16 +131,16 @@
 <script> // Not ideal since this is mixing Jinja2 template syntax (server-side) with JavaScript (client-side) but it works for now.
 document.getElementById('downloadCsv').addEventListener('click', function(e) {
     e.preventDefault();
-    
+
     // Create CSV content
     let csv = 'Class,Raw p-value,Corrected p-value\n';
-    
+
     {% for item in results.enrichment_results.values() %}
-    csv += '{{ item.class }},' + 
-        '{{ "%.4e"|format(item.p_value) }},' + 
+    csv += '{{ item.class }},' +
+        '{{ "%.4e"|format(item.p_value) }},' +
     '{% if item.get("p_value_corrected") is not none %}{{ "%.4e"|format(item.p_value_corrected) }}{% else %}N/A{% endif %}\n';
     {% endfor %}
-    
+
     // Create download
     const blob = new Blob([csv], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);

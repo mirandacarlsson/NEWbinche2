@@ -19,9 +19,9 @@ Usage:
         --csv-b data/enrichment_results/enrichment_results_wine_structure_plain_prune.csv \
         --label-a smiles --label-b chebi_id
 """
+
 import argparse
 import re
-import sys
 
 import pandas as pd
 from scipy.stats import spearmanr
@@ -37,7 +37,12 @@ def parse_chebi_block(text: str) -> dict[str, str]:
     return {chebi_id: name.strip() for name, chebi_id in CHEBI_RE.findall(text)}
 
 
-def compare_study_sets(set_a: dict[str, str], set_b: dict[str, str], label_a: str, label_b: str) -> None:
+def compare_study_sets(
+    set_a: dict[str, str],
+    set_b: dict[str, str],
+    label_a: str,
+    label_b: str,
+) -> None:
     ids_a, ids_b = set(set_a), set(set_b)
     shared = ids_a & ids_b
     only_a = ids_a - ids_b
@@ -47,7 +52,9 @@ def compare_study_sets(set_a: dict[str, str], set_b: dict[str, str], label_a: st
     print(f"\n=== Study set comparison: {label_a} vs {label_b} ===")
     print(f"{label_a}: {len(ids_a)} resolved leaves")
     print(f"{label_b}: {len(ids_b)} resolved leaves")
-    print(f"Matching directly (same ChEBI leaf in both): {len(shared)}  (Jaccard = {jaccard:.3f})")
+    print(
+        f"Matching directly (same ChEBI leaf in both): {len(shared)}  (Jaccard = {jaccard:.3f})",
+    )
 
     if only_a:
         print(f"\nOnly resolved in {label_a} ({len(only_a)}):")
@@ -66,7 +73,13 @@ def load_enrichment_csv(path: str) -> pd.DataFrame:
     return df.set_index("ChEBI_ID")
 
 
-def compare_enrichment_csvs(path_a: str, path_b: str, label_a: str, label_b: str, alpha: float = 0.05) -> pd.DataFrame:
+def compare_enrichment_csvs(
+    path_a: str,
+    path_b: str,
+    label_a: str,
+    label_b: str,
+    alpha: float = 0.05,
+) -> pd.DataFrame:
     df_a = load_enrichment_csv(path_a)
     df_b = load_enrichment_csv(path_b)
 
@@ -81,25 +94,50 @@ def compare_enrichment_csvs(path_a: str, path_b: str, label_a: str, label_b: str
 
     only_a = merged[merged[f"Corrected p-value_{label_b}"].isna()]
     only_b = merged[merged[f"Corrected p-value_{label_a}"].isna()]
-    shared = merged.dropna(subset=[f"Corrected p-value_{label_a}", f"Corrected p-value_{label_b}"]).copy()
+    shared = merged.dropna(
+        subset=[f"Corrected p-value_{label_a}", f"Corrected p-value_{label_b}"],
+    ).copy()
 
-    shared["ratio"] = shared[f"Corrected p-value_{label_a}"] / shared[f"Corrected p-value_{label_b}"]
+    shared["ratio"] = (
+        shared[f"Corrected p-value_{label_a}"] / shared[f"Corrected p-value_{label_b}"]
+    )
     shared[f"significant_{label_a}"] = shared[f"Corrected p-value_{label_a}"] < alpha
     shared[f"significant_{label_b}"] = shared[f"Corrected p-value_{label_b}"] < alpha
-    shared["flipped"] = shared[f"significant_{label_a}"] != shared[f"significant_{label_b}"]
+    shared["flipped"] = (
+        shared[f"significant_{label_a}"] != shared[f"significant_{label_b}"]
+    )
 
-    rho, _ = spearmanr(shared[f"Corrected p-value_{label_a}"], shared[f"Corrected p-value_{label_b}"])
+    rho, _ = spearmanr(
+        shared[f"Corrected p-value_{label_a}"],
+        shared[f"Corrected p-value_{label_b}"],
+    )
 
-    print(f"\n=== Enrichment CSV comparison: {label_a} vs {label_b} (alpha={alpha}) ===")
+    print(
+        f"\n=== Enrichment CSV comparison: {label_a} vs {label_b} (alpha={alpha}) ===",
+    )
     print(f"Classes in {label_a} only: {len(only_a)}")
     print(f"Classes in {label_b} only: {len(only_b)}")
     print(f"Classes in both: {len(shared)}")
     print(f"Spearman correlation of corrected p-values (shared classes): {rho:.3f}")
-    print(f"Classes whose significance call flips at alpha={alpha}: {shared['flipped'].sum()}")
+    print(
+        f"Classes whose significance call flips at alpha={alpha}: {shared['flipped'].sum()}",
+    )
 
-    print(f"\nTop 10 largest |log fold-change| in corrected p-value among shared classes:")
-    top = shared.reindex(shared["ratio"].apply(lambda r: abs(__import__('math').log10(r))).sort_values(ascending=False).index)
-    cols = ["Name", f"Corrected p-value_{label_a}", f"Corrected p-value_{label_b}", "ratio"]
+    print(
+        "\nTop 10 largest |log fold-change| in corrected p-value among shared classes:",
+    )
+    top = shared.reindex(
+        shared["ratio"]
+        .apply(lambda r: abs(__import__("math").log10(r)))
+        .sort_values(ascending=False)
+        .index,
+    )
+    cols = [
+        "Name",
+        f"Corrected p-value_{label_a}",
+        f"Corrected p-value_{label_b}",
+        "ratio",
+    ]
     print(top[cols].head(10).to_string(index=False))
 
     return merged
@@ -107,13 +145,27 @@ def compare_enrichment_csvs(path_a: str, path_b: str, label_a: str, label_b: str
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--csv-a", default="data/results/wine_enrichmentresults_prune_ids_new.csv")
-    parser.add_argument("--csv-b", default="data/results/wine_enrichmentresults_prune_smiles_new.csv")
+    parser.add_argument(
+        "--csv-a",
+        default="data/results/wine_enrichmentresults_prune_ids_new.csv",
+    )
+    parser.add_argument(
+        "--csv-b",
+        default="data/results/wine_enrichmentresults_prune_smiles_new.csv",
+    )
     parser.add_argument("--label-a", default="smiles")
     parser.add_argument("--label-b", default="chebi_id")
     parser.add_argument("--alpha", type=float, default=0.05)
     args = parser.parse_args()
 
-    merged = compare_enrichment_csvs(args.csv_a, args.csv_b, args.label_a, args.label_b, args.alpha)
+    merged = compare_enrichment_csvs(
+        args.csv_a,
+        args.csv_b,
+        args.label_a,
+        args.label_b,
+        args.alpha,
+    )
     merged.to_csv("data/results/comparison_smiles_vs_chebi.csv")
-    print(f"\nFull merged comparison table written to data/enrichment_results/comparison_smiles_vs_chebi.csv")
+    print(
+        "\nFull merged comparison table written to data/enrichment_results/comparison_smiles_vs_chebi.csv",
+    )
