@@ -101,7 +101,7 @@ def write_hmdb_table(
     rows: Iterable[dict[str, str]],
     output_file: str,
     format: str = "tsv",
-) -> None:
+) -> int:
     """Write extracted rows to a TSV or CSV file and return the row count."""
 
     output_path = Path(output_file)

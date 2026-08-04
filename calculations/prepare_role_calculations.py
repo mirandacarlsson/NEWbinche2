@@ -1,3 +1,6 @@
+"""Utility functions for role classification."""
+
+# ruff: noqa
 import json
 import sys
 import xml.etree.ElementTree as ET
@@ -31,8 +34,6 @@ def find_has_role_connections_from_owl(
     }
 
     has_role_iri = _normalize_iri(has_role_property)
-    deprecated_iri = _normalize_iri(deprecated_property)
-
     class_tag = f"{{{ns['owl']}}}Class"
     deprecated_tag = f"{{{ns['owl']}}}deprecated"
     subclass_tag = f"{{{ns['rdfs']}}}subClassOf"

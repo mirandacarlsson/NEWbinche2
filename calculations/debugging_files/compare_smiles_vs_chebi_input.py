@@ -3,7 +3,7 @@ and compare their resulting enrichment CSVs.
 
 Two independent comparisons are supported:
 
-1. Study-set level (input level): paste the "Analysed leaves" text block the web app
+1. Study-set level (input level): paste the "Analyzed leaves" text block the web app
    prints after a run (one for the SMILES run, one for the ChEBI ID run) and compare
    which ChEBI leaves they actually resolved to. This is the most direct way to answer
    "how many compounds match directly" between the two input modes, since it compares
@@ -31,7 +31,7 @@ CHEBI_RE = re.compile(r"([^(),]+?)\s*\((CHEBI_\d+)\)")
 
 def parse_chebi_block(text: str) -> dict[str, str]:
     """Parse a comma-separated 'name (CHEBI_xxx), name (CHEBI_xxx), ...' block
-    (as printed by the web app for 'Analysed leaves' / 'Removed nodes through
+    (as printed by the web app for 'Analyzed leaves' / 'Removed nodes through
     pruning') into {chebi_id: name}.
     """
     return {chebi_id: name.strip() for name, chebi_id in CHEBI_RE.findall(text)}

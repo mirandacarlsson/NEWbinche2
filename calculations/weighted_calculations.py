@@ -8,6 +8,7 @@ same file/data dependencies, same pruning pipeline.
 Reference: Stojmirovic & Yu (2010), ArXiv:1004.5088
 """
 
+# ruff: noqa
 import json
 import logging
 import math
@@ -191,7 +192,7 @@ class _SaddleSum:
             return None
 
         D = -math.sqrt(2.0) * math.sqrt(inner)
-        return dict(lambda_=lmbd, mean=D1K, D2K=D2K, expH=expH, C=C, D=D)
+        return {"lambda_": lmbd, "mean": D1K, "D2K": D2K, "expH": expH, "C": C, "D": D}
 
     @staticmethod
     def _item_pvalue(item, m):
@@ -502,7 +503,7 @@ def get_weighted_enrichment_values(
 ):
     """
     Compute SaddleSum enrichment for every ancestor class (and role class).
-    Stores ALL results — BH/Bonferroni correction filters them afterwards,
+    Stores ALL results — BH/Bonferroni correction filters them afterward,
     exactly as get_enrichment_values does for Fisher.
     """
     background_weights = _build_background_weights(

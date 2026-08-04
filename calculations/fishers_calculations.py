@@ -1,3 +1,5 @@
+"""Fisher-based enrichment calculations and helpers."""
+
 import json
 import sys
 import time
@@ -29,33 +31,11 @@ from calculations.visualitations_and_pruning import (
     zero_degree_pruner,
 )
 
-"""
-from goat-tools:
-a = study_count         # n_ss_annotated
-b = study_n - study_count  # n_ss_leaves - n_ss_annotated
-c = pop_count - study_count  # n_bg_annotated - n_ss_annotated
-d = pop_n - pop_count - b    # n_bg_leaves - n_bg_annotated - (n_ss_leaves - n_ss_annotated)
-table = [[a, b], [c, d]]
-"""
-
-
-# n_ss_leaves = total number of input classes in the study set (if they are all leaf classes, otherwise count corresponding leaf classes)
-# n_ss_annotated = number of the input classes that are descendants of the given class
-
-# n_bg_leaves = total number of leaf classes in the background set (the ones filtered out as leaves from the ontology)
-# n_bg_annotated = number of those leaf classes that are descendants of the given class)
-
-
-"""
-                    In Class     Not in Class
-Study Set              a             b
-Background (rest)      c             d
-
-a = study compounds annotated to this class
-b = study compounds NOT annotated to this class
-c = background compounds in this class (excluding study set)
-d = background compounds not in this class (excluding study set)
-"""
+# Contingency table:
+#   a = study compounds annotated to this class
+#   b = study compounds not annotated to this class
+#   c = background compounds in this class (excluding the study set)
+#   d = background compounds not in this class (excluding the study set)
 
 
 def calculate_p_value(n_ss_annotated, n_ss_leaves, n_bg_annotated, n_bg_leaves):
@@ -82,7 +62,7 @@ def calculate_p_value(n_ss_annotated, n_ss_leaves, n_bg_annotated, n_bg_leaves):
 
 def normalize_id(raw_id: str) -> str:
     value = raw_id.strip().replace('"', "")
-    if value.startswith("http://") or value.startswith("https://"):
+    if value.startswith(("http://", "https://")):
         return value
     # Convert CHEBI:ID to http://purl.obolibrary.org/obo/CHEBI_ID format
     if value.startswith("CHEBI:"):
@@ -320,7 +300,7 @@ def print_enrichment_results(enrichment_results):
         print(f"{r['class']:45} {r['p_value']:.4e}      {corrected_p_str:20}")
 
 
-""" Graphing and pruning strategies """
+# Graphing and pruning strategies.
 
 
 def run_enrichment_analysis(
@@ -427,7 +407,7 @@ def run_enrichment_analysis(
             print(f"studyset_leaves: {studyset_leaves}")
             print(f"Root children pruner activated, pruning {levels} levels from root")
             time_start_total = time.time()
-            pruned_G, removed_nodes, execution_count = root_children_pruner(
+            pruned_G, removed_nodes, _execution_count = root_children_pruner(
                 pruned_G,
                 levels,
                 allow_re_execution=False,
@@ -480,7 +460,7 @@ def run_enrichment_analysis(
 
     if bonferroni_correct:
         print("Applying Bonferroni correction to p-values...")
-        enrichment_results, correction_map = bonferroni_correction(enrichment_results)
+        enrichment_results, _correction_map = bonferroni_correction(enrichment_results)
         # print("Enrichment results after Bonferroni correction:")
         # print_enrichment_results(enrichment_results)
     elif benjamini_hochberg_correct:
@@ -689,7 +669,7 @@ def run_enrichment_analysis_plain_enrich_pruning_strategy(
     all_removed_nodes.update(removed_nodes)
     print(f"Removed nodes by linear branch pruner: {removed_nodes}")
 
-    G, removed_nodes, execution_count = root_children_pruner(
+    G, removed_nodes, _execution_count = root_children_pruner(
         G,
         levels,
         allow_re_execution=False,
@@ -762,7 +742,7 @@ if __name__ == "__main__":
     benjamini_hochberg_correct = True  # Used in Binche1
 
     root_children_prune = True
-    levels = 2  # Number of levels to prune including root. 1 only prunes root, 2 prunes root and it's direct neighbour, and so on.
+    levels = 2  # Number of levels to prune including root. 1 only prunes root, 2 prunes root, and it's direct neighbor, and so on.
     # allow_re_execution = False  # Currently not necessary. Whether the pruner can be executed multiple times on a given graph.
     # execution_count = 0  # Currently not necessary. Counter for the number of executions
 
@@ -780,6 +760,7 @@ if __name__ == "__main__":
 
     # studyset_list = ["http://purl.obolibrary.org/obo/CHEBI_77030","http://purl.obolibrary.org/obo/CHEBI_79036"]
     # studyset_list = ["http://purl.obolibrary.org/obo/CHEBI_77030"]
+    ## COMMENT: What is this below?
     # Problem "Warning: p-value for node http://purl.obolibrary.org/obo/CHEBI_36357 not found. Assuming high p-value." Not found because it was removed in root children pruner but whyyy is it still in the graph???" Inte kollat om fixat!!!!!!!!!!!!!!!!!!!
     # studyset_list =["http://purl.obolibrary.org/obo/CHEBI_17234"]
     # studyset_list =["http://purl.obolibrary.org/obo/CHEBI_37626"]

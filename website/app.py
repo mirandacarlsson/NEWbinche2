@@ -10,8 +10,8 @@ import uuid
 
 import requests
 from flask import Flask, redirect, render_template, request, session, url_for
-from rdkit import Chem
-from rdkit.Chem import inchi
+from rdkit import Chem  # type: ignore
+from rdkit.Chem import inchi  # type: ignore
 
 from calculations.fishers_calculations import (
     run_enrichment_analysis,
@@ -66,7 +66,7 @@ def _canonical_smiles(smiles):
     """
     try:
         mol = Chem.MolFromSmiles(smiles)
-    except Exception:
+    except Exception:  # noqa: BLE001
         return None
     return Chem.MolToSmiles(mol) if mol is not None else None
 
@@ -216,7 +216,7 @@ def get_data_version():
 
 @app.context_processor
 def inject_data_version():
-    return dict(data_version=get_data_version())
+    return {"data_version": get_data_version()}
 
 
 @app.route("/")
@@ -259,7 +259,7 @@ def parse_studyset(studyset: str):
 
     def normalize_id(raw_id: str) -> str:
         value = raw_id.strip().replace('"', "")
-        if value.startswith("http://") or value.startswith("https://"):
+        if value.startswith(("http://", "https://")):
             return value
         if value.startswith("CHEBI:"):
             return value.replace(":", "_")
@@ -269,11 +269,7 @@ def parse_studyset(studyset: str):
         """Detect if a string is likely a SMILES string."""
         value = value.strip()
         # Not a SMILES if it starts with CHEBI: or http
-        if (
-            value.startswith("CHEBI:")
-            or value.startswith("http://")
-            or value.startswith("https://")
-        ):
+        if value.startswith(("CHEBI:", "http://", "https://")):
             return False
         # SMILES typically contain lowercase letters, parentheses, or specific chars
         smiles_chars = set("cCnNoOpPsSFfIiBbr[]()=#@+-\\/")
@@ -354,7 +350,7 @@ def convert_smiles_to_chebi(smiles_string):
     cleaned_smiles = _clean_lookup_value(smiles_string)
     try:
         mol = Chem.MolFromSmiles(cleaned_smiles)
-    except Exception as error:
+    except Exception as error:  # noqa: BLE001
         print(f"Warning: failed to parse SMILES {cleaned_smiles}: {error}")
         mol = None
     canonical_smiles = Chem.MolToSmiles(mol) if mol is not None else None
@@ -392,7 +388,7 @@ def convert_smiles_to_chebi(smiles_string):
                     f"for SMILES {cleaned_smiles} (InChIKey {user_inchikey})",
                 )
                 return chebi_ids, was_resolved, ambiguous_match
-    except Exception as error:
+    except Exception as error:  # noqa: BLE001
         print(
             f"Warning: failed to compute InChIKey for SMILES {cleaned_smiles}: {error}",
         )

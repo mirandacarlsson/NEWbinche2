@@ -2,6 +2,8 @@
 
 import csv
 import json
+
+# ruff: noqa
 import os
 import re
 import sys
@@ -38,7 +40,7 @@ from calculations.visualitations_and_pruning import (
 # n_ss_leaves = total number of input classes in the study set (if they are all leaf classes, otherwise count corresponding leaf classes)
 # n_ss_annotated = number of the input classes that are descendants of the given class
 # n_bg_leaves = total number of leaf classes connected to the narrow set (human entities in this case)
-# n_bg_annotated = number of those leaf classes that are descendants of the given class)
+# n_bg_annotated = number of those leaf classes that are descendants of the given class
 
 # For the background, we want to include all classes that are connected to the narrow set (human entities)
 # If the CHEBI_Id is a leaf, we include it (and count is as 1 leaf), and all of its ancetsors.
@@ -217,9 +219,6 @@ def gather_narrow_leaves(
 
     print(f"Saved {len(narrow_leaves)} narrow leaves to {output_json}")
     return narrow_leaves
-
-
-"""Enrichment Calcultaions"""
 
 
 def get_studyset_leaves_narrow(
@@ -533,7 +532,7 @@ def run_narrow_background_enrichment_analysis(
     with open(roles_to_leaves_map_json) as f:
         roles_to_leaves_map = json.load(f)
     with open(narrow_background_leaves_json) as f:
-        cached = json.load(f)
+        json.load(f)
 
     # Normalize study set IDs to full IRIs
     studyset_list = [normalize_id(cls) for cls in studyset_list]
@@ -622,7 +621,7 @@ def run_narrow_background_enrichment_analysis(
             print(f"studyset_leaves: {studyset_leaves}")
             print(f"Root children pruner activated, pruning {levels} levels from root")
             time_start_total = time.time()
-            pruned_G, removed_nodes, execution_count = root_children_pruner(
+            pruned_G, removed_nodes, _execution_count = root_children_pruner(
                 pruned_G,
                 levels,
                 allow_re_execution=False,
@@ -676,7 +675,7 @@ def run_narrow_background_enrichment_analysis(
 
     if bonferroni_correct:
         print("Applying Bonferroni correction to p-values...")
-        enrichment_results, correction_map = bonferroni_correction(enrichment_results)
+        enrichment_results, _correction_map = bonferroni_correction(enrichment_results)
         # print("Enrichment results after Bonferroni correction:")
         # print_enrichment_results(enrichment_results)
     elif benjamini_hochberg_correct:
@@ -892,7 +891,7 @@ def run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy(
     all_removed_nodes.update(removed_nodes)
     print(f"Removed nodes by linear branch pruner: {removed_nodes}")
 
-    G, removed_nodes, execution_count = root_children_pruner(
+    G, removed_nodes, _execution_count = root_children_pruner(
         G,
         levels,
         allow_re_execution=False,

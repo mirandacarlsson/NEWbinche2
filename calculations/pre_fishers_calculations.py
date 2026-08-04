@@ -1,7 +1,8 @@
-"I need to count classes removed from a given class. This will only be based on the structural split."
+"""Count classes removed from a given class in the structural split.
 
-"The total number of classes in the structural split will also be counted."
-"OBS: Need to make sure to only count a removed class once."
+The total number of classes in the structural split is also counted.
+OBS: make sure to only count a removed class once.
+"""
 
 import json
 import logging
@@ -53,9 +54,6 @@ def build_class_to_leaf_map(leaf_to_ancestors_file, class_to_leaf_output_file):
     class_to_leaves = defaultdict(set)
     print("Building class to leaf descendants map...")
 
-    # Collect all leaf classes
-    all_leaf_classes = set(leaf_to_ancestors.keys())
-
     # For each leaf, add it to all its ancestors
     for leaf, ancestors in leaf_to_ancestors.items():
         for ancestor in ancestors:
@@ -102,6 +100,7 @@ def count_removed_classes_for_class(
     Returns:
         leaves: Set of leaf class IRIs
         n_leaves: Count of leaves
+        :param class_to_all_roles_map:
     """
 
     # if classification not in ["structural", "functional", "full"]:

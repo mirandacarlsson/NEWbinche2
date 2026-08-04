@@ -1,11 +1,9 @@
+"""Download and load the ChEBI ontology."""
+
 import os
 import urllib.request
 
-import pyhornedowl
-
-"""
-This script downloads the ChEBI ontology in OWL format and loads it using pyhornedowl.
-"""
+import pyhornedowl  # type: ignore
 
 # URL and local save path
 CHEBI_URL = "https://ftp.ebi.ac.uk/pub/databases/chebi/ontology/chebi.owl"

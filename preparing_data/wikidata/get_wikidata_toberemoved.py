@@ -83,4 +83,7 @@ try:
 except requests.exceptions.Timeout:
     print("Query timed out — try narrowing with a filter or LIMIT")
 except requests.exceptions.HTTPError as e:
-    print(f"HTTP error: {e.response.status_code} — {e.response.text}")
+    response = e.response
+    status_code = response.status_code if response is not None else "?"
+    text = response.text if response is not None else ""
+    print(f"HTTP error: {status_code} — {text}")

@@ -1,6 +1,7 @@
 import argparse
 import re
 import time
+from typing import cast
 
 import pandas as pd
 import requests
@@ -329,12 +330,20 @@ def run_find_missing_chebis(
         raise ValueError(f"Unknown source preset: {source!r}")
 
     preset = SOURCE_PRESETS[source]
-    compounds_file = compounds_file if compounds_file is not None else preset["input"]
-    output_file = output_file if output_file is not None else preset["output"]
-    smiles_columns = (
-        smiles_columns if smiles_columns is not None else preset["smiles_columns"]
+    compounds_file = (
+        compounds_file if compounds_file is not None else cast(str, preset["input"])
     )
-    chebi_column = chebi_column if chebi_column is not None else preset["chebi_column"]
+    output_file = (
+        output_file if output_file is not None else cast(str, preset["output"])
+    )
+    smiles_columns = (
+        smiles_columns
+        if smiles_columns is not None
+        else cast(list[str], preset["smiles_columns"])
+    )
+    chebi_column = (
+        chebi_column if chebi_column is not None else cast(str, preset["chebi_column"])
+    )
 
     print(
         f"Running find_missing_chebis programmatically: source={source}, input={compounds_file}, output={output_file}",

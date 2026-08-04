@@ -135,7 +135,7 @@ def get_name(chebi_ontology, iri):
             # print(f"Found class for IRI: {iri}")
             # Find rdfs:label element
             label_elem = cls.find("rdfs:label", ns)
-            if label_elem is not None:
+            if label_elem is not None and label_elem.text is not None:
                 return label_elem.text.strip()
 
     return None  # if not found
@@ -273,8 +273,8 @@ def create_graph_with_roles_and_structures(
 #         H = create_graph_from_paths(paths)
 
 #         # Add labels for Cytospace compatibility
-#         lable_dict = {node: id_to_name(node) for node in H.nodes()}
-#         nx.set_node_attributes(H, lable_dict, 'label')
+#         label_dict = {node: id_to_name(node) for node in H.nodes()}
+#         nx.set_node_attributes(H, label_dict, 'label')
 
 #         G = nx.compose(G, H)  # Combine graphs
 
@@ -330,9 +330,8 @@ def create_graph_with_roles_and_structures(
 # Pruning strategies
 #####################################
 
-""" RootChildrenPruner:
-This pruner aims to delete the roots (the more general entities in the ontology) and its children up to a defined level.
-Removes the defined level of children from the root class of the ontology."""
+# RootChildrenPruner:
+# This pruner deletes roots and their children up to a defined level.
 ### 2 levels remove two levels: root and its direct children.
 ### Different from Binche1 which only removes root and 2 of its direct children.
 
@@ -366,11 +365,11 @@ def root_children_pruner(G, levels, allow_re_execution=False, execution_count=0)
 # TODO: look over if execution count and allow_re_execution is needed anywhere
 
 
-"""Linear branch collapser pruner - remove fewer nodes:
-This pruner collapses linear branches in the ontology graph by removing fewer intermediate nodes in branches
-where each node has exactly one child, effectively connecting every n:th node in such branches directly.
-Keeps every n:th node in linear branches."""
-# Removing fewer nodes in linear branches
+# Linear branch collapser pruner - remove fewer nodes:
+# This pruner collapses linear branches in the ontology graph by removing
+# fewer intermediate nodes in branches where each node has exactly one child,
+# effectively connecting every n:th node in such branches directly.
+# Keeps every n:th node in linear branches.
 
 
 # new version
@@ -407,26 +406,26 @@ def process_branch_remove_less(head, node, G, n, removed_nodes):
             nodes_to_keep = [head, last_node]
         else:
             # Keep every n:th node in the branch
-            i = 0
             nodes_to_keep = [head]
-            for node in branch_nodes:
-                i += 1
-                if i % n == 0:
-                    nodes_to_keep.append(node)
+            for index, branch_node in enumerate(branch_nodes, start=1):
+                if index % n == 0:
+                    nodes_to_keep.append(branch_node)
             nodes_to_keep.append(last_node)
 
             # print(f"Nodes to keep in branch: {nodes_to_keep}")
 
-        for node in branch_nodes:
-            if node not in nodes_to_keep:
-                removed_nodes.add(node)
-                G.remove_node(node)
+        for branch_node in branch_nodes:
+            if branch_node not in nodes_to_keep:
+                removed_nodes.add(branch_node)
+                G.remove_node(branch_node)
 
         for i in range(len(nodes_to_keep) - 1):
-            # Check that both nodes exist before adding edge
-            if G.has_node(nodes_to_keep[i]) and G.has_node(nodes_to_keep[i + 1]):
-                if not G.has_edge(nodes_to_keep[i + 1], nodes_to_keep[i]):
-                    G.add_edge(nodes_to_keep[i + 1], nodes_to_keep[i])
+            if (
+                G.has_node(nodes_to_keep[i])
+                and G.has_node(nodes_to_keep[i + 1])
+                and not G.has_edge(nodes_to_keep[i + 1], nodes_to_keep[i])
+            ):
+                G.add_edge(nodes_to_keep[i + 1], nodes_to_keep[i])
 
     # Recurse only over children that still exist in the graph
     for child in children_before:
@@ -448,11 +447,10 @@ def linear_branch_collapser_pruner_remove_less(G, n):
     return G, removed_nodes
 
 
-"""High P-Value Branch Pruner:
-Removes branches from the graph components that contain only vertices with a p-value greater than 0.05.
- * This pruner looks for branches of the ontology in the enrichment analysis result graph which
- * have only high p-values, and gets rid of them. If the branch inspected has at least one node with
- * a p-value below threshold set, then the branch is kept."""
+# High P-Value Branch Pruner:
+# Removes branches from the graph components that contain only vertices with a
+# p-value greater than 0.05. If the branch inspected has at least one node
+# with a p-value below the threshold, the branch is kept.
 
 
 def high_p_value_branch_pruner(G, p_value_dict, p_value_threshold=0.05):
@@ -611,17 +609,8 @@ def graph_to_cytospace_json(G, output_file, enrichment_results=None):
 
         data["elements"].append({"data": node_data})
 
-    """In enrichment_results:
-            results[class_to_check]={
-            "class": id_to_name(class_to_check),
-            "n_ss_annotated": n_ss_annotated,
-            "n_ss_leaves": n_ss_leaves,
-            "n_bg_annotated": n_bg_annotated,
-            "n_bg_leaves": n_bg_leaves,
-            "odds_ratio": odds,
-            "p_value": p_value,
-            "p_value_corrected": p_value_corrected (Added after correction)
-        }"""
+    # enrichment_results entries contain class metadata, counts, odds ratio,
+    # and p-values; the JSON structure is built above.
 
     # Edges
     for source, target in G.edges():
@@ -651,44 +640,33 @@ def graph_to_cytospace_json(G, output_file, enrichment_results=None):
         json.dump(data, f, indent=4)
 
 
-"""
-### Example usage
-start_class = "http://purl.obolibrary.org/obo/CHEBI_33675"
-start_time = time.time()
-ontology = load_ontology("data/filtered_chebi_no_leaves_with_smiles_no_deprecated.owl")
-
-paths = find_paths_to_root(ontology, start_class)
-end_time = time.time()
-print(f"Time taken using ontology: {end_time - start_time} seconds")
-
-print("Using ontology:")
-for path in paths:
-    print(" -> ".join(path))
-
-start_time = time.time()
-paths = find_paths_to_root_with_map("data/chebi_parent_map.json", start_class)
-end_time = time.time()
-print(f"Time taken using parent map: {end_time - start_time} seconds")
-
-print("Using parent map:")
-for path in paths:
-    print(" -> ".join(path))
-
-"""
-
-
-"""
+# Example usage:
+# start_class = "http://purl.obolibrary.org/obo/CHEBI_33675"
+# start_time = time.time()
+# ontology = load_ontology("data/filtered_chebi_no_leaves_with_smiles_no_deprecated.owl")
+# paths = find_paths_to_root(ontology, start_class)
+# end_time = time.time()
+# print(f"Time taken using ontology: {end_time - start_time} seconds")
+# print("Using ontology:")
+# for path in paths:
+#     print(" -> ".join(path))
+# start_time = time.time()
+# paths = find_paths_to_root_with_map("data/chebi_parent_map.json", start_class)
+# end_time = time.time()
+# print(f"Time taken using parent map: {end_time - start_time} seconds")
+# print("Using parent map:")
+# for path in paths:
+#     print(" -> ".join(path))
+#
 # ---- Usage ----
 # Variables
-levels = 2 # Number of levels to prune from root. 1 only prunes root and it's direct neighbour, and so on.
-allow_re_execution = False  # True or False. whether the pruner can be executed multiple times on a given graph.
-execution_count = 0  # Counter for the number of executions
-
+# levels = 2 # Number of levels to prune from root. 1 only prunes root, and it's direct neighbor, and so on.
+# allow_re_execution = False  # True or False. whether the pruner can be executed multiple times on a given graph.
+# execution_count = 0  # Counter for the number of executions
+#
 # OBS: first run cell to create G, then run the pruner function below.
-pruned_G = G.copy()
-pruned_G, execution_count = root_children_pruner(pruned_G, levels, allow_re_execution, execution_count)
-
+# pruned_G = G.copy()
+# pruned_G, execution_count = root_children_pruner(pruned_G, levels, allow_re_execution, execution_count)
+#
 # graphing_layout = "kamada_kawai" # options: "default", "kamada_kawai", "spectral", "layer_based"
-draw_graph(pruned_G, graphing_layout, f"Ontology graph pruned {levels} levels from root(s)")
-
-"""
+# draw_graph(pruned_G, graphing_layout, f"Ontology graph pruned {levels} levels from root(s)")

@@ -55,7 +55,7 @@ def connect_lotus_csv_to_chebi_ids(
     lotus["chebi_id"] = None
     lotus["chebi_source"] = None
 
-    for index, row in lotus.iterrows():
+    for position, (index, row) in enumerate(lotus.iterrows(), start=1):
         inchikey = row.get("compound_inchikey")
         smiles_conn = row.get("compound_smiles_conn")
         smiles_iso = row.get("compound_smiles_iso")
@@ -76,7 +76,7 @@ def connect_lotus_csv_to_chebi_ids(
             )
             lotus.at[index, "chebi_source"] = "found_via_smiles_iso"
 
-        if index % 1000 == 0:
+        if position % 1000 == 0:
             print(f"Processed {index} / {len(lotus)} rows")
 
     Path(output_tsv_path).parent.mkdir(parents=True, exist_ok=True)

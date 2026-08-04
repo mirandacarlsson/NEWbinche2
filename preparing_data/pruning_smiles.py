@@ -1,3 +1,5 @@
+"""Filter the ontology to remove leaf classes with SMILES annotations."""
+
 import csv
 import json
 import os
@@ -10,8 +12,6 @@ from collections import defaultdict
 import pandas as pd
 
 from preparing_data.load_chebi import load_chebi, load_ontology
-
-"""This script filters the ontology to remove classes that have SMILES and that are leaves"""
 
 
 def _has_wildcard(smiles):
@@ -290,7 +290,7 @@ def find_leaf_classes_with_smiles_and_deprecated(
             smiles_value = None
 
             for axiom in axioms:
-                component = axiom.component  # The component of the axiom can eg be SubClassOf, AnnotationAssertion, etc.
+                component = axiom.component  # The component of the axiom can e.g. be SubClassOf, AnnotationAssertion, etc.
                 if (
                     type(component).__name__ == "AnnotationAssertion"
                 ):  # Check if axiom is an annotation, e.g. a SMILES or deprecated tag
@@ -298,7 +298,7 @@ def find_leaf_classes_with_smiles_and_deprecated(
                     if hasattr(
                         ann,
                         "ap",
-                    ):  # Check if annotation has an annotation property (ap). This can eg tell us if it is a SMILES string
+                    ):  # Check if annotation has an annotation property (ap). This can e.g. tell us if it is a SMILES string
                         prop_str = str(
                             ann.ap,
                         )  # Converts property IRI to string for easier comparison
@@ -325,7 +325,7 @@ def find_leaf_classes_with_smiles_and_deprecated(
                 # A class is a leaf if it has its own valid, non-wildcard SMILES, regardless of
                 # whether it has subclasses. Classes with children that qualify are spliced out
                 # of the hierarchy below so leaves stay terminal. Wildcard/R-group placeholder
-                # SMILES (eg ChEBI's '*') are excluded.
+                # SMILES (e.g. ChEBI's '*') are excluded.
                 if not _has_wildcard(smiles_value):
                     leaf_classes_with_smiles.append(cls_str)
 
@@ -334,7 +334,7 @@ def find_leaf_classes_with_smiles_and_deprecated(
                         print(f"Found {j} leaf classes with SMILES so far...")
             # Helper function to get all ancestors recursively
 
-    # Sanity guard: a near-empty leaf set means leaf detection silently failed (eg SMILES
+    # Sanity guard: a near-empty leaf set means leaf detection silently failed (e.g. SMILES
     # values were not read as expected). Catch it here, because the splice verification below
     # passes trivially when there are no leaves to misplace.
     if len(classes_with_smiles) > 0 and len(leaf_classes_with_smiles) < 0.5 * len(
@@ -367,14 +367,13 @@ def find_leaf_classes_with_smiles_and_deprecated(
     leaf_to_parents = {}
     i = 0
     ancestor_cache_from_parent_map = {}
-    for leaf in leaf_classes_with_smiles:
+    for i, leaf in enumerate(leaf_classes_with_smiles, start=1):
         all_ancestors = _get_all_ancestors_from_parent_map(
             leaf,
             flattened_parent_map,
             ancestor_cache_from_parent_map,
         )
         leaf_to_parents[leaf] = all_ancestors
-        i += 1
         if i % 1000 == 0:
             print(f"Processed {i} leaf classes for ancestor mapping...")
 
@@ -402,7 +401,7 @@ def save_filtered_owl(
 
     # Check if output file already exists to avoid overwriting
     try:
-        with open(output_file) as f:
+        with open(output_file):
             print(
                 f"Output file {output_file} already exists. Please remove it or change name before running this function.",
             )
@@ -448,9 +447,8 @@ def save_filtered_owl(
 
     # Remove all marked elements
     # Could combine marking elements and removing them -- check for later
-    for elem in elements_to_remove:
+    for j, elem in enumerate(elements_to_remove, start=1):
         root.remove(elem)
-        j += 1
         if j % 5000 == 0:
             print(f"Removed {j} elements so far...")
 
@@ -556,7 +554,7 @@ def save_leaf_classes_with_smiles(
         if not parents and chebi_ontology:
             try:
                 parents = {str(p) for p in chebi_ontology.get_superclasses(cls)}
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(f"⚠️ Could not get superclasses for {cls}: {e}")
                 classification = "unknown"
                 parents = set()
@@ -633,7 +631,7 @@ def remove_classes_from_owl(input_file, classes_to_remove, output_file):
     print(f"Saved to {output_file}")
 
 
-"""For building parent map"""  # maybe move to separate file later
+# For building parent map.  # maybe move to separate file later
 
 
 def build_parent_map(
@@ -774,7 +772,11 @@ def map_names_to_classes(chebi_ontology, output_json):
             short_id = iri  # fallback
 
         label_elem = cls.find("rdfs:label", ns)
-        name = label_elem.text.strip() if label_elem is not None else None
+        name = (
+            label_elem.text.strip()
+            if label_elem is not None and label_elem.text is not None
+            else None
+        )
 
         iri_to_name[short_id] = name
 

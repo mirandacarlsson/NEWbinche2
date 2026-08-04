@@ -1,3 +1,5 @@
+"""Create all derived data files for the project."""
+
 import json
 import os
 import shutil
@@ -33,12 +35,6 @@ from preparing_data.wikidata.get_wikidata_lotus import connect_lotus_csv_to_cheb
 from preparing_data.wikidata.narrow_background_fishers import gather_narrow_leaves
 
 start_time = time.time()
-
-"""
-A script for creating all necessary files for the project.
-The old data is moved to a timestamped folder.
-If there are more than three folders with old data, the oldest ones are deleted to keep only the three most recent.
-"""
 
 
 def _run_stage(stage_name, stage_timings, func, *args, **kwargs):
@@ -96,7 +92,7 @@ def rename_folder(old_name, new_name):
         else:
             print(f"Folder '{old_name}' does not exist")
             return False
-    except Exception as e:
+    except OSError as e:
         print(f"Error renaming folder: {e}")
         return False
 
@@ -120,9 +116,9 @@ def finalize_folder_structure():
     1. data -> data_last_used_YYYY.MM.DD (or with counter if needed)
     2. data_new -> data
     """
-    import datetime
+    from datetime import datetime, timezone
 
-    timestamp = datetime.datetime.now().strftime("%Y.%m.%d")
+    timestamp = datetime.now(timezone.utc).strftime("%Y.%m.%d")
 
     # Rename old data folder if it exists
     if os.path.exists("data"):

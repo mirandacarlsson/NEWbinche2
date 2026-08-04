@@ -7,6 +7,8 @@ import urllib.request
 from pathlib import Path
 
 import pandas as pd
+
+# ruff: noqa
 import requests
 
 REPO_ROOT = Path(__file__).resolve().parents[1]

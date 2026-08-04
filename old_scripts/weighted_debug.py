@@ -26,12 +26,12 @@ from calculations.visualitations_and_pruning import (
     zero_degree_pruner,
 )
 
-"""Using SaddleSum for weighted enrichment calculations"""
+# Using SaddleSum for weighted enrichment calculations.
 
 
 def normalize_id(raw_id: str) -> str:
     value = raw_id.strip().replace('"', "")
-    if value.startswith("http://") or value.startswith("https://"):
+    if value.startswith(("http://", "https://")):
         return value
     # Convert CHEBI:ID to http://purl.obolibrary.org/obo/CHEBI_ID format
     if value.startswith("CHEBI:"):
@@ -177,7 +177,13 @@ def find_lambda(m, sum_weights, weights_dict, N_tot):
     # Step 1: Bisection to find initial λ in range [0.00001, 5.0]
     try:
         lambda_init = brentq(
-            lambda l: saddlepoint_equation(l, m, sum_weights, weights_dict, N_tot),
+            lambda lambda_value: saddlepoint_equation(
+                lambda_value,
+                m,
+                sum_weights,
+                weights_dict,
+                N_tot,
+            ),
             0.00001,
             5.0,
             maxiter=100,
@@ -190,9 +196,20 @@ def find_lambda(m, sum_weights, weights_dict, N_tot):
     # Step 2: Newton-Raphson refinement for higher precision
     try:
         lambda_optimal = newton(
-            func=lambda l: saddlepoint_equation(l, m, sum_weights, weights_dict, N_tot),
+            func=lambda lambda_value: saddlepoint_equation(
+                lambda_value,
+                m,
+                sum_weights,
+                weights_dict,
+                N_tot,
+            ),
             x0=lambda_init,
-            fprime=lambda l: saddlepoint_equation_derivative(l, m, weights_dict, N_tot),
+            fprime=lambda lambda_value: saddlepoint_equation_derivative(
+                lambda_value,
+                m,
+                weights_dict,
+                N_tot,
+            ),
             tol=0.01,
             maxiter=50,
         )
@@ -234,7 +251,7 @@ def lugannani_rice_pvalue(lambda_val, m, sum_observed_weights, weights_dict, N_t
         return 1.0
 
     # Get CGF K(t̂), K'(t̂), K''(t̂) at the saddlepoint
-    d1k, d2k, kt, rho_t = calc_cgf_derivatives(lambda_val, weights_dict, N_tot)
+    _d1k, _d2k, kt, _rho_t = calc_cgf_derivatives(lambda_val, weights_dict, N_tot)
 
     # Calculate z according to Equation 4: z = sign(t̂) × √(2[t̂Ŝ - mK(t̂)])
     z_squared_arg = lambda_val * sum_observed_weights - m * kt
@@ -246,11 +263,11 @@ def lugannani_rice_pvalue(lambda_val, m, sum_observed_weights, weights_dict, N_t
     z = np.sign(lambda_val) * np.sqrt(2 * z_squared_arg)
 
     # Calculate C according to Equation 4: C = t̂√(mK''(t̂))
-    if d2k <= 0:
+    if _d2k <= 0:
         # Invalid variance, return non-significant
         return 1.0
 
-    C = lambda_val * np.sqrt(m * d2k)
+    C = lambda_val * np.sqrt(m * _d2k)
 
     if abs(C) < 1e-10:  # Avoid division by very small numbers
         return 1.0
@@ -347,7 +364,7 @@ def calculate_weighted_pvalue(
     n_observed = len(overlap)
 
     if n_observed == 0:
-        return  # No overlap, no enrichment. Shouldn't happen due to earlier check.
+        return None
 
     # Calculate sum of weights for the overlap
     sum_observed_weights = sum(
@@ -357,7 +374,7 @@ def calculate_weighted_pvalue(
     # Find the saddlepoint parameter λ
     try:
         lambda_optimal = find_lambda(m, sum_observed_weights, weights_dict, N_total)
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"Error finding lambda for {class_to_check}: {e}")
         return None
 
@@ -371,7 +388,7 @@ def calculate_weighted_pvalue(
             weights_dict,
             N_total,
         )
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"Error calculating p-value for {class_to_check}: {e}")
         return None
 
@@ -547,7 +564,7 @@ def run_weighted_enrichment_analysis_plain_enrich_pruning_strategy(
     all_removed_nodes.update(removed_nodes)
     print(f"Removed nodes by linear branch pruner: {removed_nodes}")
 
-    G, removed_nodes, execution_count = root_children_pruner(
+    G, removed_nodes, _execution_count = root_children_pruner(
         G,
         levels,
         allow_re_execution=False,
@@ -679,7 +696,7 @@ def run_weighted_enrichment_analysis(
     if pruning_before_enrichment:
         if root_children_prune:
             print(f"Root children pruner activated, pruning {levels} levels from root")
-            pruned_G, removed_nodes, execution_count = root_children_pruner(
+            pruned_G, removed_nodes, _execution_count = root_children_pruner(
                 pruned_G,
                 levels,
                 allow_re_execution=False,
@@ -783,7 +800,7 @@ def run_weighted_enrichment_analysis(
 # TODO: Check so that it works for all classifications
 
 
-# Autoscaling weights to see if makes p-values more significant. Maybe not sensible but worth a try.
+# Autoscaling weights to see if it makes p-values more significant. Maybe not sensible but worth a try.
 def auto_scale_weights(weights_dict, target_max=100):
     """
     Automatically scale weights so the maximum is target_max.

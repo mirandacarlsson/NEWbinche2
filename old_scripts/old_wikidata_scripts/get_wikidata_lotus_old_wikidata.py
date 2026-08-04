@@ -35,17 +35,6 @@ def normalize_chebi_id(raw_value):
     return "|".join(values)
 
 
-"""
-The scripts loads the latest Wikidata LOTUS dump from Zenodo, which contains pre-extracted compound-taxon pairs.
-
-compounds.tsv - chemical structures metadata (wikidataId, canonicalSmiles, isomericSmiles, inchi, inchiKey)
-references.tsv - bibliographical references metadata (wikidataId, pipe separated DOIs, titles)
-taxa.tsv - biological organisms metadata (wikidataId, pipe separated names, taxa rank)
-compound_reference_taxon.tsv - the documented structure-organism pairs
-
-"""
-
-
 def download_wikidata_lotus():
     SAVE_DIR = Path(__file__).resolve().parent.parent / "data" / "wikidata"
     SAVE_DIR.mkdir(parents=True, exist_ok=True)
@@ -82,9 +71,9 @@ def download_wikidata_lotus():
         print(f"  Saved to {save_path}")
         dfs[filename] = pd.read_csv(save_path, sep="\t")
 
-    compounds = dfs["compounds.tsv"]
-    taxa = dfs["taxa.tsv"]
-    pairs = dfs["compound_reference_taxon.tsv"]
+    _ = dfs["compounds.tsv"]
+    _ = dfs["taxa.tsv"]
+    _ = dfs["compound_reference_taxon.tsv"]
 
 
 def print_summary():
@@ -193,7 +182,7 @@ def connect_smiles_to_chebi_ids(new_file_path):
 
     # Add a new column to wiki_compounds for the matched ChEBI ID
     # For each row in wiki_compounds, check if the canonicalSmiles matches any SMILES in chebi_smiles_dict and if so, add the corresponding ChEBI ID to the new column
-    # If theres is no match, try to match the isomericSmiles column instead. If still no match, leave the new column as None
+    # If there is no match, try to match the isomericSmiles column instead. If still no match, leave the new column as None
 
     wiki_compounds["chebi_id"] = None
 

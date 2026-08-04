@@ -1,4 +1,4 @@
-from rdkit import Chem
+from rdkit import Chem  # type: ignore
 
 
 def test_smiles(smiles_string):

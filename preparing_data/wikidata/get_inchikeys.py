@@ -1,8 +1,6 @@
-print("This script converts SMILES strings to InChIKeys using RDKit.")
-
 import pandas as pd
-from rdkit import Chem
-from rdkit.Chem.inchi import InchiToInchiKey, MolToInchi
+from rdkit import Chem  # type: ignore
+from rdkit.Chem.inchi import InchiToInchiKey, MolToInchi  # type: ignore
 
 
 def smiles_to_inchikey(smiles, starcount=0):
