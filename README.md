@@ -15,7 +15,7 @@ The web application is available at https://chebin.hastingslab.org/.
 The web application is hosted at https://chebin.hastingslab.org/. To run
 calculations locally, execute `website/app.py`. Note that all necessary data
 files must be generated beforehand for local execution (as described in the
-[Workflow](#workflow) section below).
+Workflow section below).
 
 ### Study Set
 
@@ -45,11 +45,11 @@ of enrichment:
 
 The option of using a narrower, more specified, background is also provided. For
 each narrow background a set of leaf classes for specified using external
-sources, as explained below. Then all the ascending classes of these leaves
-in the ChEBI ontology were used as the background populations: thus only using
+sources, as explained below. Then all the ascending classes of these leaves in
+the ChEBI ontology were used as the background populations: thus only using
 subsets of the ontology.
 
-#### Human background 1 (LOTUS and HMDB)
+### Human background 1 (LOTUS and HMDB)
 
 Compounds from HMDB and LOTUS (taxonomy = Homos sapiens) were mapped to ChEBI
 leaf classes to serve as a background for enrichment. These are entities that
@@ -67,7 +67,7 @@ to prevent high-level classes from disproportionately inflating the background.
 The resulting set of leaf classes were used to form the narrow background used
 in the enrichment analysis.
 
-#### Human background 2 (Recon3D)
+### Human background 2 (Recon3D)
 
 A second, narrower human background was built from
 [Recon3D](http://bigg.ucsd.edu/models/Recon3D), a genome-scale reconstruction of
@@ -108,7 +108,7 @@ procollagen) rather than discrete chemical structures, so they would not have
 been usable in a ChEBI structure-based background regardless of the matching
 method.
 
-#### Arabidopsis thaliana Background
+### Arabidopsis thaliana Background
 
 This background also uses data from LOTUS but with taxonomy = Arabidopsis
 thaliana. Mapping was done in the same way as for the first human background.
@@ -208,7 +208,7 @@ corrected p-values are shown, as well as its ChEBI ID.
 Nodes can be selected by clicking on them. Right-clicking on a node provides
 options such as 'Select first neighbors' and 'Select descendants'.
 
-## Workflow - How the data files are created
+## Workflow
 
 This explains in further detail how the data files have been created and
 filtered. Most necessary files can simply be obtained by running
@@ -216,19 +216,18 @@ filtered. Most necessary files can simply be obtained by running
 to be downloaded manually:
 
 - `data/hmdb_metabolites.xml` --- the 'All Metabolites' XML from
-  [HMDB](https://hmdb.ca/downloads) (see [step 6.3](#6-needed-for-human-dataset)
-  below).
+  [HMDB](https://hmdb.ca/downloads) (see step 6.3 below).
 
 This is already done for the web application where the files are updated
 automatically once every month.
 
-#### 0. UV environment
+### 0. UV environment
 
 A uv environment with the following installations was used:
 
 `uv pip install py-horned-owl rdkit networkx pandas numpy tqdm flask scipy requests`
 
-#### 1. Load ChEBI
+### 1. Load ChEBI
 
 Download and load the ChEBI ontology by running `preparing_data/load_chebi.py`.
 In the script, the OWL file is downloaded from
@@ -238,7 +237,7 @@ already exists; delete `data/chebi.owl` if you want to attain a newer version.
 The version used in the webapplication is automatically updated on the 1st of
 every month.
 
-#### 2. Remove leaf classes and save maps
+### 2. Remove leaf classes and save maps
 
 To identify leaf classes and flatten the hierarchy, use
 `preparing_data/pruning_smiles.py`.
@@ -287,7 +286,7 @@ Run task *"map_names_to_classes"* to build:
 - `data/chebi_id_to_name_map.json`, which maps short CHEBI IDs (e.g.,
   `CHEBI_111`) to their names.
 
-#### 2.5 Save maps connected to the roles of the classes
+### 2.5 Save maps connected to the roles of the classes
 
 Maps that include the roles of the classes are needed for some enrichment
 calculations. These are made in `calculations/prepare_role_calculations.py`.
@@ -327,7 +326,7 @@ Third, run the task *"build class to all roles map"* to create:
 Here, each class is mapped to its direct roles, roles inherited from ancestor
 classes, and **descendants** of those roles in the role hierarchy.
 
-#### 3. Split up the ontology based on structure
+### 3. Split up the ontology based on structure
 
 Classes are sorted into structural vs. functional (role) sets by
 `identify_structural_vs_functional()` in
@@ -365,7 +364,7 @@ produce identical class sets. The OWL files are just an on-disk,
 human-inspectable form of the same information, useful for manual runs or
 debugging.
 
-#### 4. Save a file with the removed leaf classes
+### 4. Save a file with the removed leaf classes
 
 Go back to `preparing_data/pruning_smiles.py` and run task
 *"save_removed_leaf_classes"* to save the removed leaf classes in a CSV file.
@@ -382,7 +381,7 @@ with SMILES are expected to fall under structural roots, so entries classified
 as **functional** are likely misclassified and are excluded from downstream
 calculations (they are kept in the file for troubleshooting).
 
-#### 5. Fisher's Calculations
+### 5. Fisher's Calculations
 
 First (only needed once), run task *"build_class_to_leaf_map"* in
 `calculations/pre_fishers_calculations.py` to create
@@ -399,38 +398,39 @@ but this is easiest done via the web application. Either use the website link
 (easiest since no preparation steps to obtain all the necessary files are
 needed) or run `website/app.py` locally.
 
-#### 6. Needed for human dataset
+### 6. Needed for human dataset
 
 1. Download LOTUS compound--taxon data from Wikidata via the QLever SPARQL
    endpoint using `preparing_data/wikidata/get_lotus.py`. This is run
    automatically by `preparing_data/create_files.py`, but can also be run
    standalone:
 
-```bash
-python preparing_data/wikidata/get_lotus.py
-```
+   ```bash
+      python preparing_data/wikidata/get_lotus.py
+   ```
 
-Output: - `data/lotus_homo_sapiens.csv` - `data/lotus_arabidopsis_thaliana.csv`
+   Output: - `data/lotus_homo_sapiens.csv` -
+   `data/lotus_arabidopsis_thaliana.csv`
 
 2. Connect the LOTUS CSVs to ChEBI IDs using `connect_lotus_csv_to_chebi_ids()`
    in `preparing_data/wikidata/get_wikidata_lotus.py`.
 
-Output: - `data/wikidata/created/lotus_homo_sapiens_with_chebi_ids.tsv` -
-`data/wikidata/created/lotus_arabidopsis_thaliana_with_chebi_ids.tsv`
+   Output: - `data/wikidata/created/lotus_homo_sapiens_with_chebi_ids.tsv` -
+   `data/wikidata/created/lotus_arabidopsis_thaliana_with_chebi_ids.tsv`
 
 3. Extract HMDB compounds using `extract_hmdb_to_file()` in
    `preparing_data/hmdb/extract_hmdb.py`.
 
-`data/hmdb_metabolites.xml` is required and must be downloaded manually from
-https://hmdb.ca/downloads (use the 'All Metabolites' XML).
+   `data/hmdb_metabolites.xml` is required and must be downloaded manually from
+   https://hmdb.ca/downloads (use the 'All Metabolites' XML).
 
-Output: - `data/hmdb_metabolites_extract.tsv`
+   Output: - `data/hmdb_metabolites_extract.tsv`
 
 4. Filter HMDB to only keep compounds with status "quantified" or "detected"
    using `filter_hmdb_statuses_main()` in
    `preparing_data/hmdb/filter_hmdb_statuses.py`.
 
-Output: `data/hmdb_metabolites_extract_quantified_detected.tsv`
+   Output: `data/hmdb_metabolites_extract_quantified_detected.tsv`
 
 5. Find missing ChEBI IDs using `run_find_missing_chebis(source)` in
    `preparing_data/wikidata/find_missing_chebis.py` (also runnable via
@@ -438,32 +438,32 @@ Output: `data/hmdb_metabolites_extract_quantified_detected.tsv`
    one of the presets in `SOURCE_PRESETS`: `"lotus_hs"`, `"lotus_at"`, or
    `"hmdb"`.
 
-ChEBI ID matching is attempted in this order: - Direct ChEBI matches (LOTUS) -
-Exact SMILES match against ChEBI leaf classes - InChIKey match against ChEBI
-leaf classes - Chebifier API
+   ChEBI ID matching is attempted in this order: - Direct ChEBI matches (LOTUS) -
+   Exact SMILES match against ChEBI leaf classes - InChIKey match against ChEBI
+   leaf classes - Chebifier API
 
-Output (depending on source): -
-`data/wikidata/created/lotus_homo_sapiens_with_chebi_ids_updatedchebis.tsv` -
-`data/wikidata/created/lotus_arabidopsis_thaliana_with_chebi_ids_updatedchebis.tsv` -
-`data/hmdb_metabolites_extract_quantified_detected_updatedchebis.tsv`
+   Output (depending on source): -
+   `data/wikidata/created/lotus_homo_sapiens_with_chebi_ids_updatedchebis.tsv` -
+   `data/wikidata/created/lotus_arabidopsis_thaliana_with_chebi_ids_updatedchebis.tsv` -
+   `data/hmdb_metabolites_extract_quantified_detected_updatedchebis.tsv`
 
 6. Combine HMDB and LOTUS Homo sapiens sources using `combine_datasets()` in
    `preparing_data/wikidata/combine_human_datasets.py`. Rows with no ChEBI ID
    are dropped.
 
-Output: `data/combined_hmdb_wikidata.tsv`
+   Output: `data/combined_hmdb_wikidata.tsv`
 
 7. Create a file with the human leaf classes using `gather_narrow_leaves()` in
    `preparing_data/wikidata/narrow_background_fishers.py`.
 
-Files needed: - `compounds_tsv = "data/combined_hmdb_wikidata.tsv"` -
-`leaves_csv = "data/removed_leaf_classes_with_smiles.csv"` -
-`class_to_leaf_map = "data/class_to_leaf_descendants_map.json"` -
-`taxon_label = "homo_sapiens"` (recorded in the output JSON for traceability)
+   Files needed: - `compounds_tsv = "data/combined_hmdb_wikidata.tsv"` -
+   `leaves_csv = "data/removed_leaf_classes_with_smiles.csv"` -
+   `class_to_leaf_map = "data/class_to_leaf_descendants_map.json"` -
+   `taxon_label = "homo_sapiens"` (recorded in the output JSON for traceability)
 
-Output: `data/human_entities_leaves.json`
+   Output: `data/human_entities_leaves.json`
 
-#### Narrow background for a single Wikidata taxon (e.g. Arabidopsis thaliana)
+### Narrow background for a single Wikidata taxon (e.g. Arabidopsis thaliana)
 
 This is the same workflow as above, but since there is only one source
 (Wikidata), steps 3, 4, and 6 (HMDB extraction/filtering and combining datasets)
@@ -477,8 +477,8 @@ are skipped entirely.
 2. Fill in any still-missing ChEBI IDs using the `"lotus_at"` preset in
    `preparing_data/wikidata/find_missing_chebis.py`.
 
-Output:
-`data/wikidata/created/lotus_arabidopsis_thaliana_with_chebi_ids_updatedchebis.tsv`
+   Output:
+   `data/wikidata/created/lotus_arabidopsis_thaliana_with_chebi_ids_updatedchebis.tsv`
 
 3. Build the leaf classes with `gather_narrow_leaves()` in
    `preparing_data/wikidata/narrow_background_fishers.py`, passing the file from
@@ -486,7 +486,7 @@ Output:
 
 Output: `data/arabidopsis_thaliana_leaves.json`
 
-#### Endogenous human background (Recon3D)
+### Endogenous human background (Recon3D)
 
 This path is independent of steps 6 and the Wikidata/HMDB workflow above; it
 only needs the files from steps 1--5
