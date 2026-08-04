@@ -45,7 +45,7 @@ of enrichment:
 
 The option of using a narrower, more specified, background is also provided. For
 each narrow background a set of leaf classes for specified using external
-sources, as explained below. Then all of the ascending classes of these leaves
+sources, as explained below. Then all the ascending classes of these leaves
 in the ChEBI ontology were used as the background populations: thus only using
 subsets of the ontology.
 
@@ -73,7 +73,7 @@ A second, narrower human background was built from
 [Recon3D](http://bigg.ucsd.edu/models/Recon3D), a genome-scale reconstruction of
 human metabolism, downloaded as JSON from [BiGG Models](http://bigg.ucsd.edu/).
 Unlike the Human background above, this one is restricted to metabolites that
-participate in modelled human metabolic reactions, so it excludes
+participate in modeled human metabolic reactions, so it excludes
 externally-sourced human-associated compounds (e.g. drugs, diet).
 
 Recon3D represents each metabolite once per cellular compartment it appears in
@@ -90,7 +90,7 @@ follows:
 1. If any listed ChEBI ID is already a leaf, **all** such leaf candidates were
    kept. BiGG often lists several ChEBI IDs for one compound (e.g. different
    protonation or tautomer states), and these are typically genuinely distinct
-   structures rather than duplicates, so none were discarded in favour of a
+   structures rather than duplicates, so none were discarded in favor of a
    single "primary" one.
 2. If none of the listed IDs is a leaf, each was expanded to its leaf
    descendants, excluding any class with more than 150 leaf descendants (the
@@ -178,15 +178,15 @@ have been removed through pruning is available.
 ### The Graph
 
 On the next page, a graph based on the enrichment analysis is displayed. The
-colouring of the nodes is based on the significance of the p-values. It is
+coloring of the nodes is based on the significance of the p-values. It is
 dependent on the values in that session; it is relative by default. Making the
-colour scale absolute can currently only be done by changing the code (not
+color scale absolute can currently only be done by changing the code (not
 available on the online webpage). To make this change in your local version, go
 to `website/templates/graph.html` and change the following line:
 
 `const colourScaleMode = 'relative'; // 'absolute' or 'relative'`
 
-The corrected p-value is used for the colouring if it is available.
+The corrected p-value is used for the coloring if it is available.
 
 The graph will initially show only the most relevant branches. This means that
 all nodes with p-values under or equal to 0.05 will be shown, including all
