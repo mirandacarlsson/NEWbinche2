@@ -31,20 +31,19 @@ CHEBI:46816	0.7465
 
         <h5 class="mb-4">Using SMILES</h5>
         <p>If using SMILES, please read the "Using SMILES" section and specify your preference below.</p>
-        </p>
 
         <div class="mb-4" style="margin-left: 20px;">
             <div class="form-check">
                 <input type="radio" name="smiles_option" value="use_parents" id="use_parents" checked class="form-check-input">
                 <label for="use_parents" class="form-check-label">Use the direct parents of any unmapped SMILES</label>
-                <button type="button" class="btn btn-sm ms-2 info-button" style="border: none; background: none; color: #800020; padding: 0;" data-bs-toggle="popover" data-bs-trigger="hover" data-bs-placement="top" title="Using predicted parents" data-bs-content="If your results show many nodes with weak enrichment using this option, try excluding unmapped SMILES instead.">
+                <button type="button" class="btn btn-sm ms-2 info-button" aria-label="More information about using predicted parents" style="border: none; background: none; color: #800020; padding: 0;" data-bs-toggle="popover" data-bs-trigger="hover" data-bs-placement="top" title="Using predicted parents" data-bs-content="If your results show many nodes with weak enrichment using this option, try excluding unmapped SMILES instead.">
                     🛈
                 </button>
             </div>
             <div class="form-check">
                 <input type="radio" name="smiles_option" value="exclude" id="exclude_unmapped" class="form-check-input">
                 <label for="exclude_unmapped" class="form-check-label">Exclude any unmapped SMILES</label>
-                <button type="button" class="btn btn-sm ms-2 info-button" style="border: none; background: none; color: #800020; padding: 0;" data-bs-toggle="popover" data-bs-trigger="hover" data-bs-placement="top" title="Excluding unmapped SMILES" data-bs-content="Unmapped SMILES will be displayed in the results section. Consider manually searching the ChEBI database to identify appropriate IDs.">
+                <button type="button" class="btn btn-sm ms-2 info-button" aria-label="More information about excluding unmapped SMILES" style="border: none; background: none; color: #800020; padding: 0;" data-bs-toggle="popover" data-bs-trigger="hover" data-bs-placement="top" title="Excluding unmapped SMILES" data-bs-content="Unmapped SMILES will be displayed in the results section. Consider manually searching the ChEBI database to identify appropriate IDs.">
                     🛈
                 </button>
             </div>
@@ -59,15 +58,15 @@ CHEBI:46816	0.7465
         <div class="mb-3">
             <div class="form-check">
                 <input type="radio" name="classification" value="structural" required class="form-check-input">
-                <label for="" class="form-check-label">Structure</label>
+                <label class="form-check-label">Structure</label>
             </div>
             <div class="form-check">
                 <input type="radio" name="classification" value="functional" class="form-check-input">
-                <label for="" class="form-check-label">Role</label>
+                <label class="form-check-label">Role</label>
             </div>
             <div class="form-check">
                 <input type="radio" name="classification" value="full" class="form-check-input">
-                <label for="" class="form-check-label">Both</label>
+                <label class="form-check-label">Both</label>
             </div>
         </div>
 
@@ -77,26 +76,26 @@ CHEBI:46816	0.7465
         <div class="mb-3">
             <div class="form-check">
                 <input type="radio" name="background" value="full" required class="form-check-input">
-                <label for="" class="form-check-label">Full background</label>
+               <label class="form-check-label">Full background</label>
             </div>
             <div class="form-check">
                 <input type="radio" name="background" value="human" class="form-check-input">
-                <label for="" class="form-check-label">Homo sapiens-based background 1</label>
-                <button type="button" class="btn btn-sm ms-2 info-button" style="border: none; background: none; color: #800020; padding: 0;" data-bs-toggle="popover" data-bs-trigger="hover" data-bs-placement="top" title="Human-measured entities" data-bs-content="Based on data derived from the Human Metabolome Database (HMDB) and LOTUS (taxonomy = Homo sapiens) and is thus only based on entities that have been measured in human samples.">
+               <label class="form-check-label">Homo sapiens-based background 1</label>
+               <button type="button" class="btn btn-sm ms-2 info-button" aria-label="More information about the first Homo sapiens background" style="border: none; background: none; color: #800020; padding: 0;" data-bs-toggle="popover" data-bs-trigger="hover" data-bs-placement="top" title="Human-measured entities" data-bs-content="Based on data derived from the Human Metabolome Database (HMDB) and LOTUS (taxonomy = Homo sapiens) and is thus only based on entities that have been measured in human samples.">
                     🛈
                 </button>
             </div>
-             <div class="form-check">
+            <div class="form-check">
                 <input type="radio" name="background" value="endogenous_human" class="form-check-input">
-                <label for="" class="form-check-label">Homo sapiens-based background 2</label>
-                <button type="button" class="btn btn-sm ms-2 info-button" style="border: none; background: none; color: #800020; padding: 0;" data-bs-toggle="popover" data-bs-trigger="hover" data-bs-placement="top" title="Human-synthesised entities" data-bs-content="Based on data derived from Recon3D (from BiGG Models) that only contains metabolites that are guaranteed to have genetic machinery to be synthesised in the human body, unlike the broader Homo sapiens background, which also includes externally-sourced human-associated compounds (eg drugs, diet).">
+               <label class="form-check-label">Homo sapiens-based background 2</label>
+               <button type="button" class="btn btn-sm ms-2 info-button" aria-label="More information about the second Homo sapiens background" style="border: none; background: none; color: #800020; padding: 0;" data-bs-toggle="popover" data-bs-trigger="hover" data-bs-placement="top" title="Human-synthesised entities" data-bs-content="Based on data derived from Recon3D (from BiGG Models) that only contains metabolites that are guaranteed to have genetic machinery to be synthesised in the human body, unlike the broader Homo sapiens background, which also includes externally-sourced human-associated compounds (eg drugs, diet).">
                     🛈
                 </button>
-                </div>
+            </div>
             <div class="form-check">
                 <input type="radio" name="background" value="arabidopsis_thaliana" class="form-check-input">
-                <label for="" class="form-check-label">Arabidopsis thaliana-based background</label>
-                <button type="button" class="btn btn-sm ms-2 info-button" style="border: none; background: none; color: #800020; padding: 0;" data-bs-toggle="popover" data-bs-trigger="hover" data-bs-placement="top" title="Arabidopsis thaliana related entities" data-bs-content="Based on data from LOTUS (taxonomy = Arabidopsis thaliana) which is based on entities that have been measured in Arabidopsis thaliana samples.">
+               <label class="form-check-label">Arabidopsis thaliana-based background</label>
+               <button type="button" class="btn btn-sm ms-2 info-button" aria-label="More information about the Arabidopsis thaliana background" style="border: none; background: none; color: #800020; padding: 0;" data-bs-toggle="popover" data-bs-trigger="hover" data-bs-placement="top" title="Arabidopsis thaliana related entities" data-bs-content="Based on data from LOTUS (taxonomy = Arabidopsis thaliana) which is based on entities that have been measured in Arabidopsis thaliana samples.">
                     🛈
                 </button>
             </div>
@@ -112,7 +111,7 @@ CHEBI:46816	0.7465
         <button class="btn btn-primary" type="submit">Submit</button>
     </form>
 
-    <aside class="info-container">
+    <aside class="info-container" aria-label="Help and guidance">
         <h4 class="mb-2">
             <button class="btn info-toggle" type="button" data-bs-toggle="collapse" data-bs-target="#target-enrichment-info" aria-expanded="false" aria-controls="target-enrichment-info">
                 <i class="fa fa-chevron-right info-toggle-icon"></i> Selecting target of enrichment
@@ -177,7 +176,6 @@ CHEBI:46816	0.7465
             </p>
             <p><strong>Data used to build the narrow backgrounds</strong></p>
             <p>The <a href="https://adafede.github.io/dioxus/lotus-explorer/?download=true&format=csv&lang=en&taxon=%2A" style="color: #0f808d; text-decoration: none;">LOTUS</a> data that is used for two of the narrow backgrounds is also re-downloaded together with the ontology. The data used from <a href="https://hmdb.ca/downloads?__cf_chl_f_tk=PKzA5S4Zu3B1eBTzecaAyljzuobbAYBpOpJhsI4ypYk-1783003779-1.0.1.1-tnAXv3O9XdikrbXh_8lgUqmCen.q.0l8xku7hzxTndY" style="color: #0f808d; text-decoration: none;">HMDB</a> was released on 2021-11-17, and the <a href="http://bigg.ucsd.edu/models/Recon3D" style="color: #0f808d; text-decoration: none;">Recon3D</a> model is from 2019-10-31.</p>
-            </p>
         </div>
 
         <div class="home-logo">

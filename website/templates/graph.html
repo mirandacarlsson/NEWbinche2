@@ -81,18 +81,17 @@
 
     <div id="cy"></div>
 
-    <div id="color-legend">
-    <div id="legend-title"></div>
-    <div class="legend-container">
-        <div class="legend-gradient"></div>
-        <div class="legend-labels">
-            <span>Low </span>
-            <span id="legend-max">High</span>
+    <div id="color-legend" aria-label="Graph colour legend">
+        <div id="legend-title"></div>
+        <div class="legend-container">
+            <div class="legend-gradient"></div>
+            <div class="legend-labels">
+                <span>Low</span>
+                <span id="legend-max">High</span>
+            </div>
         </div>
+        <p class="text-muted">(−log₁₀ scale)</p>
     </div>
-    <p class="text-muted">(−log₁₀ scale)</p>
-
-</div>
 </div>
 
 <script>
@@ -104,7 +103,7 @@
     fetch("{{url_for('static', filename='data/' ~ graph_file)}}")
     .then(response => response.json())
     .then(data => {
-        var cy = cytoscape({
+        const cy = cytoscape({
             container: document.getElementById('cy'),
             elements: data.elements,
 
@@ -156,7 +155,6 @@
 
         let labelsVisible = true;
 
- 10
         // Flip the graph vertically to have roots at the top
         cy.nodes().forEach(node => {
             const pos = node.position();
@@ -174,7 +172,7 @@
 
         const absoluteMaxExponent = 4; // Colour saturation point: p >= 1e-maxExponent all map to max significance
 
-        if (colourScaleMode == 'relative') {
+        if (colourScaleMode === 'relative') {
             // Determine max exponent from data
             var maxExponent = 0;
             cy.nodes().forEach(node => {
@@ -186,7 +184,7 @@
                     }
                 }
             });
-        } else if (colourScaleMode == 'absolute') {
+        } else if (colourScaleMode === 'absolute') {
             var maxExponent = absoluteMaxExponent;
         } else {
             throw new Error("Invalid colour scale mode");
