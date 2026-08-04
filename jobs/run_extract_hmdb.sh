@@ -10,10 +10,11 @@
 #SBATCH --time=5:00:00
 #SBATCH --account metabolinkai
 
-echo Running on `hostname` at `date`
+echo "Running on $(hostname) at $(date)"
 
-cd /idiap/temp/mcarlsson/binche2
+cd /idiap/temp/mcarlsson/binche2 || exit
 
+# shellcheck source=/dev/null
 source bincheEnv/bin/activate
 
 python preparing_data/hmdb/extract_hmdb.py

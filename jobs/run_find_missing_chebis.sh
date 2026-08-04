@@ -10,10 +10,11 @@
 #SBATCH --time=2:00:00
 #SBATCH --account metabolinkai
 
-echo Running on `hostname` at `date`
+echo "Running on $(hostname) at $(date)"
 
-cd /idiap/temp/mcarlsson/binche2
+cd /idiap/temp/mcarlsson/binche2 || exit
 
+# shellcheck source=/dev/null
 source bincheEnv/bin/activate
 
 # Optional first arg selects the source preset: wikidata_hs (default), hmdb, or wikidata_at
