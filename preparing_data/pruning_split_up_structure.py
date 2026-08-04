@@ -217,10 +217,10 @@ def check_roots_of_unknown(unknown_classes, chebi_ontology):
 
         # Find top-most ancestors
         root_ancestors = []
-        for and in ancestors:
-            supers = chebi_ontology.get_superclasses(and)
+        for ancestor in ancestors:
+            supers = chebi_ontology.get_superclasses(ancestor)
             if not supers or all(s not in ancestors for s in supers):
-                root_ancestors.append(and)
+                root_ancestors.append(ancestor)
 
         # Store results per root
         for root in root_ancestors:
