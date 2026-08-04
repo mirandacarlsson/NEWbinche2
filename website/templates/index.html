@@ -15,7 +15,7 @@
         <p>Here, you can submit your study set for enrichment analysis based on the <a href="https://www.ebi.ac.uk/chebi/" style="color: #0f808d; text-decoration: none;">ChEBI ontology</a>. </p>
         <h4 class="mb-4">Input Study Set</h4>
 
-        <p>The input molecular entities should either be in ChEBI ID format (e.g., CHEBI:16236) or as SMILES (eg. C2H6O).</p>
+        <p>The input molecular entities should either be in ChEBI ID format (e.g. CHEBI:16236) or as SMILES (e.g. C2H6O).</p>
         <p>A combination of both is allowed.</p>
         <p><strong>Example submission format:</strong></p>
         <pre>
@@ -49,23 +49,31 @@ CHEBI:46816	0.7465
             </div>
         </div>
 
-        <textarea name="study_set" class="study-set" rows="17" cols="80"
-            placeholder="Enter your study set here"></textarea>
+        <label>
+<textarea name="study_set" class="study-set" rows="17" cols="80"
+    placeholder="Enter your study set here"></textarea>
+        </label>
 
         <br><br>
         <h4>Specify Target of Enrichment</h4>
         <p>Read the "Selecting target of enrichment" section for more information.</p>
         <div class="mb-3">
             <div class="form-check">
-                <input type="radio" name="classification" value="structural" required class="form-check-input">
+                <label>
+                    <input type="radio" name="classification" value="structural" required class="form-check-input">
+                </label>
                 <label class="form-check-label">Structure</label>
             </div>
             <div class="form-check">
-                <input type="radio" name="classification" value="functional" class="form-check-input">
+                <label>
+                    <input type="radio" name="classification" value="functional" class="form-check-input">
+                </label>
                 <label class="form-check-label">Role</label>
             </div>
             <div class="form-check">
-                <input type="radio" name="classification" value="full" class="form-check-input">
+                <label>
+                    <input type="radio" name="classification" value="full" class="form-check-input">
+                </label>
                 <label class="form-check-label">Both</label>
             </div>
         </div>
@@ -75,26 +83,34 @@ CHEBI:46816	0.7465
 
         <div class="mb-3">
             <div class="form-check">
-                <input type="radio" name="background" value="full" required class="form-check-input">
-               <label class="form-check-label">Full background</label>
+                <label>
+                    <input type="radio" name="background" value="full" required class="form-check-input">
+                </label>
+                <label class="form-check-label">Full background</label>
             </div>
             <div class="form-check">
-                <input type="radio" name="background" value="human" class="form-check-input">
-               <label class="form-check-label">Homo sapiens-based background 1</label>
+                <label>
+                    <input type="radio" name="background" value="human" class="form-check-input">
+                </label>
+                <label class="form-check-label">Homo sapiens-based background 1</label>
                <button type="button" class="btn btn-sm ms-2 info-button" aria-label="More information about the first Homo sapiens background" style="border: none; background: none; color: #800020; padding: 0;" data-bs-toggle="popover" data-bs-trigger="hover" data-bs-placement="top" title="Human-measured entities" data-bs-content="Based on data derived from the Human Metabolome Database (HMDB) and LOTUS (taxonomy = Homo sapiens) and is thus only based on entities that have been measured in human samples.">
                     🛈
                 </button>
             </div>
             <div class="form-check">
-                <input type="radio" name="background" value="endogenous_human" class="form-check-input">
-               <label class="form-check-label">Homo sapiens-based background 2</label>
+                <label>
+                    <input type="radio" name="background" value="endogenous_human" class="form-check-input">
+                </label>
+                <label class="form-check-label">Homo sapiens-based background 2</label>
                <button type="button" class="btn btn-sm ms-2 info-button" aria-label="More information about the second Homo sapiens background" style="border: none; background: none; color: #800020; padding: 0;" data-bs-toggle="popover" data-bs-trigger="hover" data-bs-placement="top" title="Human-synthesised entities" data-bs-content="Based on data derived from Recon3D (from BiGG Models) that only contains metabolites that are guaranteed to have genetic machinery to be synthesised in the human body, unlike the broader Homo sapiens background, which also includes externally-sourced human-associated compounds (eg drugs, diet).">
                     🛈
                 </button>
             </div>
             <div class="form-check">
-                <input type="radio" name="background" value="arabidopsis_thaliana" class="form-check-input">
-               <label class="form-check-label">Arabidopsis thaliana-based background</label>
+                <label>
+                    <input type="radio" name="background" value="arabidopsis_thaliana" class="form-check-input">
+                </label>
+                <label class="form-check-label">Arabidopsis thaliana-based background</label>
                <button type="button" class="btn btn-sm ms-2 info-button" aria-label="More information about the Arabidopsis thaliana background" style="border: none; background: none; color: #800020; padding: 0;" data-bs-toggle="popover" data-bs-trigger="hover" data-bs-placement="top" title="Arabidopsis thaliana related entities" data-bs-content="Based on data from LOTUS (taxonomy = Arabidopsis thaliana) which is based on entities that have been measured in Arabidopsis thaliana samples.">
                     🛈
                 </button>
@@ -159,7 +175,7 @@ CHEBI:46816	0.7465
             <p>Based on data derived from the Human Metabolome Database (HMDB) and LOTUS (taxonomy = Homo sapiens) and is thus only based on entities that have been measured in human samples.</p>
 
             <p><strong>Homo sapiens-based background 2</strong></p>
-            <p>Based on data derived from Recon3D (from BiGG Models) that only contains metabolites that are guaranteed to have genetic machinery to be synthesised in the human body, unlike the broader Homo sapiens background, which also includes externally-sourced human-associated compounds (eg drugs, diet). </p>
+            <p>Based on data derived from Recon3D (from BiGG Models) that only contains metabolites that are guaranteed to have genetic machinery to be synthesized in the human body, unlike the broader Homo sapiens background, which also includes externally-sourced human-associated compounds (e.g. drugs, diet). </p>
 
             <p><strong>Arabidopsis thaliana-based background</strong></p>
             <p>Based on data from LOTUS (taxonomy = Arabidopsis thaliana) which is based on entities that have been measured in Arabidopsis thaliana samples.</p>

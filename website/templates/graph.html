@@ -170,7 +170,7 @@
 
         const colourScaleMode = 'relative'; // 'absolute' or 'relative'
 
-        const absoluteMaxExponent = 4; // Colour saturation point: p >= 1e-maxExponent all map to max significance
+        const absoluteMaxExponent = 4; // Color saturation point: p >= 1e-maxExponent all map to max significance
 
         if (colourScaleMode === 'relative') {
             // Determine max exponent from data
@@ -225,7 +225,7 @@
             return `rgb(${r},${g},${b})`;
         }
 
-        // Update node colours based on p-value
+        // Update node colors based on p-value
         const colorLow = "#ca3900";
         const colorHigh = "#ffffff";
 
@@ -367,7 +367,7 @@
             };
         }
 
-        // Draws the same colour-legend shown on screen (#color-legend) onto a canvas
+        // Draws the same color-legend shown on screen (#color-legend) onto a canvas
         // context, since cy.png()/cy.jpeg() only rasterize the graph itself.
         function drawLegend(ctx, x, y, layout) {
             ctx.save();
@@ -812,7 +812,7 @@
                             {% if pruning.get('method') == 'custom' %} checked {% endif %}>
                             <label class="form-check-label" for="no_loop_prune">
                                 No looping pruning
-                                <small class="d-block text-muted">(customise pruning options below)</small>
+                                <small class="d-block text-muted">(customize pruning options below)</small>
                             </label>
                         </div>
                     </div>
