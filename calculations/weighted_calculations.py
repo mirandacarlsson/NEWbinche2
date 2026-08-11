@@ -1,6 +1,4 @@
 """
-weighted_calculations.py
-
 SaddleSum (Lugannani-Rice) enrichment for ChEBI ontology.
 Mirrors fishers_calculations.py exactly — same function signatures,
 same file/data dependencies, same pruning pipeline.

@@ -178,9 +178,9 @@ have been removed through pruning is available.
 ### The Graph
 
 On the next page, a graph based on the enrichment analysis is displayed. The
-coloring of the nodes is based on the significance of the p-values. It is
+colouring of the nodes is based on the significance of the p-values. It is
 dependent on the values in that session; it is relative by default. Making the
-color scale absolute can currently only be done by changing the code (not
+colour scale absolute can currently only be done by changing the code (not
 available on the online webpage). To make this change in your local version, go
 to `website/templates/graph.html` and change the following line:
 

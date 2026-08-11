@@ -758,13 +758,10 @@ if __name__ == "__main__":
     check_leaf_classes = False  # Checks that the found the leaf classes are of the expected type (Functional or Structural). If the classification is correct,
     # this should never be a problem and can be set to False.
 
-    # studyset_list = ["http://purl.obolibrary.org/obo/CHEBI_77030","http://purl.obolibrary.org/obo/CHEBI_79036"]
-    # studyset_list = ["http://purl.obolibrary.org/obo/CHEBI_77030"]
-    ## COMMENT: What is this below?
-    # Problem "Warning: p-value for node http://purl.obolibrary.org/obo/CHEBI_36357 not found. Assuming high p-value." Not found because it was removed in root children pruner but whyyy is it still in the graph???" Inte kollat om fixat!!!!!!!!!!!!!!!!!!!
-    # studyset_list =["http://purl.obolibrary.org/obo/CHEBI_17234"]
-    # studyset_list =["http://purl.obolibrary.org/obo/CHEBI_37626"]
-    studyset_list = ["http://purl.obolibrary.org/obo/CHEBI_77030"]
+
+    # For testing purposes, you can use the following study set of two compounds:
+
+    studyset_list = ["http://purl.obolibrary.org/obo/CHEBI_77030","http://purl.obolibrary.org/obo/CHEBI_79036"]
 
     results = run_enrichment_analysis(
         studyset_list,
@@ -788,5 +785,3 @@ if __name__ == "__main__":
     #                         classification="structural",
     #                         check_leaf_classes=False)
 
-    # print("Final results:")
-    # print(results)
