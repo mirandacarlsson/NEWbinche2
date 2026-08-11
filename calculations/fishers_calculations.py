@@ -797,10 +797,12 @@ if __name__ == "__main__":
     check_leaf_classes = False  # Checks that the found the leaf classes are of the expected type (Functional or Structural). If the classification is correct,
     # this should never be a problem and can be set to False.
 
-
     # For testing purposes, you can use the following study set of two compounds:
 
-    studyset_list = ["http://purl.obolibrary.org/obo/CHEBI_77030","http://purl.obolibrary.org/obo/CHEBI_79036"]
+    studyset_list = [
+        "http://purl.obolibrary.org/obo/CHEBI_77030",
+        "http://purl.obolibrary.org/obo/CHEBI_79036",
+    ]
 
     results = run_enrichment_analysis(
         studyset_list,
@@ -823,4 +825,3 @@ if __name__ == "__main__":
     #                         p_value_threshold=0.05, # for high p-value pruner
     #                         classification="structural",
     #                         check_leaf_classes=False)
-
