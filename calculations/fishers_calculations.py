@@ -39,6 +39,28 @@ from calculations.visualitations_and_pruning import (
 
 
 def calculate_p_value(n_ss_annotated, n_ss_leaves, n_bg_annotated, n_bg_leaves):
+    """
+    Calculate Fisher's exact test p-value for enrichment.
+
+    Constructs a 2x2 contingency table from enrichment counts and returns
+    the odds ratio and p-value using Fisher's exact test (greater-tail).
+
+    Contingency table:
+        - a: items in study set annotated to class
+        - b: items in study set NOT annotated to class
+        - c: items in background NOT in study set, annotated to class
+        - d: items in background NOT in study set, NOT annotated to class
+
+    Args:
+        n_ss_annotated: Count of study set items annotated to this class.
+        n_ss_leaves: Total count of items in study set.
+        n_bg_annotated: Count of background items annotated to this class.
+        n_bg_leaves: Total count of items in background.
+
+    Returns:
+        tuple: (odds_ratio, p_value) if valid contingency table, else (None, None).
+            Odds ratio and p-value for greater-tail Fisher's exact test.
+    """
     a = n_ss_annotated
     b = n_ss_leaves - n_ss_annotated
     c = n_bg_annotated - n_ss_annotated
@@ -61,6 +83,18 @@ def calculate_p_value(n_ss_annotated, n_ss_leaves, n_bg_annotated, n_bg_leaves):
 
 
 def normalize_id(raw_id: str) -> str:
+    """
+    Normalize ChEBI identifiers to full IRIs.
+
+    Converts various ChEBI ID formats (CHEBI:12345, raw IDs, or full IRIs)
+    to the standard http://purl.obolibrary.org/obo/CHEBI_XXXXX IRI format.
+
+    Args:
+        raw_id: ChEBI identifier in any format (CHEBI:12345, numeric ID, or IRI).
+
+    Returns:
+        str: Normalized IRI in http://purl.obolibrary.org/obo/CHEBI_XXXXX format.
+    """
     value = raw_id.strip().replace('"', "")
     if value.startswith(("http://", "https://")):
         return value
@@ -110,6 +144,17 @@ def get_leaves(studyset_list, leaves_csv, class_to_leaf_map, structural_leaf_ids
 
 
 def get_ancestors_for_inputs(studyset_leaves, leaf_to_all_parents_map_json):
+    """
+    Extract all ancestors (parents at all levels) of the given leaf classes.
+
+    Args:
+        studyset_leaves: Iterable of leaf class IRIs.
+        leaf_to_all_parents_map_json: Path to JSON file mapping leaf IRIs to
+            lists of all ancestor (parent) IRIs.
+
+    Returns:
+        list: All unique ancestor class IRIs reachable from studyset_leaves.
+    """
     with open(leaf_to_all_parents_map_json) as f:
         leaf_to_all_parents_map = json.load(f)
 
@@ -183,6 +228,18 @@ def get_n_ss_annotated_for_roles(
     class_to_all_roles_map,
     roles_to_leaves_map,
 ):
+    """
+    Count study set items annotated to a role/functional class.
+
+    Args:
+        studyset_leaves: Set/list of study set leaf class IRIs.
+        class_to_check: Role/functional class IRI to check annotation for.
+        class_to_all_roles_map: Map (unused in this function, kept for API consistency).
+        roles_to_leaves_map: Mapping from role IRIs to lists of leaf IRIs.
+
+    Returns:
+        int: Number of study set items with this role annotation.
+    """
     leaves = set()
     leaves.update(roles_to_leaves_map.get(class_to_check, []))
     n_ss_annotated = len(leaves.intersection(set(studyset_leaves)))
@@ -200,6 +257,28 @@ def get_enrichment_values(
     studyset_ancestors_roles,
     structural_leaf_ids=None,
 ):
+    """
+    Calculate Fisher's exact p-values for enrichment of classes in study set.
+
+    Iterates over all candidate classes (structural ancestors or functional roles)
+    and computes the contingency table for each, returning p-values and odds ratios.
+
+    Args:
+        removed_leaves_csv: Path to CSV with all leaf classes and their counts.
+        classification: Classification type: "structural" or "functional".
+        studyset_leaves: List of leaf class IRIs in study set.
+        studyset_ancestors: List of all ancestor class IRIs reachable from study set.
+        class_to_leaf_map: Mapping from class IRIs to their leaf descendants.
+        class_to_all_roles_map: Mapping from structural classes to functional roles.
+        roles_to_leaves_map: Mapping from role IRIs to leaf descendants.
+        studyset_ancestors_roles: List of role IRIs reachable from study set
+            (only used if classification="functional").
+        structural_leaf_ids: Optional set of valid structural leaf IRIs
+            (filtering parameter).
+
+    Returns:
+        dict: Mapping from class/role IRIs to (odds_ratio, p_value) tuples.
+    """
 
     # n_bg_leaves and n_ss_leaves will be the same for all classes
     n_bg_leaves = count_removed_leaves(removed_leaves_csv)

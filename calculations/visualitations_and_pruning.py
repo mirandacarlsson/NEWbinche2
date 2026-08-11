@@ -14,6 +14,18 @@ if str(REPO_ROOT) not in sys.path:
 
 
 def id_to_name(class_id):
+    """
+    Convert ChEBI class IRI to human-readable name with ID.
+
+    Loads name mapping from JSON file and returns formatted string
+    "Name (CHEBI_ID)" or just the ID if name not found.
+
+    Args:
+        class_id: Class IRI (e.g., http://purl.obolibrary.org/obo/CHEBI_12345).
+
+    Returns:
+        str: Formatted name like "ascorbic acid (CHEBI_15377)" or just class_id.
+    """
     id_to_name_map_file = "data/chebi_id_to_name_map.json"
 
     with open(id_to_name_map_file) as f:
@@ -28,6 +40,17 @@ def id_to_name(class_id):
 
 
 def strip_prefix(class_id):
+    """
+    Remove OBO namespace prefix from class IRI.
+
+    Converts http://purl.obolibrary.org/obo/CHEBI_12345 to CHEBI_12345.
+
+    Args:
+        class_id: Class IRI (with or without prefix).
+
+    Returns:
+        str: Class ID without the OBO prefix.
+    """
     prefix = "http://purl.obolibrary.org/obo/"
     if class_id.startswith(prefix):
         return class_id.replace(prefix, "")
@@ -57,6 +80,20 @@ def strip_prefix(class_id):
 
 
 def find_paths_to_root_with_map(start_class, parents_map):
+    """
+    Find all paths from a class to root(s) in the ontology hierarchy.
+
+    Uses depth-first search to explore parent relationships until reaching
+    a root class (one with no parents in the map).
+
+    Args:
+        start_class: Starting class IRI.
+        parents_map: Dictionary mapping class IRIs to lists of parent IRIs.
+
+    Returns:
+        list: List of paths, where each path is a list of class IRIs from
+            start_class to a root class (inclusive).
+    """
     paths = []
 
     def dfs(current_class, current_path):
@@ -180,6 +217,21 @@ def create_graph_from_paths(paths):
 
 
 def create_graph_from_map(classes, parent_map_json_file, max_n_leaf_classes=inf):
+    """
+    Create a directed graph of class hierarchy from a parent map JSON file.
+
+    Constructs a networkx DiGraph where nodes are classes and edges represent
+    parent-child relationships. Uses paths from each class to root(s).
+
+    Args:
+        classes: Iterable of starting class IRIs (typically leaves).
+        parent_map_json_file: Path to JSON file with parent mapping.
+        max_n_leaf_classes: Maximum number of starting classes to process
+            (for memory efficiency on large datasets).
+
+    Returns:
+        networkx.DiGraph: Directed graph of the class hierarchy.
+    """
 
     with open(parent_map_json_file) as f:
         parents_map = json.load(f)

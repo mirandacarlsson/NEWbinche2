@@ -1003,6 +1003,34 @@ def run_weighted_enrichment_analysis(
     zero_degree_prune=False,
     classification="structural",
 ):
+    """
+    Run weighted enrichment analysis on study set with weights.
+
+    Performs enrichment analysis using the Lugannani-Rice saddlepoint
+    approximation (Stojmirović & Yu, 2010) with per-item weights. Supports
+    optional multiple testing correction and graph pruning strategies.
+
+    Args:
+        weights_dict: Dictionary mapping ChEBI IDs (or names) to weight values.
+        bonferroni_correct: Apply Bonferroni multiple testing correction.
+        benjamini_hochberg_correct: Apply Benjamini-Hochberg FDR correction
+            (default: True). Overrides bonferroni_correct if both True.
+        root_children_prune: Prune nodes >N levels from root (requires levels).
+        levels: Distance threshold for root_children_prune (default: 2).
+        linear_branch_prune: Prune linear branches with ≤N nodes (requires n).
+        n: Node count threshold for linear_branch_prune (default: 2).
+        high_p_value_prune: Remove nodes with p-value > threshold.
+        p_value_threshold: P-value cutoff for high_p_value_prune (default: 0.05).
+        zero_degree_prune: Remove unconnected nodes from result graph.
+        classification: Ontology classification type: "structural" or "functional"
+            (default: "structural").
+
+    Returns:
+        tuple: (results_dict, pruned_graph) where:
+            - results_dict contains keys: "study_set" (item names), "removed_nodes"
+              (pruned node names), "enrichment_results" (node -> p-value mapping)
+            - pruned_graph is a networkx graph after all pruning operations
+    """
     removed_leaves_csv = "data/removed_leaf_classes_with_smiles.csv"
     leaf_to_ancestors_map_file = "data/removed_leaf_classes_to_ALL_parents_map.json"
     class_to_leaf_map_file = "data/class_to_leaf_descendants_map.json"
@@ -1176,6 +1204,30 @@ def run_weighted_enrichment_analysis_plain_enrich_pruning_strategy(
     p_value_threshold=0.05,
     classification="structural",
 ):
+    """
+    Run weighted enrichment analysis with fixed pruning strategy.
+
+    Simplified interface applying a fixed, optimized pruning strategy:
+    - Pre-loop: High p-value pruning (threshold), linear branch collapsing,
+      root children pruning (levels)
+    - Loop: Molecule leaf pruning, high p-value pruning, linear collapsing,
+      zero-degree pruning
+    - Post-loop: No additional pruning
+
+    Uses Lugannani-Rice saddlepoint approximation for weighted p-values.
+
+    Args:
+        weights_dict: Dictionary mapping ChEBI IDs (or names) to weight values.
+        levels: Distance threshold for root children pruning (default: 2).
+        n: Node count threshold for linear branch pruning (default: 0, disabled).
+        p_value_threshold: P-value cutoff for high p-value pruning (default: 0.05).
+        classification: Ontology classification type: "structural" or "functional"
+            (default: "structural").
+
+    Returns:
+        tuple: (results_dict, pruned_graph) where results_dict contains
+            "study_set", "removed_nodes", and "enrichment_results" keys.
+    """
     removed_leaves_csv = "data/removed_leaf_classes_with_smiles.csv"
     leaf_to_ancestors_map_file = "data/removed_leaf_classes_to_ALL_parents_map.json"
     class_to_leaf_map_file = "data/class_to_leaf_descendants_map.json"
@@ -1341,6 +1393,32 @@ def run_weighted_narrow_background_enrichment_analysis(
     narrow_background_leaves_json="data/human_entities_leaves.json",
     expand_background=True,
 ):
+    """
+    Run weighted enrichment with restricted (narrow) background population.
+
+    Like run_weighted_enrichment_analysis but restricts the background
+    population to a specific set of leaves (e.g., human-relevant compounds).
+    Useful for species-specific or domain-specific enrichment analysis.
+
+    Args:
+        weights_dict: Dictionary mapping ChEBI IDs to weight values.
+        bonferroni_correct: Apply Bonferroni multiple testing correction.
+        benjamini_hochberg_correct: Apply Benjamini-Hochberg FDR (default: True).
+        root_children_prune: Prune nodes >levels from root.
+        levels: Distance threshold for root pruning (default: 2).
+        linear_branch_prune: Prune linear branches with ≤n nodes.
+        n: Node count threshold for linear pruning (default: 2).
+        high_p_value_prune: Remove nodes with p > threshold.
+        p_value_threshold: P-value cutoff (default: 0.05).
+        zero_degree_prune: Remove unconnected nodes.
+        classification: "structural" or "functional" (default: "structural").
+        narrow_background_leaves_json: Path to JSON file with restricted leaf set
+            (default: "data/human_entities_leaves.json").
+        expand_background: Expand narrow leaves to include their ancestors.
+
+    Returns:
+        tuple: (results_dict, pruned_graph) as in run_weighted_enrichment_analysis.
+    """
     removed_leaves_csv = "data/removed_leaf_classes_with_smiles.csv"
     leaf_to_ancestors_map_file = "data/removed_leaf_classes_to_ALL_parents_map.json"
     class_to_leaf_map_file = "data/class_to_leaf_descendants_map.json"
@@ -1501,6 +1579,26 @@ def run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_stra
     narrow_background_leaves_json="data/human_entities_leaves.json",
     expand_background=True,
 ):
+    """
+    Run weighted enrichment with narrow background and fixed pruning strategy.
+
+    Combines narrow background restriction (species/domain-specific) with
+    the fixed pruning strategy (high p-value, linear branch, root children).
+
+    Args:
+        weights_dict: Dictionary mapping ChEBI IDs to weight values.
+        levels: Distance threshold for root children pruning (default: 2).
+        n: Node count threshold for linear branch pruning (default: 0, disabled).
+        p_value_threshold: P-value cutoff for high p-value pruning (default: 0.05).
+        classification: "structural" or "functional" (default: "structural").
+        narrow_background_leaves_json: Path to JSON file with restricted leaf set
+            (default: "data/human_entities_leaves.json").
+        expand_background: Expand narrow leaves to include their ancestors.
+
+    Returns:
+        tuple: (results_dict, pruned_graph, leaves_to_expand, parents_to_expand)
+            where expand fields track background population expansion.
+    """
     removed_leaves_csv = "data/removed_leaf_classes_with_smiles.csv"
     leaf_to_ancestors_map_file = "data/removed_leaf_classes_to_ALL_parents_map.json"
     class_to_leaf_map_file = "data/class_to_leaf_descendants_map.json"
