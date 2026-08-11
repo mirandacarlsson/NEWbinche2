@@ -10,15 +10,8 @@ Tests the main enrichment analysis entry points:
 Uses mock data files to avoid dependency on full ChEBI dataset.
 """
 
-import json
-import tempfile
-from pathlib import Path
-from unittest.mock import Mock, patch
 
-import pandas as pd
-import pytest
 
-from calculations.fishers_calculations import run_enrichment_analysis
 
 
 class TestRunEnrichmentAnalysisUnit:
@@ -88,7 +81,6 @@ class TestEnrichmentResultsValidity:
         """Study set should be subset of or related to input classes."""
         # This is tested implicitly in other tests
         # but verifies API contract
-        pass
 
     def test_removed_nodes_unique(self):
         """Removed nodes should be unique (no duplicates)."""
@@ -107,7 +99,7 @@ class TestEnrichmentResultsValidity:
             "item3": None,  # Can be None for invalid entries
         }
 
-        for item, values in results.items():
+        for values in results.values():
             if values is not None:
                 assert isinstance(values, dict)
                 if "p_value" in values:
@@ -120,12 +112,6 @@ class TestEnrichmentEdgeCases:
 
     def test_normalization_of_various_id_formats(self):
         """Test that various ChEBI ID formats work."""
-        formats = [
-            "CHEBI:15377",
-            "http://purl.obolibrary.org/obo/CHEBI_15377",
-            "15377",  # May or may not be supported
-            "CHEBI_15377",  # May or may not be supported
-        ]
+        # Various formats should be supported: CHEBI:15377, full IRIs, numeric IDs, etc.
         # This verifies the normalize_id function is robust
         # (tested in test_fishers_calculations.py more thoroughly)
-        pass
