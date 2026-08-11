@@ -14,6 +14,7 @@ import sys
 import time
 from collections import Counter
 from pathlib import Path
+from typing import Optional
 
 import numpy as np
 import pandas as pd
@@ -493,11 +494,11 @@ def _print_non_finite_pvalue_diagnostics(enrichment_results, stage):
 
 
 def calculate_weighted_p_value(
-    saddler,
-    term_leaves,
-    studyset_leaves_set,
-    weights_with_leaves,
-):
+    saddler: object,
+    term_leaves: set,
+    studyset_leaves_set: set,
+    weights_with_leaves: dict,
+) -> tuple[float, int, Optional[float]]:
     """Compute the SaddleSum p-value for a single ontology term.
 
     For a given ontology class, this function:
@@ -991,18 +992,18 @@ def _setup_weighted_narrow_analysis(
 
 
 def run_weighted_enrichment_analysis(
-    weights_dict,
-    bonferroni_correct=False,
-    benjamini_hochberg_correct=True,
-    root_children_prune=False,
-    levels=2,
-    linear_branch_prune=False,
-    n=2,
-    high_p_value_prune=False,
-    p_value_threshold=0.05,
-    zero_degree_prune=False,
-    classification="structural",
-):
+    weights_dict: dict,
+    bonferroni_correct: bool = False,
+    benjamini_hochberg_correct: bool = True,
+    root_children_prune: bool = False,
+    levels: int = 2,
+    linear_branch_prune: bool = False,
+    n: int = 2,
+    high_p_value_prune: bool = False,
+    p_value_threshold: float = 0.05,
+    zero_degree_prune: bool = False,
+    classification: str = "structural",
+) -> tuple[dict, object]:
     """
     Run weighted enrichment analysis on study set with weights.
 
@@ -1198,12 +1199,12 @@ def run_weighted_enrichment_analysis(
 
 
 def run_weighted_enrichment_analysis_plain_enrich_pruning_strategy(
-    weights_dict,
-    levels=2,
-    n=0,
-    p_value_threshold=0.05,
-    classification="structural",
-):
+    weights_dict: dict,
+    levels: int = 2,
+    n: int = 0,
+    p_value_threshold: float = 0.05,
+    classification: str = "structural",
+) -> tuple[dict, object]:
     """
     Run weighted enrichment analysis with fixed pruning strategy.
 
@@ -1379,20 +1380,20 @@ def run_weighted_enrichment_analysis_plain_enrich_pruning_strategy(
 
 
 def run_weighted_narrow_background_enrichment_analysis(
-    weights_dict,
-    bonferroni_correct=False,
-    benjamini_hochberg_correct=True,
-    root_children_prune=False,
-    levels=2,
-    linear_branch_prune=False,
-    n=2,
-    high_p_value_prune=False,
-    p_value_threshold=0.05,
-    zero_degree_prune=False,
-    classification="structural",
-    narrow_background_leaves_json="data/human_entities_leaves.json",
-    expand_background=True,
-):
+    weights_dict: dict,
+    bonferroni_correct: bool = False,
+    benjamini_hochberg_correct: bool = True,
+    root_children_prune: bool = False,
+    levels: int = 2,
+    linear_branch_prune: bool = False,
+    n: int = 2,
+    high_p_value_prune: bool = False,
+    p_value_threshold: float = 0.05,
+    zero_degree_prune: bool = False,
+    classification: str = "structural",
+    narrow_background_leaves_json: str = "data/human_entities_leaves.json",
+    expand_background: bool = True,
+) -> tuple[dict, object]:
     """
     Run weighted enrichment with restricted (narrow) background population.
 
@@ -1571,14 +1572,14 @@ def run_weighted_narrow_background_enrichment_analysis(
 
 
 def run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy(
-    weights_dict,
-    levels=2,
-    n=0,
-    p_value_threshold=0.05,
-    classification="structural",
-    narrow_background_leaves_json="data/human_entities_leaves.json",
-    expand_background=True,
-):
+    weights_dict: dict,
+    levels: int = 2,
+    n: int = 0,
+    p_value_threshold: float = 0.05,
+    classification: str = "structural",
+    narrow_background_leaves_json: str = "data/human_entities_leaves.json",
+    expand_background: bool = True,
+) -> tuple[dict, object]:
     """
     Run weighted enrichment with narrow background and fixed pruning strategy.
 

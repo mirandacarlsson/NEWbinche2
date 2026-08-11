@@ -11,12 +11,9 @@ Uses mock data files to avoid dependency on full ChEBI dataset.
 """
 
 
-
-
-
 class TestRunEnrichmentAnalysisUnit:
     """Unit tests for enrichment analysis pipeline functions.
-    
+
     Note: Full integration tests require the complete ChEBI dataset files.
     These tests verify basic structure and parameter handling.
     """

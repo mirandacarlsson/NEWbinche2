@@ -18,7 +18,6 @@ from calculations.visualitations_and_pruning import (
     create_graph_from_paths,
     extract_chebi_id,
     high_p_value_branch_pruner,
-    id_to_name,
     linear_branch_collapser_pruner_remove_less,
     root_children_pruner,
     strip_prefix,
@@ -67,7 +66,7 @@ class TestGraphCreation:
 
     def test_create_graph_from_paths_single_node(self):
         """Test graph creation with single-node paths (roots).
-        
+
         Note: Single-node paths appear to be skipped by create_graph_from_paths
         since they have no edges. This may be intentional (only paths matter).
         """
@@ -155,7 +154,9 @@ class TestHighPValueBranchPruner:
 
         try:
             graph, removed = high_p_value_branch_pruner(
-                graph, p_value_dict, p_value_threshold=0.05
+                graph,
+                p_value_dict,
+                p_value_threshold=0.05,
             )
             # If successful, verify some nodes were removed
             assert isinstance(removed, (list, set))
@@ -328,11 +329,13 @@ class TestGraphEdgeCases:
     def test_pruning_cyclic_graph(self):
         """Test pruning on graph with cycles."""
         graph = nx.DiGraph()
-        graph.add_edges_from([
-            ("a", "b"),
-            ("b", "c"),
-            ("c", "a"),  # Cycle back
-        ])
+        graph.add_edges_from(
+            [
+                ("a", "b"),
+                ("b", "c"),
+                ("c", "a"),  # Cycle back
+            ],
+        )
 
         graph, removed = zero_degree_pruner(graph)
 

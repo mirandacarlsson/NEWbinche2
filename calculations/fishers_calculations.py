@@ -38,7 +38,12 @@ from calculations.visualitations_and_pruning import (
 #   d = background compounds not in this class (excluding the study set)
 
 
-def calculate_p_value(n_ss_annotated, n_ss_leaves, n_bg_annotated, n_bg_leaves):
+def calculate_p_value(
+    n_ss_annotated: int,
+    n_ss_leaves: int,
+    n_bg_annotated: int,
+    n_bg_leaves: int,
+) -> tuple[float | None, float | None]:
     """
     Calculate Fisher's exact test p-value for enrichment.
 
@@ -143,7 +148,10 @@ def get_leaves(studyset_list, leaves_csv, class_to_leaf_map, structural_leaf_ids
     return list(studyset_leaves)
 
 
-def get_ancestors_for_inputs(studyset_leaves, leaf_to_all_parents_map_json):
+def get_ancestors_for_inputs(
+    studyset_leaves: list[str],
+    leaf_to_all_parents_map_json: str,
+) -> list[str]:
     """
     Extract all ancestors (parents at all levels) of the given leaf classes.
 
@@ -432,19 +440,19 @@ def _load_data_files():
 
 
 def run_enrichment_analysis(
-    studyset_list,
-    bonferroni_correct=False,
-    benjamini_hochberg_correct=True,
-    root_children_prune=False,
-    levels=2,
-    linear_branch_prune=False,
-    n=2,
-    high_p_value_prune=False,
-    p_value_threshold=0.05,
-    zero_degree_prune=False,
-    classification="structural",
-    check_leaf_classes=False,
-):
+    studyset_list: list[str],
+    bonferroni_correct: bool = False,
+    benjamini_hochberg_correct: bool = True,
+    root_children_prune: bool = False,
+    levels: int = 2,
+    linear_branch_prune: bool = False,
+    n: int = 2,
+    high_p_value_prune: bool = False,
+    p_value_threshold: float = 0.05,
+    zero_degree_prune: bool = False,
+    classification: str = "structural",
+    check_leaf_classes: bool = False,
+) -> tuple[dict, object]:
 
     pruning_before_enrichment = root_children_prune or linear_branch_prune
 
@@ -670,13 +678,13 @@ def run_enrichment_analysis(
 
 
 def run_enrichment_analysis_plain_enrich_pruning_strategy(
-    studyset_list,
-    levels=2,  # for root children pruner
-    n=0,  # for linear branch pruner
-    p_value_threshold=0.05,  # for high p-value pruner
-    classification="structural",
-    check_leaf_classes=False,
-):
+    studyset_list: list[str],
+    levels: int = 2,
+    n: int = 0,
+    p_value_threshold: float = 0.05,
+    classification: str = "structural",
+    check_leaf_classes: bool = False,
+) -> tuple[dict, object]:
 
     # Load common data files
     (
