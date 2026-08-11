@@ -107,5 +107,5 @@ Versioning](https://semver.org/spec/v2.0.0.html).
 
 --------------------------------------------------------------------------------
 
-For detailed commit history, see the [Git
-log](https://github.com/ontology-tools/chebin/commits/).
+[Unreleased]: https://github.com/Adafede/chebin/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/Adafede/chebin/releases/tag/v0.1.0
