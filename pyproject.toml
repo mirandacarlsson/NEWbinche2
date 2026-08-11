@@ -17,6 +17,7 @@ dependencies = [
 [dependency-groups]
 dev = [
   "coverage>=7.15.4",
+  "great-docs>=0.16.0",
   "prek>=0.4.13",
   "pytest>=9.1.1",
 ]

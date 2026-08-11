@@ -29,7 +29,7 @@ class TestGetLeavesBasic:
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("IRI,parent_id\n")
             f.write(
-                "http://purl.obolibrary.org/obo/CHEBI_12345,http://purl.obolibrary.org/obo/CHEBI_1000\n"
+                "http://purl.obolibrary.org/obo/CHEBI_12345,http://purl.obolibrary.org/obo/CHEBI_1000\n",
             )
             leaves_file = f.name
 

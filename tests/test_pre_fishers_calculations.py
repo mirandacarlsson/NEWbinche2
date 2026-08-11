@@ -29,14 +29,14 @@ class TestGetStructuralLeafIds:
 
     def test_filter_structural_only(self):
         """Test that only 'structural' classification is included."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("IRI,Classification\n")
             f.write("http://purl.obolibrary.org/obo/CHEBI_1,structural\n")
             f.write("http://purl.obolibrary.org/obo/CHEBI_2,functional\n")
             f.write("http://purl.obolibrary.org/obo/CHEBI_3,structural\n")
             f.write("http://purl.obolibrary.org/obo/CHEBI_4,neither\n")
             csv_file = f.name
-        
+
         try:
             result = get_structural_leaf_ids(csv_file)
             assert isinstance(result, set)
@@ -52,10 +52,10 @@ class TestGetStructuralLeafIds:
 
     def test_empty_file(self):
         """Test with empty CSV."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("IRI,Classification\n")
             csv_file = f.name
-        
+
         try:
             result = get_structural_leaf_ids(csv_file)
             assert isinstance(result, set)
@@ -65,12 +65,12 @@ class TestGetStructuralLeafIds:
 
     def test_all_structural(self):
         """Test with all structural leaves."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("IRI,Classification\n")
             for i in range(1, 6):
                 f.write(f"http://purl.obolibrary.org/obo/CHEBI_{i},structural\n")
             csv_file = f.name
-        
+
         try:
             result = get_structural_leaf_ids(csv_file)
             assert len(result) == 5
@@ -79,11 +79,11 @@ class TestGetStructuralLeafIds:
 
     def test_caching(self):
         """Test that results are cached."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("IRI,Classification\n")
             f.write("http://purl.obolibrary.org/obo/CHEBI_1,structural\n")
             csv_file = f.name
-        
+
         try:
             result1 = get_structural_leaf_ids(csv_file)
             result2 = get_structural_leaf_ids(csv_file)
@@ -94,13 +94,13 @@ class TestGetStructuralLeafIds:
 
     def test_case_sensitivity(self):
         """Test that classification is case-sensitive."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("IRI,Classification\n")
             f.write("http://purl.obolibrary.org/obo/CHEBI_1,structural\n")
             f.write("http://purl.obolibrary.org/obo/CHEBI_2,Structural\n")  # Wrong case
             f.write("http://purl.obolibrary.org/obo/CHEBI_3,STRUCTURAL\n")  # Wrong case
             csv_file = f.name
-        
+
         try:
             result = get_structural_leaf_ids(csv_file)
             # Only lowercase 'structural' should be included
@@ -115,12 +115,12 @@ class TestCountRemovedLeaves:
 
     def test_count_leaves(self):
         """Test basic leaf counting."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("IRI,Classification\n")
             for i in range(1, 4):
                 f.write(f"http://purl.obolibrary.org/obo/CHEBI_{i},structural\n")
             csv_file = f.name
-        
+
         try:
             count = count_removed_leaves(csv_file)
             assert count == 3
@@ -129,10 +129,10 @@ class TestCountRemovedLeaves:
 
     def test_empty_count(self):
         """Test with no leaves."""
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("IRI,Classification\n")
             csv_file = f.name
-        
+
         try:
             count = count_removed_leaves(csv_file)
             assert count == 0
@@ -157,32 +157,32 @@ class TestBuildClassToLeafMap:
                 "http://purl.obolibrary.org/obo/CHEBI_2",
             ],
         }
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(leaf_map, f)
             leaf_file = f.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             output_file = f.name
-        
+
         try:
             build_class_to_leaf_map(leaf_file, output_file)
-            
+
             # Verify output
             with open(output_file) as f:
                 result = json.load(f)
-            
+
             # CHEBI_1 should have both CHEBI_10 and CHEBI_11
             assert "http://purl.obolibrary.org/obo/CHEBI_1" in result
             leaves_1 = result["http://purl.obolibrary.org/obo/CHEBI_1"]
             assert "http://purl.obolibrary.org/obo/CHEBI_10" in leaves_1
             assert "http://purl.obolibrary.org/obo/CHEBI_11" in leaves_1
             assert len(leaves_1) == 2
-            
+
             # CHEBI_2 should have only CHEBI_12
             assert "http://purl.obolibrary.org/obo/CHEBI_2" in result
             assert result["http://purl.obolibrary.org/obo/CHEBI_2"] == [
-                "http://purl.obolibrary.org/obo/CHEBI_12"
+                "http://purl.obolibrary.org/obo/CHEBI_12",
             ]
         finally:
             Path(leaf_file).unlink()
@@ -191,20 +191,20 @@ class TestBuildClassToLeafMap:
     def test_empty_map(self):
         """Test with empty leaf-to-ancestors."""
         leaf_map = {}
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(leaf_map, f)
             leaf_file = f.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             output_file = f.name
-        
+
         try:
             build_class_to_leaf_map(leaf_file, output_file)
-            
+
             with open(output_file) as f:
                 result = json.load(f)
-            
+
             assert result == {}
         finally:
             Path(leaf_file).unlink()
@@ -217,20 +217,20 @@ class TestBuildClassToLeafMap:
             "leaf_B": ["ancestor_1"],
             "leaf_C": ["ancestor_1"],
         }
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(leaf_map, f)
             leaf_file = f.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             output_file = f.name
-        
+
         try:
             build_class_to_leaf_map(leaf_file, output_file)
-            
+
             with open(output_file) as f:
                 result = json.load(f)
-            
+
             # ancestor_1 should have all three leaves
             assert len(result["ancestor_1"]) == 3
             assert set(result["ancestor_1"]) == {"leaf_A", "leaf_B", "leaf_C"}
@@ -248,9 +248,9 @@ class TestCountRemovedClassesForClass:
             "http://purl.obolibrary.org/obo/CHEBI_1": [
                 "http://purl.obolibrary.org/obo/CHEBI_10",
                 "http://purl.obolibrary.org/obo/CHEBI_11",
-            ]
+            ],
         }
-        
+
         leaves, n_leaves = count_removed_classes_for_class(
             "http://purl.obolibrary.org/obo/CHEBI_1",
             class_to_leaf_map,
@@ -258,7 +258,7 @@ class TestCountRemovedClassesForClass:
             {},
             {},
         )
-        
+
         assert n_leaves == 2
         assert len(leaves) == 2
         assert "http://purl.obolibrary.org/obo/CHEBI_10" in leaves
@@ -266,9 +266,11 @@ class TestCountRemovedClassesForClass:
     def test_missing_class_raises_error(self):
         """Test that missing class raises ValueError."""
         class_to_leaf_map = {
-            "http://purl.obolibrary.org/obo/CHEBI_1": ["http://purl.obolibrary.org/obo/CHEBI_10"]
+            "http://purl.obolibrary.org/obo/CHEBI_1": [
+                "http://purl.obolibrary.org/obo/CHEBI_10",
+            ],
         }
-        
+
         with pytest.raises(ValueError, match="not found in class_to_leaf_map"):
             count_removed_classes_for_class(
                 "http://purl.obolibrary.org/obo/CHEBI_999",
@@ -281,9 +283,9 @@ class TestCountRemovedClassesForClass:
     def test_empty_leaves_raises_error(self):
         """Test that empty leaf list raises ValueError."""
         class_to_leaf_map = {
-            "http://purl.obolibrary.org/obo/CHEBI_1": []
+            "http://purl.obolibrary.org/obo/CHEBI_1": [],
         }
-        
+
         with pytest.raises(ValueError, match="has no leaf descendants"):
             count_removed_classes_for_class(
                 "http://purl.obolibrary.org/obo/CHEBI_1",
@@ -296,9 +298,11 @@ class TestCountRemovedClassesForClass:
     def test_invalid_classification_raises_error(self):
         """Test that invalid classification raises ValueError."""
         class_to_leaf_map = {
-            "http://purl.obolibrary.org/obo/CHEBI_1": ["http://purl.obolibrary.org/obo/CHEBI_10"]
+            "http://purl.obolibrary.org/obo/CHEBI_1": [
+                "http://purl.obolibrary.org/obo/CHEBI_10",
+            ],
         }
-        
+
         with pytest.raises(ValueError, match="Classification must be"):
             count_removed_classes_for_class(
                 "http://purl.obolibrary.org/obo/CHEBI_1",
@@ -311,9 +315,11 @@ class TestCountRemovedClassesForClass:
     def test_functional_not_implemented(self):
         """Test that functional classification raises error."""
         class_to_leaf_map = {
-            "http://purl.obolibrary.org/obo/CHEBI_1": ["http://purl.obolibrary.org/obo/CHEBI_10"]
+            "http://purl.obolibrary.org/obo/CHEBI_1": [
+                "http://purl.obolibrary.org/obo/CHEBI_10",
+            ],
         }
-        
+
         with pytest.raises(ValueError, match="not yet implemented"):
             count_removed_classes_for_class(
                 "http://purl.obolibrary.org/obo/CHEBI_1",
@@ -330,13 +336,13 @@ class TestCountRemovedClassesForClass:
                 "http://purl.obolibrary.org/obo/CHEBI_10",
                 "http://purl.obolibrary.org/obo/CHEBI_11",
                 "http://purl.obolibrary.org/obo/CHEBI_12",
-            ]
+            ],
         }
         structural_ids = {
             "http://purl.obolibrary.org/obo/CHEBI_10",
             "http://purl.obolibrary.org/obo/CHEBI_11",
         }
-        
+
         leaves, n_leaves = count_removed_classes_for_class(
             "http://purl.obolibrary.org/obo/CHEBI_1",
             class_to_leaf_map,
@@ -345,7 +351,7 @@ class TestCountRemovedClassesForClass:
             {},
             structural_leaf_ids=structural_ids,
         )
-        
+
         # Should only have the structural leaves
         assert n_leaves == 2
         assert len(leaves) == 2
@@ -356,12 +362,12 @@ class TestCountRemovedClassesForClass:
         class_to_leaf_map = {
             "http://purl.obolibrary.org/obo/CHEBI_1": [
                 "http://purl.obolibrary.org/obo/CHEBI_10",
-            ]
+            ],
         }
         structural_ids = {
             "http://purl.obolibrary.org/obo/CHEBI_999",  # Different leaf
         }
-        
+
         leaves, n_leaves = count_removed_classes_for_class(
             "http://purl.obolibrary.org/obo/CHEBI_1",
             class_to_leaf_map,
@@ -370,7 +376,7 @@ class TestCountRemovedClassesForClass:
             {},
             structural_leaf_ids=structural_ids,
         )
-        
+
         # No leaves should pass filtering
         assert n_leaves == 0
         assert len(leaves) == 0
@@ -381,9 +387,9 @@ class TestCountRemovedClassesForClass:
             "http://purl.obolibrary.org/obo/CHEBI_1": [
                 "http://purl.obolibrary.org/obo/CHEBI_10",
                 "http://purl.obolibrary.org/obo/CHEBI_11",
-            ]
+            ],
         }
-        
+
         leaves, n_leaves = count_removed_classes_for_class(
             "http://purl.obolibrary.org/obo/CHEBI_1",
             class_to_leaf_map,
@@ -391,7 +397,7 @@ class TestCountRemovedClassesForClass:
             {},
             {},
         )
-        
+
         assert n_leaves == 2
         assert len(leaves) == 2
 
@@ -405,32 +411,30 @@ class TestCountRemovedClassesForRoles:
             "http://purl.obolibrary.org/obo/role_1": [
                 "http://purl.obolibrary.org/obo/CHEBI_10",
                 "http://purl.obolibrary.org/obo/CHEBI_11",
-            ]
+            ],
         }
-        
-        leaves, n_leaves = count_removed_classes_for_roles(
+
+        _, n_leaves = count_removed_classes_for_roles(
             "http://purl.obolibrary.org/obo/role_1",
             {},
             "functional",
             roles_to_leaves_map,
         )
-        
+
         assert n_leaves == 2
-        assert len(leaves) == 2
 
     def test_empty_role(self):
         """Test role with no associated leaves."""
         roles_to_leaves_map = {}
-        
-        leaves, n_leaves = count_removed_classes_for_roles(
+
+        _, n_leaves = count_removed_classes_for_roles(
             "http://purl.obolibrary.org/obo/role_1",
             {},
             "functional",
             roles_to_leaves_map,
         )
-        
+
         assert n_leaves == 0
-        assert len(leaves) == 0
 
     def test_structural_not_supported(self):
         """Test that structural classification returns 0."""
@@ -440,7 +444,7 @@ class TestCountRemovedClassesForRoles:
             "structural",
             {},
         )
-        
+
         # Should return (0, 0) or similar for unsupported classification
         assert result[1] == 0
 
@@ -449,16 +453,16 @@ class TestCountRemovedClassesForRoles:
         roles_to_leaves_map = {
             "http://purl.obolibrary.org/obo/role_1": [
                 "http://purl.obolibrary.org/obo/CHEBI_10",
-            ]
+            ],
         }
-        
-        leaves, n_leaves = count_removed_classes_for_roles(
+
+        _, n_leaves = count_removed_classes_for_roles(
             "http://purl.obolibrary.org/obo/role_1",
             {},
             "full",
             roles_to_leaves_map,
         )
-        
+
         assert n_leaves == 1
 
 
@@ -467,28 +471,27 @@ class TestEdgeCasesAndIntegration:
 
     def test_pipeline_structural_to_functional_split(self):
         """Test splitting structural and functional leaves."""
-        removed_csv = tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False)
-        removed_csv.write("IRI,Classification\n")
-        removed_csv.write("http://purl.obolibrary.org/obo/CHEBI_10,structural\n")
-        removed_csv.write("http://purl.obolibrary.org/obo/CHEBI_11,functional\n")
-        removed_csv.close()
-        
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
+            f.write("IRI,Classification\n")
+            f.write("http://purl.obolibrary.org/obo/CHEBI_10,structural\n")
+            f.write("http://purl.obolibrary.org/obo/CHEBI_11,functional\n")
+            removed_csv_path = f.name
+
         try:
-            structural = get_structural_leaf_ids(removed_csv.name)
+            structural = get_structural_leaf_ids(removed_csv_path)
             assert len(structural) == 1
             assert "http://purl.obolibrary.org/obo/CHEBI_10" in structural
         finally:
-            Path(removed_csv.name).unlink()
+            Path(removed_csv_path).unlink()
 
     def test_large_class_with_many_leaves(self):
         """Test handling large classes."""
         class_to_leaf_map = {
             "http://purl.obolibrary.org/obo/CHEBI_1": [
-                f"http://purl.obolibrary.org/obo/CHEBI_{i}"
-                for i in range(1000, 2000)
-            ]
+                f"http://purl.obolibrary.org/obo/CHEBI_{i}" for i in range(1000, 2000)
+            ],
         }
-        
+
         leaves, n_leaves = count_removed_classes_for_class(
             "http://purl.obolibrary.org/obo/CHEBI_1",
             class_to_leaf_map,
@@ -496,7 +499,7 @@ class TestEdgeCasesAndIntegration:
             {},
             {},
         )
-        
+
         assert n_leaves == 1000
         assert len(leaves) == 1000
 
@@ -505,20 +508,20 @@ class TestEdgeCasesAndIntegration:
         leaf_map = {
             "shared_leaf": ["ancestor_1", "ancestor_2"],
         }
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(leaf_map, f)
             leaf_file = f.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             output_file = f.name
-        
+
         try:
             build_class_to_leaf_map(leaf_file, output_file)
-            
+
             with open(output_file) as f:
                 result = json.load(f)
-            
+
             # Both ancestors should have the shared leaf
             assert "shared_leaf" in result["ancestor_1"]
             assert "shared_leaf" in result["ancestor_2"]

@@ -13,14 +13,11 @@ import json
 import tempfile
 from pathlib import Path
 
-import pytest
-
 from calculations.prepare_role_calculations import (
     _normalize_iri,
     create_class_to_all_roles_map,
     create_leaves_to_all_roles_map,
     create_roles_to_all_leaves_map,
-    find_has_role_connections_from_owl,
 )
 
 
@@ -62,33 +59,33 @@ class TestCreateLeavesToAllRolesMap:
             "http://purl.obolibrary.org/obo/role_1": ["role_ancestor_1"],
             "http://purl.obolibrary.org/obo/class_1": ["role_1"],
         }
-        
+
         leaves_to_parents = {
             "http://purl.obolibrary.org/obo/leaf_1": [
                 "http://purl.obolibrary.org/obo/class_1",
             ],
         }
-        
+
         parent_map = {
             "http://purl.obolibrary.org/obo/role_1": ["role_ancestor_1"],
             "http://purl.obolibrary.org/obo/class_1": [],
         }
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(roles_map, f)
             roles_file = f.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(leaves_to_parents, f)
             leaves_parents_file = f.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             parent_map_file = f.name
             json.dump(parent_map, f)
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             output_file = f.name
-        
+
         try:
             create_leaves_to_all_roles_map(
                 roles_file,
@@ -96,10 +93,10 @@ class TestCreateLeavesToAllRolesMap:
                 output_file,
                 parent_map_file,
             )
-            
+
             with open(output_file) as f:
                 result = json.load(f)
-            
+
             # Verify result structure
             assert isinstance(result, dict)
             assert "http://purl.obolibrary.org/obo/leaf_1" in result
@@ -114,28 +111,28 @@ class TestCreateLeavesToAllRolesMap:
         roles_map = {
             "http://purl.obolibrary.org/obo/leaf_1": ["role_direct"],
         }
-        
+
         leaves_to_parents = {
             "http://purl.obolibrary.org/obo/leaf_1": [],
         }
-        
+
         parent_map = {}
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(roles_map, f)
             roles_file = f.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(leaves_to_parents, f)
             leaves_parents_file = f.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(parent_map, f)
             parent_map_file = f.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             output_file = f.name
-        
+
         try:
             create_leaves_to_all_roles_map(
                 roles_file,
@@ -143,10 +140,10 @@ class TestCreateLeavesToAllRolesMap:
                 output_file,
                 parent_map_file,
             )
-            
+
             with open(output_file) as f:
                 result = json.load(f)
-            
+
             # Should include direct role
             assert "http://purl.obolibrary.org/obo/leaf_1" in result
             assert "role_direct" in result["http://purl.obolibrary.org/obo/leaf_1"]
@@ -159,28 +156,28 @@ class TestCreateLeavesToAllRolesMap:
     def test_leaf_with_no_roles(self):
         """Test leaf with no associated roles."""
         roles_map = {}
-        
+
         leaves_to_parents = {
             "http://purl.obolibrary.org/obo/leaf_1": [],
         }
-        
+
         parent_map = {}
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(roles_map, f)
             roles_file = f.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(leaves_to_parents, f)
             leaves_parents_file = f.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(parent_map, f)
             parent_map_file = f.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             output_file = f.name
-        
+
         try:
             create_leaves_to_all_roles_map(
                 roles_file,
@@ -188,10 +185,10 @@ class TestCreateLeavesToAllRolesMap:
                 output_file,
                 parent_map_file,
             )
-            
+
             with open(output_file) as f:
                 result = json.load(f)
-            
+
             # Leaf should be in result with empty role list
             assert "http://purl.obolibrary.org/obo/leaf_1" in result
             assert result["http://purl.obolibrary.org/obo/leaf_1"] == []
@@ -206,33 +203,33 @@ class TestCreateLeavesToAllRolesMap:
         roles_map = {
             "http://purl.obolibrary.org/obo/class_1": ["role_child"],
         }
-        
+
         leaves_to_parents = {
             "http://purl.obolibrary.org/obo/leaf_1": [
                 "http://purl.obolibrary.org/obo/class_1",
             ],
         }
-        
+
         parent_map = {
             "role_child": ["role_parent"],
             "role_parent": ["role_grandparent"],
         }
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(roles_map, f)
             roles_file = f.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(leaves_to_parents, f)
             leaves_parents_file = f.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(parent_map, f)
             parent_map_file = f.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             output_file = f.name
-        
+
         try:
             create_leaves_to_all_roles_map(
                 roles_file,
@@ -240,10 +237,10 @@ class TestCreateLeavesToAllRolesMap:
                 output_file,
                 parent_map_file,
             )
-            
+
             with open(output_file) as f:
                 result = json.load(f)
-            
+
             # Should include all role ancestors
             leaf_roles = result["http://purl.obolibrary.org/obo/leaf_1"]
             assert "role_child" in leaf_roles
@@ -264,32 +261,32 @@ class TestCreateClassToAllRolesMap:
         roles_map = {
             "http://purl.obolibrary.org/obo/class_1": ["role_1"],
         }
-        
+
         parent_map = {
             "http://purl.obolibrary.org/obo/class_1": [],
         }
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(roles_map, f)
             roles_file = f.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(parent_map, f)
             parent_map_file = f.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             output_file = f.name
-        
+
         try:
             create_class_to_all_roles_map(
                 roles_file,
                 parent_map_file,
                 output_file,
             )
-            
+
             with open(output_file) as f:
                 result = json.load(f)
-            
+
             # Verify result structure
             assert isinstance(result, dict)
         finally:
@@ -302,40 +299,41 @@ class TestCreateClassToAllRolesMap:
         roles_map = {
             "http://purl.obolibrary.org/obo/parent_class": ["role_from_parent"],
         }
-        
+
         parent_map = {
             "http://purl.obolibrary.org/obo/class_1": [
                 "http://purl.obolibrary.org/obo/parent_class",
             ],
             "http://purl.obolibrary.org/obo/parent_class": [],
         }
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(roles_map, f)
             roles_file = f.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(parent_map, f)
             parent_map_file = f.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             output_file = f.name
-        
+
         try:
             create_class_to_all_roles_map(
                 roles_file,
                 parent_map_file,
                 output_file,
             )
-            
+
             with open(output_file) as f:
                 result = json.load(f)
-            
+
             # Class should inherit parent's roles
             if "http://purl.obolibrary.org/obo/class_1" in result:
-                assert "role_from_parent" in result[
-                    "http://purl.obolibrary.org/obo/class_1"
-                ]
+                assert (
+                    "role_from_parent"
+                    in result["http://purl.obolibrary.org/obo/class_1"]
+                )
         finally:
             Path(roles_file).unlink()
             Path(parent_map_file).unlink()
@@ -352,23 +350,23 @@ class TestCreateRolesToAllLeavesMap:
             "http://purl.obolibrary.org/obo/leaf_2": ["role_1"],
             "http://purl.obolibrary.org/obo/leaf_3": ["role_3"],
         }
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(leaves_to_roles, f)
             leaves_to_roles_file = f.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             output_file = f.name
-        
+
         try:
             create_roles_to_all_leaves_map(
                 leaves_to_roles_file,
                 output_file,
             )
-            
+
             with open(output_file) as f:
                 result = json.load(f)
-            
+
             # Verify result structure
             assert isinstance(result, dict)
             # role_1 should have leaf_1 and leaf_2
@@ -384,23 +382,23 @@ class TestCreateRolesToAllLeavesMap:
         leaves_to_roles = {
             "http://purl.obolibrary.org/obo/leaf_1": ["role_1"],
         }
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(leaves_to_roles, f)
             leaves_to_roles_file = f.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             output_file = f.name
-        
+
         try:
             create_roles_to_all_leaves_map(
                 leaves_to_roles_file,
                 output_file,
             )
-            
+
             with open(output_file) as f:
                 result = json.load(f)
-            
+
             # role_1 should have at least one leaf
             if "role_1" in result:
                 assert len(result["role_1"]) > 0
@@ -414,23 +412,23 @@ class TestCreateRolesToAllLeavesMap:
             f"http://purl.obolibrary.org/obo/leaf_{i}": ["shared_role"]
             for i in range(100)
         }
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(leaves_to_roles, f)
             leaves_to_roles_file = f.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             output_file = f.name
-        
+
         try:
             create_roles_to_all_leaves_map(
                 leaves_to_roles_file,
                 output_file,
             )
-            
+
             with open(output_file) as f:
                 result = json.load(f)
-            
+
             # shared_role should have all 100 leaves
             if "shared_role" in result:
                 assert len(result["shared_role"]) == 100
@@ -441,23 +439,23 @@ class TestCreateRolesToAllLeavesMap:
     def test_empty_leaves_to_roles_map(self):
         """Test with empty input."""
         leaves_to_roles = {}
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(leaves_to_roles, f)
             leaves_to_roles_file = f.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             output_file = f.name
-        
+
         try:
             create_roles_to_all_leaves_map(
                 leaves_to_roles_file,
                 output_file,
             )
-            
+
             with open(output_file) as f:
                 result = json.load(f)
-            
+
             # Result should be empty dict
             assert result == {}
         finally:
@@ -475,23 +473,23 @@ class TestIntegrationScenarios:
             "leaf_2": ["role_A"],
             "leaf_3": ["role_B", "role_C"],
         }
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(leaves_to_roles, f)
             leaves_to_roles_file = f.name
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             output_file = f.name
-        
+
         try:
             create_roles_to_all_leaves_map(
                 leaves_to_roles_file,
                 output_file,
             )
-            
+
             with open(output_file) as f:
                 roles_to_leaves = json.load(f)
-            
+
             # Verify consistency: if leaf X has role Y,
             # then role Y should have leaf X
             for leaf, roles in leaves_to_roles.items():
@@ -510,9 +508,9 @@ class TestIntegrationScenarios:
             "http://example.org/class_2",
             "  http://example.org/class_3  ",
         ]
-        
+
         normalized = [_normalize_iri(iri) for iri in iris]
-        
+
         # All should be normalized to clean format
         for norm in normalized:
             assert not norm.startswith("<")
