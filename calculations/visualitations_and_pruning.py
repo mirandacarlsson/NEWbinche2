@@ -13,7 +13,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 
-def id_to_name(class_id):
+def id_to_name(class_id: str) -> str:
     """
     Convert ChEBI class IRI to human-readable name with ID.
 
@@ -39,7 +39,7 @@ def id_to_name(class_id):
     return f"{name} ({class_id})" if name else class_id
 
 
-def strip_prefix(class_id):
+def strip_prefix(class_id: str) -> str:
     """
     Remove OBO namespace prefix from class IRI.
 
@@ -178,7 +178,7 @@ def get_name(chebi_ontology, iri):
     return None  # if not found
 
 
-def create_graph_from_paths(paths):
+def create_graph_from_paths(paths: list) -> nx.DiGraph:
     G = nx.DiGraph()
     for path in paths:
         for i in range(len(path) - 1):
@@ -604,7 +604,7 @@ def process_node_for_p_value_pruner(
     return has_good_descendant
 
 
-def zero_degree_pruner(G):
+def zero_degree_pruner(G: nx.DiGraph) -> tuple[nx.DiGraph, list]:
     to_remove = []
     removed = []
 
@@ -622,12 +622,12 @@ def zero_degree_pruner(G):
 #####################################
 # Converting NetworkX graph to Cytoscape compatible format
 #####################################
-def clean_label(label):
+def clean_label(label: str) -> str:
     """Changes label from 'Name (CHEBI_ID)' to 'Name'"""
     return label.split(" (")[0] if " (" in label else label
 
 
-def extract_chebi_id(label):
+def extract_chebi_id(label: str) -> str | None:
     """Finds CHEBI_XXXX inside parentheses"""
     if " (" in label and "CHEBI_" in label:
         return label.split(" (")[1][:-1]  # Extract CHEBI_ID without parentheses
