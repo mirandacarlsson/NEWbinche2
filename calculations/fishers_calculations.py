@@ -166,12 +166,12 @@ def get_ancestors_for_inputs(
     with open(leaf_to_all_parents_map_json) as f:
         leaf_to_all_parents_map = json.load(f)
 
-    studyset_ancestors = set()
+    studyset_ancestors: set[str] = set()
     for leaf in studyset_leaves:
         parents = leaf_to_all_parents_map.get(leaf, [])
         studyset_ancestors.update(parents)
 
-    return studyset_ancestors
+    return list(studyset_ancestors)
 
 
 def get_n_ss_annotated(

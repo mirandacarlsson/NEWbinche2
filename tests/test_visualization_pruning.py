@@ -203,7 +203,7 @@ class TestLinearBranchCollapserPruner:
     def test_linear_branch_collapser_empty_graph(self):
         """Test with empty graph."""
         graph = nx.DiGraph()
-        graph, removed = linear_branch_collapser_pruner_remove_less(graph, n=2)
+        graph, _removed = linear_branch_collapser_pruner_remove_less(graph, n=2)
 
         assert graph.number_of_nodes() == 0
 
@@ -368,7 +368,7 @@ class TestGraphPropertyPreservation:
         graph = nx.DiGraph()
         graph.add_edges_from([("a", "b"), ("b", "c")])
 
-        graph, removed = zero_degree_pruner(graph)
+        graph, _removed = zero_degree_pruner(graph)
 
         assert isinstance(graph, nx.DiGraph)
 
@@ -379,7 +379,7 @@ class TestGraphPropertyPreservation:
         # Ensure it's acyclic
         assert nx.is_directed_acyclic_graph(graph)
 
-        graph, removed = zero_degree_pruner(graph)
+        graph, _removed = zero_degree_pruner(graph)
 
         # Should still be acyclic
         assert nx.is_directed_acyclic_graph(graph)
@@ -391,7 +391,7 @@ class TestGraphPropertyPreservation:
 
         initial_edges = graph.number_of_edges()
 
-        graph, removed = zero_degree_pruner(graph)
+        graph, _removed = zero_degree_pruner(graph)
 
         final_edges = graph.number_of_edges()
         assert final_edges <= initial_edges

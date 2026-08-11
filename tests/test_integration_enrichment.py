@@ -5,6 +5,8 @@ end-to-end with realistic data structures, testing interactions between
 modules and the consistency of results across different strategies.
 """
 
+import math
+
 import networkx as nx
 
 from calculations.fishers_calculations import (
@@ -173,13 +175,12 @@ class TestGraphPruningPipeline:
         graph = create_graph_from_paths(paths)
 
         # Apply zero-degree pruning
-        graph, removed1 = zero_degree_pruner(graph)
+        graph, _removed1 = zero_degree_pruner(graph)
         assert isinstance(graph, nx.DiGraph)
 
         # Apply root children pruning (returns 3-tuple: graph, removed, execution_count)
         result = root_children_pruner(graph, levels=1)
         graph = result[0]
-        removed2 = result[1]
         assert isinstance(graph, nx.DiGraph)
 
         # Final graph should be a valid DiGraph
@@ -296,7 +297,7 @@ class TestEnrichmentResultConsistency:
             or_val, _ = calculate_p_value(*case)
             # Just verify it returns a value (could be None/NaN for invalid tables)
             if or_val is not None and not (
-                hasattr(or_val, "__float__") and or_val != or_val
+                hasattr(or_val, "__float__") and math.isnan(or_val)
             ):  # NaN check
                 or_vals.append(or_val)
 
@@ -432,7 +433,7 @@ class TestDataFormatConsistency:
 
         # This should not raise an error
         try:
-            pruned, removed = high_p_value_branch_pruner(
+            pruned, _removed = high_p_value_branch_pruner(
                 graph,
                 p_value_dict,
                 p_value_threshold=0.05,
@@ -443,14 +444,14 @@ class TestDataFormatConsistency:
             # Try flat dict format
             flat_p_values = {node: 0.01 for node in graph.nodes()}
             try:
-                pruned, removed = high_p_value_branch_pruner(
+                _pruned, _removed = high_p_value_branch_pruner(
                     graph,
                     flat_p_values,
                     p_value_threshold=0.05,
                 )
-                assert isinstance(pruned, nx.DiGraph)
-            except Exception:
-                # Document the actual expected format
+                assert isinstance(_pruned, nx.DiGraph)
+            except (KeyError, TypeError, ValueError):
+                # Document the actual expected format - may need specific structure
                 pass
 
     def test_result_graph_is_valid_digraph(self):

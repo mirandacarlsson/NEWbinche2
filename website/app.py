@@ -552,13 +552,13 @@ def run_analysis():
             if weights_dict:
                 results, pruned_G = run_weighted_enrichment_analysis(
                     weights_dict,
-                    classification=session.get("classification"),
+                    classification=session.get("classification", "structural"),
                 )
             else:
                 results, pruned_G = (
                     run_enrichment_analysis_plain_enrich_pruning_strategy(
                         studyset_list,
-                        classification=session.get("classification"),
+                        classification=session.get("classification", "structural"),
                     )
                 )
             # Save JSON representation of pruned_G in session for graph visualization
@@ -593,7 +593,7 @@ def run_analysis():
                     parents_to_expand_background,
                 ) = run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy(
                     weights_dict,
-                    classification=session.get("classification"),
+                    classification=session.get("classification", "structural"),
                     narrow_background_leaves_json=NARROW_BACKGROUND_LEAVES_JSON[
                         background
                     ],
@@ -607,7 +607,7 @@ def run_analysis():
                     parents_to_expand_background,
                 ) = run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy(
                     studyset_list,
-                    classification=session.get("classification"),
+                    classification=session.get("classification", "structural"),
                     narrow_background_leaves_json=NARROW_BACKGROUND_LEAVES_JSON[
                         background
                     ],
@@ -669,7 +669,7 @@ def run_analysis():
                 levels=levels,
                 n=linear_branch_n,
                 p_value_threshold=p_value_threshold,
-                classification=session.get("classification"),
+                classification=session.get("classification", "structural"),
                 root_children_prune=root_children_prune,
                 linear_branch_prune=linear_branch_prune,
                 high_p_value_prune=high_p_value_prune,
@@ -685,7 +685,7 @@ def run_analysis():
                 levels=levels,
                 n=linear_branch_n,
                 p_value_threshold=p_value_threshold,
-                classification=session.get("classification"),
+                classification=session.get("classification", "structural"),
                 root_children_prune=root_children_prune,
                 linear_branch_prune=linear_branch_prune,
                 high_p_value_prune=high_p_value_prune,
@@ -727,7 +727,7 @@ def run_analysis():
                 high_p_value_prune=high_p_value_prune,
                 p_value_threshold=p_value_threshold,
                 zero_degree_prune=zero_degree_prune,
-                classification=session.get("classification"),
+                classification=session.get("classification", "structural"),
             )
 
     # Save JSON representation of pruned_G in session for graph visualization

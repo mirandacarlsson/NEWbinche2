@@ -532,7 +532,7 @@ def calculate_weighted_p_value(
         return 0.0, 0, 1.0
 
     score = sum(weights_with_leaves[leaf] for leaf in annotated)
-    p_value = saddler.pvalue(score, n_ss_annotated)
+    p_value = saddler.pvalue(score, n_ss_annotated)  # type: ignore
     return score, n_ss_annotated, p_value
 
 
@@ -1393,7 +1393,7 @@ def run_weighted_narrow_background_enrichment_analysis(
     classification: str = "structural",
     narrow_background_leaves_json: str = "data/human_entities_leaves.json",
     expand_background: bool = True,
-) -> tuple[dict, object]:
+) -> tuple:
     """
     Run weighted enrichment with restricted (narrow) background population.
 
@@ -1418,7 +1418,7 @@ def run_weighted_narrow_background_enrichment_analysis(
         expand_background: Expand narrow leaves to include their ancestors.
 
     Returns:
-        tuple: (results_dict, pruned_graph) as in run_weighted_enrichment_analysis.
+        Tuple of (results dict, pruned graph, leaves_to_expand, parents_to_expand).
     """
     removed_leaves_csv = "data/removed_leaf_classes_with_smiles.csv"
     leaf_to_ancestors_map_file = "data/removed_leaf_classes_to_ALL_parents_map.json"
@@ -1579,7 +1579,7 @@ def run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_stra
     classification: str = "structural",
     narrow_background_leaves_json: str = "data/human_entities_leaves.json",
     expand_background: bool = True,
-) -> tuple[dict, object]:
+) -> tuple:
     """
     Run weighted enrichment with narrow background and fixed pruning strategy.
 
