@@ -1,9 +1,10 @@
 """Download and load the ChEBI ontology."""
+# deptry: ignore=DEP001,DEP002
 
 import os
 import urllib.request
 
-import pyhornedowl  # type: ignore
+import pyhornedowl
 
 # URL and local save path
 CHEBI_URL = "https://ftp.ebi.ac.uk/pub/databases/chebi/ontology/chebi.owl"

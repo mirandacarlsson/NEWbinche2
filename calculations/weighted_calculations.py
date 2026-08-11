@@ -336,7 +336,19 @@ class _SaddleSum:
 
 
 def auto_scale_weights(weights_dict, target_max=1000.0):
-    """Scale weights so max absolute value equals target_max (if below it)."""
+    """Scale weights so max absolute value equals target_max (if below it).
+
+    Numerical stability enhancement: prevents underflow/overflow when computing
+    p-values for very small weights. If max(|weights|) >= target_max, no scaling
+    is applied.
+
+    Args:
+        weights_dict (dict): Mapping of class IDs to numeric weights
+        target_max (float): Target maximum absolute value (default 1000.0)
+
+    Returns:
+        dict: Scaled weights dict (empty if input was empty)
+    """
     if not weights_dict:
         return weights_dict
     max_abs = max(abs(v) for v in weights_dict.values())
@@ -352,15 +364,25 @@ def _propagate_weights_to_leaves(
     removed_leaves_csv,
     structural_leaf_ids=None,
 ):
-    """
-    Build weights_with_leaves: expand any non-leaf submitted IDs so their
-    leaf descendants inherit the weight. Directly submitted leaves take
-    priority over inherited values.
+    """Build weights_with_leaves: expand non-leaf submitted IDs to descendants.
 
-    structural_leaf_ids: if given, leaves mislabeled with a Classification
-    other than 'structural' (a ChEBI ontology error) are excluded, mirroring
-    get_leaves() in fishers_calculations.py.
-    Returns weights_with_leaves dict keyed by leaf IRI.
+    Converts input weights (which may be on non-leaf classes) to weights on
+    leaf classes. Non-leaf classes are expanded to their leaf descendants,
+    and directly submitted leaves take priority over inherited values.
+
+    Args:
+        weights_dict (dict): Input weights, keyed by class IRI
+        class_to_leaf_map (dict): Mapping from each class to its leaf descendants
+        removed_leaves_csv (str): Path to CSV file of all leaf classes
+        structural_leaf_ids (set, optional): If provided, only leaves in this set
+                                             are included (filters out mislabeled leaves)
+
+    Returns:
+        dict: weights_with_leaves, keyed by leaf IRI. Each leaf has the weight
+              from the highest-weighted ancestor that contains it.
+
+    Raises:
+        FileNotFoundError: If removed_leaves_csv does not exist
     """
     leaves_df = pd.read_csv(removed_leaves_csv)
     leaf_set = set(leaves_df["IRI"].values)
@@ -398,19 +420,31 @@ def _build_background_weights(
     removed_leaves_csv,
     background_leaf_ids=None,
 ):
-    """
-    Build the full background weight array.
-    Every leaf in the background gets its weight from weights_with_leaves
-    (if measured) or 0.0 otherwise.
+    """Build the full background weight array.
 
-    background_leaf_ids: if given, restricts the background population to
-    this leaf set — either the genuine 'structural'-classified leaves (full
-    background) or a narrow background's leaves (plus any expansion), so the
-    population size used inside the SaddleSum statistic matches n_bg_leaves
-    reported elsewhere.
+    Creates a weight array where every leaf in the background gets its weight
+    from weights_with_leaves (if measured) or 0.0 (if unmeasured). The order
+    and contents of the background population are critical for the SaddleSum
+    algorithm, which computes p-values relative to the entire background.
 
-    Must be called with weights_with_leaves (post-propagation), not
-    the raw weights_dict.
+    Args:
+        weights_with_leaves (dict): Weights keyed by leaf IRI (post-propagation)
+        removed_leaves_csv (str): Path to CSV file of all leaf classes
+                                  (used only if background_leaf_ids is None)
+        background_leaf_ids (set, optional): If provided, use only these leaves
+                                             as the background population (for
+                                             narrow background analysis).
+                                             If None, use all leaves from CSV.
+
+    Returns:
+        list: Array of background weights, one per leaf, ordered by leaf ID
+
+    Raises:
+        FileNotFoundError: If removed_leaves_csv does not exist
+
+    Notes:
+        Must be called with weights_with_leaves (post-propagation), not raw
+        weights_dict, to ensure leaf expansion has been applied.
     """
     if background_leaf_ids is not None:
         all_bg_leaves = list(background_leaf_ids)
@@ -464,9 +498,28 @@ def calculate_weighted_p_value(
     studyset_leaves_set,
     weights_with_leaves,
 ):
-    """
-    Compute the SaddleSum p-value for a single term.
-    Returns (score, n_ss_annotated, p_value).
+    """Compute the SaddleSum p-value for a single ontology term.
+
+    For a given ontology class, this function:
+    1. Identifies which of its leaf descendants appear in the study set
+    2. Computes their total weight (sum of weights_with_leaves)
+    3. Uses the saddlepoint approximation to compute the p-value for observing
+       that sum by chance under the background distribution
+
+    Args:
+        saddler (_SaddleSum): Pre-initialized SaddleSum object with background
+        term_leaves (set): All leaf descendants of this ontology term
+        studyset_leaves_set (set): Leaf descendants that were in the user's input
+        weights_with_leaves (dict): Weight for each leaf (0 if not measured)
+
+    Returns:
+        tuple: (score, n_ss_annotated, p_value)
+            - score (float): Sum of weights for study set leaves in this term
+            - n_ss_annotated (int): Count of study set leaves in this term
+            - p_value (float): Right-tail p-value P(Sum >= score)
+
+    Notes:
+        Returns (0.0, 0, 1.0) if no study set leaves annotate this term.
     """
     annotated = [
         leaf
@@ -499,10 +552,44 @@ def get_weighted_enrichment_values(
     weights_with_leaves,
     structural_leaf_ids=None,
 ):
-    """
-    Compute SaddleSum enrichment for every ancestor class (and role class).
-    Stores ALL results — BH/Bonferroni correction filters them afterward,
-    exactly as get_enrichment_values does for Fisher.
+    """Compute SaddleSum enrichment p-values for every ancestor class.
+
+    This function computes weighted enrichment for all ancestor classes that
+    contain study set leaves, using the SaddleSum method (Lugannani-Rice
+    saddlepoint approximation) for computing statistical significance.
+
+    The results represent unadjusted p-values; BH/Bonferroni correction is
+    applied afterwards to identify significantly enriched classes.
+
+    Args:
+        removed_leaves_csv (str): Path to CSV of all leaf classes
+        classification (str): One of 'structural', 'functional', or 'full'
+        studyset_leaves (list): Leaf descendants of user input classes
+        studyset_ancestors (set): All ancestor classes of studyset_leaves
+        class_to_leaf_map (dict): Mapping from class to leaf descendants
+        class_to_all_roles_map (dict): Mapping from leaf/class to roles
+        roles_to_leaves_map (dict): Mapping from role to leaf descendants
+        studyset_ancestors_roles (set): All role classes for user inputs
+        weights_with_leaves (dict): Weight for each leaf (0 if not measured)
+        structural_leaf_ids (set, optional): Filters background to only structural
+                                             leaves (used for full background)
+
+    Returns:
+        dict: Results keyed by class IRI. Each value contains:
+            - class (str): Human-readable name
+            - score (float): Sum of weights for study set leaves in this class
+            - n_ss_annotated (int): Number of study set leaves in this class
+            - n_ss_leaves (int): Total number of study set leaves
+            - n_bg_annotated (int): Number of background leaves in this class
+            - n_bg_leaves (int): Total number of background leaves
+            - odds_ratio (float): Set to inf if enriched, 0 if not
+            - p_value (float): Right-tail p-value from SaddleSum
+
+    Notes:
+        - Only computes classes with non-empty leaf sets
+        - Stores ALL results; BH/Bonferroni correction filters them afterwards
+        - If classification is 'structural' or 'full', structural ancestors
+          are computed; if 'functional' or 'full', functional roles are too
     """
     background_weights = _build_background_weights(
         weights_with_leaves,

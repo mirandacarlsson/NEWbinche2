@@ -83,7 +83,6 @@ def get_leaves(studyset_list, leaves_csv, class_to_leaf_map, structural_leaf_ids
     studyset_leaves = set()
 
     leaves_df = pd.read_csv(leaves_csv)
-    print(leaves_df["IRI"].iloc[0].encode())
     all_leaf_ids = set(leaves_df["IRI"].values)
 
     for cls in studyset_list:

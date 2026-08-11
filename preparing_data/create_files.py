@@ -4,6 +4,7 @@ import json
 import os
 import shutil
 import time
+from datetime import UTC
 from pathlib import Path
 
 from calculations.pre_fishers_calculations import build_class_to_leaf_map
@@ -116,9 +117,9 @@ def finalize_folder_structure():
     1. data -> data_last_used_YYYY.MM.DD (or with counter if needed)
     2. data_new -> data
     """
-    from datetime import datetime, timezone
+    from datetime import datetime
 
-    timestamp = datetime.now(timezone.utc).strftime("%Y.%m.%d")
+    timestamp = datetime.now(UTC).strftime("%Y.%m.%d")
 
     # Rename old data folder if it exists
     if os.path.exists("data"):

@@ -353,6 +353,26 @@ def delete_children(node, G, next_level, removed_nodes):
 
 
 def root_children_pruner(G, levels, allow_re_execution=False, execution_count=0):
+    """
+    Remove nodes from levels 1 to `levels` of the root (not including root itself).
+
+    Args:
+        G (networkx.DiGraph): Ontology graph
+        levels (int): Number of levels to prune from root
+        allow_re_execution (bool): If False, only executes on first call (count=0)
+                                   If True, can execute multiple times
+        execution_count (int): Counter tracking how many times this pruner has run
+
+    Returns:
+        tuple: (G, removed_nodes, execution_count) where removed_nodes is the
+               set of removed node IDs, and execution_count is incremented if
+               the pruner executed.
+
+    Note:
+        The allow_re_execution and execution_count parameters track whether
+        pruners can run multiple times in a pipeline. Currently these are used
+        but the logic is basic; potential future optimization to streamline.
+    """
     removed_nodes = set()
     if allow_re_execution or execution_count == 0:
         roots = [n for n, d in G.out_degree() if d == 0]
@@ -360,9 +380,6 @@ def root_children_pruner(G, levels, allow_re_execution=False, execution_count=0)
             delete_children(root, G, levels, removed_nodes)
         execution_count += 1
     return G, removed_nodes, execution_count
-
-
-# TODO: look over if execution count and allow_re_execution is needed anywhere
 
 
 # Linear branch collapser pruner - remove fewer nodes:
