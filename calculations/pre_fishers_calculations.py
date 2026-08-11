@@ -79,7 +79,7 @@ def build_class_to_leaf_map(leaf_to_ancestors_file, class_to_leaf_output_file):
 
 def count_removed_classes_for_class(
     class_iri,
-    leaf_descendants_map,
+    class_to_leaf_map,
     classification,
     class_to_all_roles_map,
     roles_to_leaves_map,
@@ -90,8 +90,9 @@ def count_removed_classes_for_class(
 
     Parameters:
         class_iri: The class to check
-        leaf_descendants_map: Maps structural classes to their leaf descendants
+        class_to_leaf_map: Maps structural classes to their leaf descendants
         classification: "structural", "functional", or "full"
+        class_to_all_roles_map: Maps classes to all roles (used for functional classification)
         roles_to_leaves_map: Maps role classes to their associated leaves
         structural_leaf_ids: If given, leaf descendants are restricted to this
             set (the genuine 'structural'-classified leaves), excluding any
@@ -100,35 +101,39 @@ def count_removed_classes_for_class(
     Returns:
         leaves: Set of leaf class IRIs
         n_leaves: Count of leaves
-        :param class_to_all_roles_map:
+
+    Raises:
+        ValueError: If class_iri not in class_to_leaf_map for structural/full classification
     """
 
-    # if classification not in ["structural", "functional", "full"]:
-    # print("Classification must be either 'structural', 'functional' or 'full'.")
-    # return 0, 0
+    if classification not in ["structural", "functional", "full"]:
+        raise ValueError(
+            f"Classification must be 'structural', 'functional', or 'full', got: {classification}",
+        )
 
     leaves = set()
 
     if classification in ["structural", "full"]:
-        if str(class_iri) not in leaf_descendants_map:
-            print(f"⚠️ Class {class_iri} is not found in map file.")
-            return 0, 0
-        elif (
-            len(leaf_descendants_map[str(class_iri)]) == 0
-        ):  # Should not happen since then it would be a leaf
-            print(f"⚠️ Class {class_iri} has no descendants in full ontology.")
-            return 0, 0
+        if str(class_iri) not in class_to_leaf_map:
+            raise ValueError(
+                f"Class {class_iri} not found in class_to_leaf_map. "
+                "Check that the map file was loaded correctly and the class IRI is valid.",
+            )
 
-        # Get string of subclasses from the map
-        leaves_structure = leaf_descendants_map[str(class_iri)]
+        leaves_structure = class_to_leaf_map[str(class_iri)]
+        if len(leaves_structure) == 0:
+            raise ValueError(
+                f"Class {class_iri} has no leaf descendants in ontology. "
+                "This should not happen if the map was built correctly.",
+            )
+
         leaves.update(leaves_structure)
 
         if structural_leaf_ids is not None:
             leaves &= structural_leaf_ids
 
     else:
-        print(f"Classification {classification} is not supported for counting classes.")
-        return 0, 0
+        raise ValueError("Functional classification is not yet implemented.")
 
     # if classification in ["functional", "full"]:
     #     # Get ALL roles for the class being tested (direct + inherited from ancestors)

@@ -132,15 +132,31 @@ def get_n_ss_annotated(
     """
     n_ss_annotated = number of input classes that are leaf descendants of the given class.
 
-    studyset_leaves: list of class IDs that were provided by the user (the study set)
-    class_to_check: the ontology class for which we want n_ss_annotated
-    map_file: JSON file mapping each class to all its leaf descendants
+    Parameters:
+        studyset_leaves: list of class IDs that were provided by the user (the study set)
+        class_to_check: the ontology class for which we want n_ss_annotated
+        class_to_leaf_map: JSON mapping each class to all its leaf descendants
+        classification: "structural", "functional", or "full"
+        class_to_all_roles_map: Maps classes to all roles (used for functional classification)
+        roles_to_leaves_map: Maps role classes to their associated leaves
+
+    Returns:
+        int: Count of study set leaves that are descendants of class_to_check
+
+    Raises:
+        ValueError: If classification is not supported or class not found
     """
 
     leaves = set()
 
     if classification in ["structural", "full"]:
         # descendants of the class we are calculating enrichment for
+        if class_to_check not in class_to_leaf_map:
+            raise ValueError(
+                f"Class {class_to_check} not found in class_to_leaf_map. "
+                "Ensure map file is loaded and class IRI is valid.",
+            )
+
         leaf_descendants = set(class_to_leaf_map.get(class_to_check, []))
         leaves.update(leaf_descendants)
 
@@ -155,8 +171,10 @@ def get_n_ss_annotated(
     #         leaves.update(roles_to_leaves_map.get(role, []))
 
     else:
-        print(f"Classification {classification} is not supported for counting classes.")
-        return 0
+        raise ValueError(
+            f"Classification '{classification}' is not supported. "
+            "Use 'structural', 'functional', or 'full'.",
+        )
 
 
 def get_n_ss_annotated_for_roles(
@@ -302,6 +320,38 @@ def print_enrichment_results(enrichment_results):
 # Graphing and pruning strategies.
 
 
+def _load_data_files():
+    """
+    Load common data files needed for enrichment analysis.
+
+    Returns:
+        tuple: (class_to_leaf_map, class_to_all_roles_map, roles_to_leaves_map,
+                removed_leaves_csv, leaf_to_ancestors_map_file, parent_map_file)
+    """
+    removed_leaves_csv = "data/removed_leaf_classes_with_smiles.csv"
+    leaf_to_ancestors_map_file = "data/removed_leaf_classes_to_ALL_parents_map.json"
+    class_to_leaf_map_file = "data/class_to_leaf_descendants_map.json"
+    parent_map_file = "data/chebi_parent_map.json"
+    class_to_all_roles_map_json = "data/class_to_all_roles_map.json"
+    roles_to_leaves_map_json = "data/roles_to_leaves_map.json"
+
+    with open(class_to_leaf_map_file) as f:
+        class_to_leaf_map = json.load(f)
+    with open(class_to_all_roles_map_json) as f:
+        class_to_all_roles_map = json.load(f)
+    with open(roles_to_leaves_map_json) as f:
+        roles_to_leaves_map = json.load(f)
+
+    return (
+        class_to_leaf_map,
+        class_to_all_roles_map,
+        roles_to_leaves_map,
+        removed_leaves_csv,
+        leaf_to_ancestors_map_file,
+        parent_map_file,
+    )
+
+
 def run_enrichment_analysis(
     studyset_list,
     bonferroni_correct=False,
@@ -319,20 +369,15 @@ def run_enrichment_analysis(
 
     pruning_before_enrichment = root_children_prune or linear_branch_prune
 
-    # Files
-    removed_leaves_csv = "data/removed_leaf_classes_with_smiles.csv"
-    leaf_to_ancestors_map_file = "data/removed_leaf_classes_to_ALL_parents_map.json"
-    class_to_leaf_map_file = "data/class_to_leaf_descendants_map.json"
-    parent_map_file = "data/chebi_parent_map.json"
-    class_to_all_roles_map_json = "data/class_to_all_roles_map.json"
-    roles_to_leaves_map_json = "data/roles_to_leaves_map.json"
-
-    with open(class_to_leaf_map_file) as f:
-        class_to_leaf_map = json.load(f)
-    with open(class_to_all_roles_map_json) as f:
-        class_to_all_roles_map = json.load(f)
-    with open(roles_to_leaves_map_json) as f:
-        roles_to_leaves_map = json.load(f)
+    # Load common data files
+    (
+        class_to_leaf_map,
+        class_to_all_roles_map,
+        roles_to_leaves_map,
+        removed_leaves_csv,
+        leaf_to_ancestors_map_file,
+        parent_map_file,
+    ) = _load_data_files()
 
     structural_leaf_ids = get_structural_leaf_ids(removed_leaves_csv)
 
@@ -554,20 +599,15 @@ def run_enrichment_analysis_plain_enrich_pruning_strategy(
     check_leaf_classes=False,
 ):
 
-    # Files
-    removed_leaves_csv = "data/removed_leaf_classes_with_smiles.csv"
-    leaf_to_ancestors_map_file = "data/removed_leaf_classes_to_ALL_parents_map.json"
-    class_to_leaf_map_file = "data/class_to_leaf_descendants_map.json"
-    parent_map_file = "data/chebi_parent_map.json"
-    class_to_all_roles_map_json = "data/class_to_all_roles_map.json"
-    roles_to_leaves_map_json = "data/roles_to_leaves_map.json"
-
-    with open(class_to_leaf_map_file) as f:
-        class_to_leaf_map = json.load(f)
-    with open(class_to_all_roles_map_json) as f:
-        class_to_all_roles_map = json.load(f)
-    with open(roles_to_leaves_map_json) as f:
-        roles_to_leaves_map = json.load(f)
+    # Load common data files
+    (
+        class_to_leaf_map,
+        class_to_all_roles_map,
+        roles_to_leaves_map,
+        removed_leaves_csv,
+        leaf_to_ancestors_map_file,
+        parent_map_file,
+    ) = _load_data_files()
 
     structural_leaf_ids = get_structural_leaf_ids(removed_leaves_csv)
 
