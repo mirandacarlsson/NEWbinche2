@@ -29,5 +29,8 @@ build-backend = "uv_build"
 ignore_notebooks = true
 known_first_party = ["calculations", "old_scripts", "preparing_data", "website"]
 
+[tool.deptry.package_module_name_map]
+py-horned-owl = ["pyhornedowl"]
+
 [tool.uv]
 package = false

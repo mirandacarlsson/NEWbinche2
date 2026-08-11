@@ -8,12 +8,11 @@ Tests verify:
 4. Numerical edge cases
 5. Parameter consistency
 """
-# deptry: ignore=DEP004
 
 import math
 
 import numpy as np
-import pytest  # type: ignore[import-untyped]
+import pytest  # deptry: ignore=DEP004
 
 from calculations.weighted_calculations import (
     _SaddleSum,
