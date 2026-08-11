@@ -1,8 +1,8 @@
-import requests
-import pandas as pd
-import time
 import os
 from pathlib import Path
+
+import pandas as pd
+import requests
 
 # --- Configuration ---
 ENDPOINT = "https://query.wikidata.org/sparql"
@@ -10,11 +10,11 @@ USER_AGENT = "MetabolomicsEnrichment/1.0 (miranda.carlsson@idiap.ch)"
 
 QUERY = """
 SELECT DISTINCT ?compound ?compoundLabel ?chebi ?smiles_canonical ?taxon_name WHERE {
-  ?compound wdt:P31/wdt:P279* wd:Q407595. 
-  
+  ?compound wdt:P31/wdt:P279* wd:Q407595.
+
   OPTIONAL { ?compound wdt:P683 ?chebi . }
   OPTIONAL { ?compound wdt:P233 ?smiles_canonical . }
-  OPTIONAL { 
+  OPTIONAL {
     { ?compound wdt:P703 ?taxon . }
     UNION
     { ?compound wdt:P1582 ?taxon . }
@@ -25,28 +25,38 @@ SELECT DISTINCT ?compound ?compoundLabel ?chebi ?smiles_canonical ?taxon_name WH
 LIMIT 1
 """
 
+
 def run_sparql_query(query, endpoint=ENDPOINT, user_agent=USER_AGENT):
     headers = {
         "User-Agent": user_agent,
-        "Accept": "application/sparql-results+json"
+        "Accept": "application/sparql-results+json",
     }
     response = requests.get(
         endpoint,
         params={"query": query, "format": "json"},
         headers=headers,
-        timeout=60  # seconds before your script gives up
+        timeout=60,  # seconds before your script gives up
     )
     response.raise_for_status()  # raises an error for 4xx/5xx responses
     return response.json()
 
+
 def results_to_dataframe(results):
     rows = []
     for binding in results["results"]["bindings"]:
-        row = {key: binding[key]["value"] if key in binding else None
-               for key in ["compound", "compoundLabel", "chebi", 
-                           "smiles_canonical", "taxon_name"]}
+        row = {
+            key: binding[key]["value"] if key in binding else None
+            for key in [
+                "compound",
+                "compoundLabel",
+                "chebi",
+                "smiles_canonical",
+                "taxon_name",
+            ]
+        }
         rows.append(row)
     return pd.DataFrame(rows)
+
 
 # --- Run ---
 try:
@@ -73,5 +83,7 @@ try:
 except requests.exceptions.Timeout:
     print("Query timed out — try narrowing with a filter or LIMIT")
 except requests.exceptions.HTTPError as e:
-    print(f"HTTP error: {e.response.status_code} — {e.response.text}")
-
+    response = e.response
+    status_code = response.status_code if response is not None else "?"
+    text = response.text if response is not None else ""
+    print(f"HTTP error: {status_code} — {text}")

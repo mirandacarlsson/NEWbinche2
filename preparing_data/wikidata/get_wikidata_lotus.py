@@ -1,5 +1,6 @@
-import pandas as pd
 from pathlib import Path
+
+import pandas as pd
 
 
 def normalize_chebi_id(raw_value):
@@ -46,28 +47,36 @@ def connect_lotus_csv_to_chebi_ids(
     inchikey_to_chebi = dict(zip(inchikey_lookup["InChIKey"], inchikey_lookup["IRI"]))
 
     smiles_lookup = pd.read_csv(smiles_csv)
-    smiles_lookup["SMILES"] = smiles_lookup["SMILES"].astype(str).str.strip('"').str.strip()
+    smiles_lookup["SMILES"] = (
+        smiles_lookup["SMILES"].astype(str).str.strip('"').str.strip()
+    )
     smiles_to_chebi = dict(zip(smiles_lookup["SMILES"], smiles_lookup["IRI"]))
 
     lotus["chebi_id"] = None
     lotus["chebi_source"] = None
 
-    for index, row in lotus.iterrows():
+    for position, (index, row) in enumerate(lotus.iterrows(), start=1):
         inchikey = row.get("compound_inchikey")
         smiles_conn = row.get("compound_smiles_conn")
         smiles_iso = row.get("compound_smiles_iso")
 
         if pd.notna(inchikey) and inchikey in inchikey_to_chebi:
-            lotus.at[index, "chebi_id"] = normalize_chebi_id(inchikey_to_chebi[inchikey])
+            lotus.at[index, "chebi_id"] = normalize_chebi_id(
+                inchikey_to_chebi[inchikey],
+            )
             lotus.at[index, "chebi_source"] = "found_via_inchikey"
         elif pd.notna(smiles_conn) and smiles_conn in smiles_to_chebi:
-            lotus.at[index, "chebi_id"] = normalize_chebi_id(smiles_to_chebi[smiles_conn])
+            lotus.at[index, "chebi_id"] = normalize_chebi_id(
+                smiles_to_chebi[smiles_conn],
+            )
             lotus.at[index, "chebi_source"] = "found_via_smiles_conn"
         elif pd.notna(smiles_iso) and smiles_iso in smiles_to_chebi:
-            lotus.at[index, "chebi_id"] = normalize_chebi_id(smiles_to_chebi[smiles_iso])
+            lotus.at[index, "chebi_id"] = normalize_chebi_id(
+                smiles_to_chebi[smiles_iso],
+            )
             lotus.at[index, "chebi_source"] = "found_via_smiles_iso"
 
-        if index % 1000 == 0:
+        if position % 1000 == 0:
             print(f"Processed {index} / {len(lotus)} rows")
 
     Path(output_tsv_path).parent.mkdir(parents=True, exist_ok=True)
@@ -75,7 +84,9 @@ def connect_lotus_csv_to_chebi_ids(
 
     matched_count = lotus["chebi_id"].notna().sum()
     print(f"Saved {len(lotus)} compounds with matched ChEBI IDs to {output_tsv_path}")
-    print(f"Matched ChEBI IDs: {matched_count} out of {len(lotus)} compounds ({(matched_count/len(lotus))*100:.2f}%)")
+    print(
+        f"Matched ChEBI IDs: {matched_count} out of {len(lotus)} compounds ({(matched_count / len(lotus)) * 100:.2f}%)",
+    )
 
 
 if __name__ == "__main__":

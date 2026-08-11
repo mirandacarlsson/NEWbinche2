@@ -1,6 +1,6 @@
+import os
 import sys
 import xml.etree.ElementTree as ET
-import os
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -12,29 +12,30 @@ from preparing_data.load_chebi import load_chebi, load_ontology
 ## Root IRIs for functional and structural hierarchies
 
 # Functional
-ROLE_ROOT_IRI = "http://purl.obolibrary.org/obo/CHEBI_50906" # role 
+ROLE_ROOT_IRI = "http://purl.obolibrary.org/obo/CHEBI_50906"  # role
 
 # Structural
-MOLECULAR_ROOT_IRI = "http://purl.obolibrary.org/obo/CHEBI_23367" # molecular entity  
-CHEMICAL_ROOT_IRI = "http://purl.obolibrary.org/obo/CHEBI_59999" # chemical substance
-"""
-The root for structural is "chemical entity" which has four subclasses: 
-'atom', 'chemical substance', 'group' and 'molecular entity'. 
-Want to include both 'chemical substance' and 'molecular entity' but remove 'atom' and 'group'.
-"""
+MOLECULAR_ROOT_IRI = "http://purl.obolibrary.org/obo/CHEBI_23367"  # molecular entity
+CHEMICAL_ROOT_IRI = "http://purl.obolibrary.org/obo/CHEBI_59999"  # chemical substance
+# The root for structural is "chemical entity", which has four subclasses:
+# "atom", "chemical substance", "group" and "molecular entity". Include both
+# "chemical substance" and "molecular entity" but remove "atom" and "group".
+
 
 def get_descendants(ontology, root_iri):
     """Recursively collect all descendants (subclasses) of a given class.
-    
+
     Returns a set of IRI strings.
     """
     descendants = set()
-    to_visit = [root_iri] # Start with the root class
+    to_visit = [root_iri]  # Start with the root class
     while to_visit:
         current = to_visit.pop()
         try:
-            subclasses = ontology.get_subclasses(current) # Returns all direct subclasses/children
-        except Exception:
+            subclasses = ontology.get_subclasses(
+                current,
+            )  # Returns all direct subclasses/children
+        except Exception:  # noqa: BLE001, S112
             continue
         for sub in subclasses:
             sub_iri = str(sub)  # Convert class object to IRI string
@@ -72,14 +73,18 @@ def identify_structural_vs_functional(chebi_ontology, subclass_map=None):
     class, and the structural/functional roots are non-leaves, so each root's descendant set
     (and therefore the classification) is identical to using the raw hierarchy.
     """
-    all_classes = set(str(cls) for cls in chebi_ontology.get_classes())
+    all_classes = {str(cls) for cls in chebi_ontology.get_classes()}
     print(f"Total classes in ontology: {len(all_classes)}")
 
     if subclass_map is not None:
         print("Collecting descendants from precomputed subclass map (fast path)...")
-        descend = lambda root: _descendants_from_subclass_map(subclass_map, root)
+
+        def descend(root):
+            return _descendants_from_subclass_map(subclass_map, root)
     else:
-        descend = lambda root: get_descendants(chebi_ontology, root)
+
+        def descend(root):
+            return get_descendants(chebi_ontology, root)
 
     # Identify functional hierarchies
     print("Collecting descendants of 'role' (functional)...")
@@ -93,12 +98,16 @@ def identify_structural_vs_functional(chebi_ontology, subclass_map=None):
     structural_classes_molecular = descend(MOLECULAR_ROOT_IRI)
     # Add the root itself
     structural_classes_molecular.add(MOLECULAR_ROOT_IRI)
-    print(f"Structural classes with molecular entity root: {len(structural_classes_molecular)}")
+    print(
+        f"Structural classes with molecular entity root: {len(structural_classes_molecular)}",
+    )
     print("Collecting descendants of 'chemical substance' (structural)...")
     structural_classes_chemical = descend(CHEMICAL_ROOT_IRI)
     # Add the root itself
     structural_classes_chemical.add(CHEMICAL_ROOT_IRI)
-    print(f"Structural classes with chemical substance root: {len(structural_classes_chemical)}")
+    print(
+        f"Structural classes with chemical substance root: {len(structural_classes_chemical)}",
+    )
     # Combine both structural sets
     structural_classes = structural_classes_molecular.union(structural_classes_chemical)
     print(f"Total structural classes: {len(structural_classes)}")
@@ -112,14 +121,22 @@ def identify_structural_vs_functional(chebi_ontology, subclass_map=None):
     # Check if overlaps exist
     overlap = functional_classes.intersection(structural_classes)
     if overlap:
-        print(f"!! Warning: Overlapping classes found between structural and functional: {len(overlap)}")
+        print(
+            f"!! Warning: Overlapping classes found between structural and functional: {len(overlap)}",
+        )
 
     return structural_classes, functional_classes, unknown_classes
 
 
-def split_owl_by_type(structural_classes, functional_classes, unknown_classes, input_file, output_dir=None):
+def split_owl_by_type(
+    structural_classes,
+    functional_classes,
+    unknown_classes,
+    input_file,
+    output_dir=None,
+):
     """Write two new OWL files: one for structural and one for functional classes.
-    
+
     Args:
         structural_classes: Set of structural class IRIs
         functional_classes: Set of functional class IRIs
@@ -132,10 +149,10 @@ def split_owl_by_type(structural_classes, functional_classes, unknown_classes, i
         output_dir = os.path.dirname(input_file)
         if not output_dir:
             output_dir = "."
-    
+
     ns = {
-        'owl': 'http://www.w3.org/2002/07/owl#',
-        'rdf': 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+        "owl": "http://www.w3.org/2002/07/owl#",
+        "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
     }
 
     print(f"Parsing {input_file} ...")
@@ -157,16 +174,30 @@ def split_owl_by_type(structural_classes, functional_classes, unknown_classes, i
             else:
                 new_root.append(elem)
 
-        ET.ElementTree(new_root).write(output_file, encoding="utf-8", xml_declaration=True)
+        ET.ElementTree(new_root).write(
+            output_file,
+            encoding="utf-8",
+            xml_declaration=True,
+        )
         print(f"✓ Saved {output_file} ({removed} elements removed)")
 
     # Save all splits
-    
+
     base = os.path.basename(input_file)
     name, ext = os.path.splitext(base)
-    create_filtered_tree(structural_classes, os.path.join(output_dir, f"{name}_structural{ext}"))
-    create_filtered_tree(functional_classes, os.path.join(output_dir, f"{name}_functional{ext}"))
-    create_filtered_tree(unknown_classes, os.path.join(output_dir, f"{name}_unknown{ext}"))
+    create_filtered_tree(
+        structural_classes,
+        os.path.join(output_dir, f"{name}_structural{ext}"),
+    )
+    create_filtered_tree(
+        functional_classes,
+        os.path.join(output_dir, f"{name}_functional{ext}"),
+    )
+    create_filtered_tree(
+        unknown_classes,
+        os.path.join(output_dir, f"{name}_unknown{ext}"),
+    )
+
 
 def check_roots_of_unknown(unknown_classes, chebi_ontology):
     """For each unknown class, find its top-most ancestors (roots)
@@ -185,11 +216,11 @@ def check_roots_of_unknown(unknown_classes, chebi_ontology):
 
         try:
             ancestors = chebi_ontology.get_ancestors(cls)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             print(f"⚠️ Could not get ancestors for {cls}: {e}")
             continue
 
-        ancestors = set(a for a in ancestors if a != cls)
+        ancestors = {a for a in ancestors if a != cls}
 
         if not ancestors:
             root_summary.setdefault("NO_ANCESTOR", []).append(cls)
@@ -197,10 +228,10 @@ def check_roots_of_unknown(unknown_classes, chebi_ontology):
 
         # Find top-most ancestors
         root_ancestors = []
-        for anc in ancestors:
-            supers = chebi_ontology.get_superclasses(anc)
+        for ancestor in ancestors:
+            supers = chebi_ontology.get_superclasses(ancestor)
             if not supers or all(s not in ancestors for s in supers):
-                root_ancestors.append(anc)
+                root_ancestors.append(ancestor)
 
         # Store results per root
         for root in root_ancestors:
@@ -214,15 +245,23 @@ def check_roots_of_unknown(unknown_classes, chebi_ontology):
                     if relevant_subs:
                         for sub in relevant_subs:
                             chemical_entity_sub_summary.setdefault(sub, []).append(cls)
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001
                     print(f"⚠️ Could not get subclasses of chemical entity: {e}")
 
     # --- PRIMARY SUMMARY ---
     print("\n===============================")
     print(" ROOT CLASS SUMMARY FOR UNKNOWNS")
     print("===============================")
-    for root, members in sorted(root_summary.items(), key=lambda x: len(x[1]), reverse=True):
-        label = chebi_ontology.get_label(root) if hasattr(chebi_ontology, "get_label") else root
+    for root, members in sorted(
+        root_summary.items(),
+        key=lambda x: len(x[1]),
+        reverse=True,
+    ):
+        label = (
+            chebi_ontology.get_label(root)
+            if hasattr(chebi_ontology, "get_label")
+            else root
+        )
         print(f"• {label} ({root}): {len(members)} unknowns under it")
 
     if "NO_ANCESTOR" in root_summary:
@@ -235,54 +274,63 @@ def check_roots_of_unknown(unknown_classes, chebi_ontology):
         print("\n----------------------------------")
         print(" DETAIL: Classes under 'chemical entity'")
         print("----------------------------------")
-        for subroot, members in sorted(chemical_entity_sub_summary.items(),
-                                       key=lambda x: len(x[1]), reverse=True):
-            label = chebi_ontology.get_label(subroot) if hasattr(chebi_ontology, "get_label") else subroot
+        for subroot, members in sorted(
+            chemical_entity_sub_summary.items(),
+            key=lambda x: len(x[1]),
+            reverse=True,
+        ):
+            label = (
+                chebi_ontology.get_label(subroot)
+                if hasattr(chebi_ontology, "get_label")
+                else subroot
+            )
             print(f"  • {label} ({subroot}): {len(members)} unknowns")
 
     return root_summary, chemical_entity_sub_summary
 
 
-
-
-
 if __name__ == "__main__":
-
-    task = "check_descendants" # Options: "split_structural_functional", "check_unknown", "check_descendants"
+    task = "check_descendants"  # Options: "split_structural_functional", "check_unknown", "check_descendants"
 
     if task == "split_structural_functional":
-
         print("Loading filtered ChEBI ontology...")
         # file = "data/filtered_chebi_no_leaves_with_smiles.owl"
         file = "data/filtered_chebi_no_leaves_with_smiles_no_deprecated.owl"
         print("Using file:", file, " Check if correct")
-        chebi_ontology = load_ontology(file) 
+        chebi_ontology = load_ontology(file)
         # chebi_ontology = load_chebi()
 
         print("\nIdentifying structural vs functional classes...")
-        structural_classes, functional_classes, unknown_classes = identify_structural_vs_functional(chebi_ontology)
+        structural_classes, functional_classes, unknown_classes = (
+            identify_structural_vs_functional(chebi_ontology)
+        )
 
         print("\nSplitting ontology into structural and functional OWL files...")
         split_owl_by_type(structural_classes, functional_classes, unknown_classes, file)
 
         print("\n✓ Done!")
 
-    elif task == "check_unknown": # Should not be needed anymore
+    elif task == "check_unknown":  # Should not be needed anymore
         print("Checking unknown/unclassified classes...")
 
         # unknown_classes_file = "data/filtered_chebi_no_leaves_with_smiles_unknown.owl"
-        unknown_classes_file = "data/filtered_chebi_no_leaves_with_smiles_no_deprecated_unknown.owl"
+        unknown_classes_file = (
+            "data/filtered_chebi_no_leaves_with_smiles_no_deprecated_unknown.owl"
+        )
         unknown_classes = load_ontology(unknown_classes_file)
 
         file = "data/filtered_chebi_no_leaves_with_smiles.owl"
-        chebi_ontology = load_ontology(file) 
+        chebi_ontology = load_ontology(file)
 
-        root_summary = check_roots_of_unknown(unknown_classes.get_classes(), chebi_ontology)
+        root_summary = check_roots_of_unknown(
+            unknown_classes.get_classes(),
+            chebi_ontology,
+        )
 
-    elif task == "check_descendants": # Should not be needed anymore
+    elif task == "check_descendants":  # Should not be needed anymore
         print("Checking descendants of a specific class...")
         class_iri = "http://purl.obolibrary.org/obo/CHEBI_52217"
-        
+
         chebi_ontology = load_chebi()
 
         descendants = get_descendants(chebi_ontology, class_iri)

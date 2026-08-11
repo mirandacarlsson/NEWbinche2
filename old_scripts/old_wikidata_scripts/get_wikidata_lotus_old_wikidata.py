@@ -1,10 +1,12 @@
-import requests
-import pandas as pd
 from pathlib import Path
 
+import pandas as pd
+import requests
 
 DEFAULT_COMPOUNDS_WITH_CHEBI_IDS = "data/wikidata/created/compounds_with_chebi_ids.tsv"
-DEFAULT_HOMO_SAPIENS_OUTPUT = "data/wikidata/created/compounds_with_chebi_ids_homo_sapiens.tsv"
+DEFAULT_HOMO_SAPIENS_OUTPUT = (
+    "data/wikidata/created/compounds_with_chebi_ids_homo_sapiens.tsv"
+)
 
 # Single place to look up which Wikidata taxon ID a narrow background is built for.
 TAXA = {
@@ -32,15 +34,7 @@ def normalize_chebi_id(raw_value):
 
     return "|".join(values)
 
-"""
-The scripts loads the latest Wikidata LOTUS dump from Zenodo, which contains pre-extracted compound-taxon pairs.
 
-compounds.tsv - chemical structures metadata (wikidataId, canonicalSmiles, isomericSmiles, inchi, inchiKey)
-references.tsv - bibliographical references metadata (wikidataId, pipe separated DOIs, titles)
-taxa.tsv - biological organisms metadata (wikidataId, pipe separated names, taxa rank)
-compound_reference_taxon.tsv - the documented structure-organism pairs
-
-"""
 def download_wikidata_lotus():
     SAVE_DIR = Path(__file__).resolve().parent.parent / "data" / "wikidata"
     SAVE_DIR.mkdir(parents=True, exist_ok=True)
@@ -51,7 +45,7 @@ def download_wikidata_lotus():
     print("Fetching Zenodo metadata...")
     zenodo = requests.get(
         "https://zenodo.org/api/records/5668854",
-        headers={"User-Agent": USER_AGENT}
+        headers={"User-Agent": USER_AGENT},
     ).json()
 
     files = {f["key"]: f["links"]["self"] for f in zenodo["files"]}
@@ -61,26 +55,26 @@ def download_wikidata_lotus():
     dfs = {}
     for filename, url in files.items():
         save_path = SAVE_DIR / filename
-        
+
         if save_path.exists():
             print(f"  {filename} already exists, loading from disk...")
             dfs[filename] = pd.read_csv(save_path, sep="\t")
             continue
-        
+
         print(f"  Downloading {filename}...")
         r = requests.get(url, headers={"User-Agent": USER_AGENT}, stream=True)
         r.raise_for_status()
-        
+
         with open(save_path, "wb") as f:
-            for chunk in r.iter_content(chunk_size=8192):
-                f.write(chunk)
-        
+            f.writelines(r.iter_content(chunk_size=8192))
+
         print(f"  Saved to {save_path}")
         dfs[filename] = pd.read_csv(save_path, sep="\t")
 
-    compounds = dfs["compounds.tsv"]
-    taxa = dfs["taxa.tsv"]
-    pairs = dfs["compound_reference_taxon.tsv"]
+    _ = dfs["compounds.tsv"]
+    _ = dfs["taxa.tsv"]
+    _ = dfs["compound_reference_taxon.tsv"]
+
 
 def print_summary():
     save_dir = Path(__file__).resolve().parent.parent / "data" / "wikidata"
@@ -96,10 +90,11 @@ def print_summary():
     taxa = pd.read_csv(taxa_path, sep="\t")
     pairs = pd.read_csv(pairs_path, sep="\t")
 
-    print(f"\nTotal counts:")
+    print("\nTotal counts:")
     print(f"  Compounds:              {len(compounds)}")
     print(f"  Taxa:                   {len(taxa)}")
     print(f"  Structure-organism pairs: {len(pairs)}")
+
 
 def count_human_entries():
     homo_sapiens_uri = TAXA["homo_sapiens"]
@@ -118,16 +113,22 @@ def count_human_entries():
 
     if human_taxa.empty:
         print("Homo sapiens URI not found in taxa.tsv, falling back to name match.")
-        human_taxa = taxa[taxa["names_pipe_separated"].str.contains("Homo sapiens", na=False)]
+        human_taxa = taxa[
+            taxa["names_pipe_separated"].str.contains("Homo sapiens", na=False)
+        ]
 
     human_pairs = pairs[pairs["taxon"].isin(human_taxa["wikidataId"])]
 
-    print(f"Homo sapiens taxon entries:    {len(human_taxa)}") # From taxa.tsv
-    print(f"Human structure-organism pairs: {len(human_pairs)}") # From compound_reference_taxon.tsv. Number of rows that have the taxon human sapiens
-    print(f"Unique human compounds:         {human_pairs['compound'].nunique()}") # From compound_reference_taxon.tsv. Number of unique compounds associated with human taxa
+    print(f"Homo sapiens taxon entries:    {len(human_taxa)}")  # From taxa.tsv
+    print(
+        f"Human structure-organism pairs: {len(human_pairs)}",
+    )  # From compound_reference_taxon.tsv. Number of rows that have the taxon human sapiens
+    print(
+        f"Unique human compounds:         {human_pairs['compound'].nunique()}",
+    )  # From compound_reference_taxon.tsv. Number of unique compounds associated with human taxa
 
 
-def find_top_n_duplicate_human_compounds(top_n=10): # Just used for simple checks
+def find_top_n_duplicate_human_compounds(top_n=10):  # Just used for simple checks
     homo_sapiens_uri = TAXA["homo_sapiens"]
     save_dir = Path(__file__).resolve().parent.parent / "data" / "wikidata"
     taxa_path = save_dir / "taxa.tsv"
@@ -143,7 +144,9 @@ def find_top_n_duplicate_human_compounds(top_n=10): # Just used for simple check
     human_taxa = taxa[taxa["wikidataId"] == homo_sapiens_uri]
     if human_taxa.empty:
         print("Homo sapiens URI not found in taxa.tsv, falling back to name match.")
-        human_taxa = taxa[taxa["names_pipe_separated"].str.contains("Homo sapiens", na=False)]
+        human_taxa = taxa[
+            taxa["names_pipe_separated"].str.contains("Homo sapiens", na=False)
+        ]
 
     human_pairs = pairs[pairs["taxon"].isin(human_taxa["wikidataId"])]
     if human_pairs.empty:
@@ -164,43 +167,52 @@ def find_top_n_duplicate_human_compounds(top_n=10): # Just used for simple check
     for compound_id, count in top_repeated.items():
         print(f"{compound_id}\t{int(count)}")
 
+
 def connect_smiles_to_chebi_ids(new_file_path):
-    chebi_smiles_file = 'data/removed_leaf_classes_with_smiles.csv'
+    chebi_smiles_file = "data/removed_leaf_classes_with_smiles.csv"
     chebi_smiles = pd.read_csv(chebi_smiles_file)
-    chebi_smiles["SMILES"] = chebi_smiles["SMILES"].astype(str).str.strip('"').str.strip()
+    chebi_smiles["SMILES"] = (
+        chebi_smiles["SMILES"].astype(str).str.strip('"').str.strip()
+    )
 
-    wiki_compunds_file = 'data/wikidata/compounds.tsv'
-    wiki_compounds = pd.read_csv(wiki_compunds_file, sep="\t")
+    wiki_compounds_file = "data/wikidata/compounds.tsv"
+    wiki_compounds = pd.read_csv(wiki_compounds_file, sep="\t")
 
-
-    chebi_smiles_dict = dict(zip(chebi_smiles['SMILES'], chebi_smiles['IRI']))
+    chebi_smiles_dict = dict(zip(chebi_smiles["SMILES"], chebi_smiles["IRI"]))
 
     # Add a new column to wiki_compounds for the matched ChEBI ID
     # For each row in wiki_compounds, check if the canonicalSmiles matches any SMILES in chebi_smiles_dict and if so, add the corresponding ChEBI ID to the new column
-    # If theres is no match, try to match the isomericSmiles column instead. If still no match, leave the new column as None
-    
-    wiki_compounds['chebi_id'] = None
+    # If there is no match, try to match the isomericSmiles column instead. If still no match, leave the new column as None
+
+    wiki_compounds["chebi_id"] = None
 
     for index, row in wiki_compounds.iterrows():
-        canonical_smiles = row['canonicalSmiles']
-        isomeric_smiles = row['isomericSmiles']
- 
+        canonical_smiles = row["canonicalSmiles"]
+        isomeric_smiles = row["isomericSmiles"]
+
         if pd.notna(canonical_smiles) and canonical_smiles in chebi_smiles_dict:
-            wiki_compounds.at[index, 'chebi_id'] = normalize_chebi_id(chebi_smiles_dict[canonical_smiles])
+            wiki_compounds.at[index, "chebi_id"] = normalize_chebi_id(
+                chebi_smiles_dict[canonical_smiles],
+            )
         elif pd.notna(isomeric_smiles) and isomeric_smiles in chebi_smiles_dict:
-            wiki_compounds.at[index, 'chebi_id'] = normalize_chebi_id(chebi_smiles_dict[isomeric_smiles])
-    
+            wiki_compounds.at[index, "chebi_id"] = normalize_chebi_id(
+                chebi_smiles_dict[isomeric_smiles],
+            )
+
         # Print progress every 1000 rows
         if index % 1000 == 0:
             print(f"Processed {index} / {len(wiki_compounds)} rows")
 
     wiki_compounds.to_csv(new_file_path, index=False, sep="\t")
 
+
 def count_matched_chebi_ids(file_path):
     df = pd.read_csv(file_path, sep="\t")
-    matched_count = df['chebi_id'].notna().sum()
+    matched_count = df["chebi_id"].notna().sum()
     total_count = len(df)
-    print(f"Matched ChEBI IDs: {matched_count} out of {total_count} compounds ({(matched_count/total_count)*100:.2f}%)")
+    print(
+        f"Matched ChEBI IDs: {matched_count} out of {total_count} compounds ({(matched_count / total_count) * 100:.2f}%)",
+    )
 
 
 def add_taxon_and_taxon_names(input_file_path, output_file_path):
@@ -212,7 +224,9 @@ def add_taxon_and_taxon_names(input_file_path, output_file_path):
     taxon_lookup_col = "wikidataId"
 
     if "compound" not in pairs.columns or "taxon" not in pairs.columns:
-        raise KeyError("compound_reference_taxon.tsv must contain 'compound' and 'taxon' columns")
+        raise KeyError(
+            "compound_reference_taxon.tsv must contain 'compound' and 'taxon' columns",
+        )
     if "names_pipe_separated" not in taxa.columns:
         raise KeyError("taxa.tsv must contain 'names_pipe_separated' column")
 
@@ -255,11 +269,11 @@ def add_taxon_and_taxon_names(input_file_path, output_file_path):
     print(f"Saved enriched file to {output_file_path}")
     print(
         f"Matched taxon for {matched_taxon_count} out of {len(compounds)} compounds "
-        f"({(matched_taxon_count/len(compounds))*100:.2f}%)."
+        f"({(matched_taxon_count / len(compounds)) * 100:.2f}%).",
     )
     print(
         f"Matched taxon names for {matched_name_count} out of {len(compounds)} compounds "
-        f"({(matched_name_count/len(compounds))*100:.2f}%)."
+        f"({(matched_name_count / len(compounds)) * 100:.2f}%).",
     )
 
 
@@ -275,7 +289,7 @@ def keep_taxon_compounds(input_file_path, output_file_path, taxon_label):
     if "taxon" not in compounds.columns:
         raise KeyError(
             "Input file must contain column 'taxon'. "
-            "Run add_taxon_and_taxon_names first."
+            "Run add_taxon_and_taxon_names first.",
         )
 
     print(f"[WIKIDATA] Filtering to taxon: {taxon_label} ({taxon_uri})")
@@ -288,14 +302,17 @@ def keep_taxon_compounds(input_file_path, output_file_path, taxon_label):
     print(f"Saved {taxon_label} subset to {output_file_path}")
     print(
         f"Kept {len(taxon_compounds)} out of {len(compounds)} compounds "
-        f"({(len(taxon_compounds)/len(compounds))*100:.2f}%)."
+        f"({(len(taxon_compounds) / len(compounds)) * 100:.2f}%).",
     )
+
 
 def count_chebi_ids(input_file_path):
     compounds = pd.read_csv(input_file_path, sep="\t")
     matched_chebi_count = compounds["chebi_id"].notna().sum()
-    print(f"Matched ChEBI IDs for {matched_chebi_count} out of {len(compounds)} compounds in {input_file_path}"
-          f"({(matched_chebi_count/len(compounds))*100:.2f}%).")
+    print(
+        f"Matched ChEBI IDs for {matched_chebi_count} out of {len(compounds)} compounds in {input_file_path}"
+        f"({(matched_chebi_count / len(compounds)) * 100:.2f}%).",
+    )
 
 
 def create_wikidata_output_files(
@@ -337,8 +354,8 @@ def create_wikidata_output_files(
     print(f"  - {compounds_with_chebi_ids_path}")
     print(f"  - {taxon_output_path}")
 
-if __name__ == "__main__":
 
+if __name__ == "__main__":
     task = count_chebi_ids
     # options: download_wikidata_lotus, count_human_entries, print_summary, find_top_n_duplicate_human_compounds, connect_smiles_to_chebi_ids, add_taxon_and_taxon_names, keep_taxon_compounds, count_chebi_ids, create_wikidata_output_files
 
@@ -352,7 +369,7 @@ if __name__ == "__main__":
     elif task == find_top_n_duplicate_human_compounds:
         find_top_n_duplicate_human_compounds(top_n=10)
     elif task == connect_smiles_to_chebi_ids:
-        new_file_path = 'data/wikidata/created/compounds_with_chebi_ids.tsv'
+        new_file_path = "data/wikidata/created/compounds_with_chebi_ids.tsv"
         # create the directory if it doesn't exist
         Path(new_file_path).parent.mkdir(parents=True, exist_ok=True)
         connect_smiles_to_chebi_ids(new_file_path)
@@ -363,16 +380,20 @@ if __name__ == "__main__":
         output_file_path = input_file_path
         add_taxon_and_taxon_names(input_file_path, output_file_path)
     elif task == keep_taxon_compounds:
-        taxon_label = "arabidopsis_thaliana"  # <-- choose taxon here, must be a key in TAXA
+        taxon_label = (
+            "arabidopsis_thaliana"  # <-- choose taxon here, must be a key in TAXA
+        )
         input_file_path = "data/wikidata/created/compounds_with_chebi_ids.tsv"
-        output_file_path = f"data/wikidata/created/compounds_with_chebi_ids_{taxon_label}.tsv"
+        output_file_path = (
+            f"data/wikidata/created/compounds_with_chebi_ids_{taxon_label}.tsv"
+        )
         keep_taxon_compounds(input_file_path, output_file_path, taxon_label)
     elif task == count_chebi_ids:
-        input_file_path = "data/wikidata/created/compounds_with_chebi_ids_homo_sapiens.tsv"
+        input_file_path = (
+            "data/wikidata/created/compounds_with_chebi_ids_homo_sapiens.tsv"
+        )
         count_chebi_ids(input_file_path)
     elif task == create_wikidata_output_files:
         create_wikidata_output_files()
     else:
         print("Invalid task specified.")
-        
-    

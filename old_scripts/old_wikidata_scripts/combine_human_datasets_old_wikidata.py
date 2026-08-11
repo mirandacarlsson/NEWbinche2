@@ -24,9 +24,10 @@ import re
 from collections import Counter
 from pathlib import Path
 
-
 HMDB_INPUT = "data/hmdb_metabolites_extract_quantified_detected_updatedchebis.tsv"
-WIKIDATA_INPUT = "data/wikidata/created/compounds_with_chebi_ids_homo_sapiens_updatedchebis.tsv"
+WIKIDATA_INPUT = (
+    "data/wikidata/created/compounds_with_chebi_ids_homo_sapiens_updatedchebis.tsv"
+)
 OUTPUT_FILE = "data/combined_hmdb_wikidata.tsv"
 
 
@@ -155,7 +156,7 @@ def combine_datasets(
     }
 
     # HMDB rows
-    with open(hmdb_path, "r", encoding="utf-8", newline="") as handle:
+    with open(hmdb_path, encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
         for row_index, row in enumerate(reader, start=1):
             total_counts["hmdb"] += 1
@@ -186,10 +187,13 @@ def combine_datasets(
                 if compound_id and not rec.get("hmdb_id"):
                     rec["hmdb_id"] = compound_id
                     rec["source"] = "both" if rec.get("wikidata_id") else "hmdb"
-                rec["chebi_source"] = _merge_chebi_source(rec.get("chebi_source", ""), chebi_source)
+                rec["chebi_source"] = _merge_chebi_source(
+                    rec.get("chebi_source", ""),
+                    chebi_source,
+                )
 
     # Wikidata rows
-    with open(wikidata_path, "r", encoding="utf-8", newline="") as handle:
+    with open(wikidata_path, encoding="utf-8", newline="") as handle:
         reader = csv.DictReader(handle, delimiter="\t")
         for row_index, row in enumerate(reader, start=1):
             total_counts["wikidata"] += 1
@@ -220,7 +224,10 @@ def combine_datasets(
                 if compound_id and not rec.get("wikidata_id"):
                     rec["wikidata_id"] = compound_id
                     rec["source"] = "both" if rec.get("hmdb_id") else "wikidata"
-                rec["chebi_source"] = _merge_chebi_source(rec.get("chebi_source", ""), chebi_source)
+                rec["chebi_source"] = _merge_chebi_source(
+                    rec.get("chebi_source", ""),
+                    chebi_source,
+                )
 
     # Finalize id field and keep only requested output columns.
     rows = []
@@ -242,7 +249,7 @@ def combine_datasets(
                 "smiles": rec["smiles"],
                 "chebi_source": rec["chebi_source"],
                 "source": rec["source"],
-            }
+            },
         )
 
     rows.sort(key=lambda r: (r["source"], r["id"], r["smiles"]))
@@ -262,10 +269,12 @@ def combine_datasets(
 
     for source in ["hmdb", "wikidata"]:
         dropped_total = sum(drop_counts[source].values())
-        print(f"{source}: input={total_counts[source]}, dropped={dropped_total}, kept={total_counts[source] - dropped_total}")
+        print(
+            f"{source}: input={total_counts[source]}, dropped={dropped_total}, kept={total_counts[source] - dropped_total}",
+        )
         print(
             f"{source}: dropped_missing_chebi={drop_counts[source].get('chebi', 0)}, "
-            f"kept_with_missing_smiles={kept_missing_smiles[source]}"
+            f"kept_with_missing_smiles={kept_missing_smiles[source]}",
         )
 
 

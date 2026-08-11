@@ -1,9 +1,10 @@
 import argparse
 import re
-import requests
-import pandas as pd
 import time
-from typing import Optional
+from typing import cast
+
+import pandas as pd
+import requests
 
 
 def normalize_chebi_id(raw_value):
@@ -29,6 +30,7 @@ def normalize_chebi_id(raw_value):
 
     return "|".join(normalized)
 
+
 def convert_smiles_to_chebi(smiles_string):
 
     chebi_ids = []
@@ -47,7 +49,9 @@ def convert_smiles_to_chebi(smiles_string):
         },
     )
 
-    lookup_infotext = response.json().get("models", {}).get("ChEBI Lookup", {}).get("highlights", [])
+    lookup_infotext = (
+        response.json().get("models", {}).get("ChEBI Lookup", {}).get("highlights", [])
+    )
 
     # If the lookup highlights contain a ChEBI ID, use that directly.
     if lookup_infotext and "CHEBI:" in lookup_infotext[0][1]:
@@ -110,6 +114,7 @@ def pick_smiles_candidates(raw_value):
 
     return candidates
 
+
 def _choose_smiles_columns(df, requested_smiles_columns=None):
     """Pick SMILES columns that exist in the file.
 
@@ -128,12 +133,17 @@ def _choose_smiles_columns(df, requested_smiles_columns=None):
     if not chosen:
         raise KeyError(
             "Could not find a SMILES column. Expected at least one of "
-            "['canonicalSmiles', 'isomericSmiles', 'smiles']."
+            "['canonicalSmiles', 'isomericSmiles', 'smiles'].",
         )
     return chosen
 
 
-def find_missing_chebis(compounds_file, output_file_path=None, smiles_columns=None, chebi_column="chebi_id"):
+def find_missing_chebis(
+    compounds_file,
+    output_file_path=None,
+    smiles_columns=None,
+    chebi_column="chebi_id",
+):
     df = pd.read_csv(compounds_file, sep="\t")
 
     if chebi_column not in df.columns:
@@ -149,7 +159,9 @@ def find_missing_chebis(compounds_file, output_file_path=None, smiles_columns=No
     df[chebi_column] = df[chebi_column].apply(normalize_chebi_id)
 
     # Treat both NaN and empty strings as missing ChEBI IDs.
-    chebi_existing_mask = df[chebi_column].notna() & (df[chebi_column].astype(str).str.strip() != "")
+    chebi_existing_mask = df[chebi_column].notna() & (
+        df[chebi_column].astype(str).str.strip() != ""
+    )
     df.loc[chebi_existing_mask, "chebi_source"] = "already_existed"
 
     missing_indices = df.index[~chebi_existing_mask]
@@ -174,7 +186,9 @@ def find_missing_chebis(compounds_file, output_file_path=None, smiles_columns=No
                     if pd.notna(iri) and iri:
                         inchikey_map[key] = normalize_chebi_id(iri)
         if inchikey_map:
-            print(f"Loaded {len(inchikey_map)} InChIKey -> ChEBI mappings from removed_leaf_classes_with_inchikeys.csv")
+            print(
+                f"Loaded {len(inchikey_map)} InChIKey -> ChEBI mappings from removed_leaf_classes_with_inchikeys.csv",
+            )
     except FileNotFoundError:
         pass
 
@@ -216,7 +230,9 @@ def find_missing_chebis(compounds_file, output_file_path=None, smiles_columns=No
         # Prefer a direct match from any available SMILES candidate.
         # If none is found, fall back to the first parent-based match.
         for smiles_to_query in smiles_candidates:
-            candidate_ids, candidate_direct, candidate_parents = convert_smiles_to_chebi(smiles_to_query)
+            candidate_ids, candidate_direct, candidate_parents = (
+                convert_smiles_to_chebi(smiles_to_query)
+            )
 
             if candidate_direct and candidate_ids:
                 chebi_ids = candidate_ids
@@ -251,7 +267,9 @@ def find_missing_chebis(compounds_file, output_file_path=None, smiles_columns=No
 
     direct_count = int((df["chebi_source"] == "found_directly").sum())
     parents_count = int((df["chebi_source"] == "parents_compounds").sum())
-    still_missing_mask = df[chebi_column].isna() | (df[chebi_column].astype(str).str.strip() == "")
+    still_missing_mask = df[chebi_column].isna() | (
+        df[chebi_column].astype(str).str.strip() == ""
+    )
     unresolved_count = int(still_missing_mask.sum())
 
     print(f"Resolved via InChIKey mapping: {inchikey_match_count}")
@@ -265,10 +283,10 @@ def find_missing_chebis(compounds_file, output_file_path=None, smiles_columns=No
 
 def run_find_missing_chebis(
     source: str = "wikidata_hs",
-    compounds_file: Optional[str] = None,
-    output_file: Optional[str] = None,
-    smiles_columns: Optional[list] = None,
-    chebi_column: Optional[str] = None,
+    compounds_file: str | None = None,
+    output_file: str | None = None,
+    smiles_columns: list | None = None,
+    chebi_column: str | None = None,
 ):
     """Programmatic wrapper around :func:`find_missing_chebis`.
 
@@ -312,12 +330,24 @@ def run_find_missing_chebis(
         raise ValueError(f"Unknown source preset: {source!r}")
 
     preset = SOURCE_PRESETS[source]
-    compounds_file = compounds_file if compounds_file is not None else preset["input"]
-    output_file = output_file if output_file is not None else preset["output"]
-    smiles_columns = smiles_columns if smiles_columns is not None else preset["smiles_columns"]
-    chebi_column = chebi_column if chebi_column is not None else preset["chebi_column"]
+    compounds_file = (
+        compounds_file if compounds_file is not None else cast(str, preset["input"])
+    )
+    output_file = (
+        output_file if output_file is not None else cast(str, preset["output"])
+    )
+    smiles_columns = (
+        smiles_columns
+        if smiles_columns is not None
+        else cast(list[str], preset["smiles_columns"])
+    )
+    chebi_column = (
+        chebi_column if chebi_column is not None else cast(str, preset["chebi_column"])
+    )
 
-    print(f"Running find_missing_chebis programmatically: source={source}, input={compounds_file}, output={output_file}")
+    print(
+        f"Running find_missing_chebis programmatically: source={source}, input={compounds_file}, output={output_file}",
+    )
     return find_missing_chebis(
         compounds_file,
         output_file,
@@ -325,41 +355,41 @@ def run_find_missing_chebis(
         chebi_column=chebi_column,
     )
 
-    
+
 def main_find_missing_chebis(source):
     start_time = time.time()
 
     SOURCE_PRESETS = {
-    "wikidata_hs": {
-        "input": "data/wikidata/created/compounds_with_chebi_ids_homo_sapiens.tsv",
-        "output": "data/wikidata/created/compounds_with_chebi_ids_homo_sapiens_updatedchebis.tsv",
-        "smiles_columns": ["canonicalSmiles", "isomericSmiles"],
-        "chebi_column": "chebi_id",
-    },
-    "hmdb": {
-        "input": "data/hmdb_metabolites_extract_quantified_detected.tsv",
-        "output": "data/hmdb_metabolites_extract_quantified_detected_updatedchebis.tsv",
-        "smiles_columns": ["smiles"],
-        "chebi_column": "chebi_id",
-    },
-    "wikidata_at": {
-        "input": "data/wikidata/created/compounds_with_chebi_ids_arabidopsis_thaliana.tsv",
-        "output": "data/wikidata/created/compounds_with_chebi_ids_arabidopsis_thaliana_updatedchebis.tsv",
-        "smiles_columns": ["canonicalSmiles", "isomericSmiles"],
-        "chebi_column": "chebi_id",
-    },
-    "lotus_hs": {
-        "input": "data/wikidata/created/lotus_homo_sapiens_with_chebi_ids.tsv",
-        "output": "data/wikidata/created/lotus_homo_sapiens_with_chebi_ids_updatedchebis.tsv",
-        "smiles_columns": ["compound_smiles_conn", "compound_smiles_iso"],
-        "chebi_column": "chebi_id",
-    },
-    "lotus_at": {
-        "input": "data/wikidata/created/lotus_arabidopsis_thaliana_with_chebi_ids.tsv",
-        "output": "data/wikidata/created/lotus_arabidopsis_thaliana_with_chebi_ids_updatedchebis.tsv",
-        "smiles_columns": ["compound_smiles_conn", "compound_smiles_iso"],
-        "chebi_column": "chebi_id",
-    },
+        "wikidata_hs": {
+            "input": "data/wikidata/created/compounds_with_chebi_ids_homo_sapiens.tsv",
+            "output": "data/wikidata/created/compounds_with_chebi_ids_homo_sapiens_updatedchebis.tsv",
+            "smiles_columns": ["canonicalSmiles", "isomericSmiles"],
+            "chebi_column": "chebi_id",
+        },
+        "hmdb": {
+            "input": "data/hmdb_metabolites_extract_quantified_detected.tsv",
+            "output": "data/hmdb_metabolites_extract_quantified_detected_updatedchebis.tsv",
+            "smiles_columns": ["smiles"],
+            "chebi_column": "chebi_id",
+        },
+        "wikidata_at": {
+            "input": "data/wikidata/created/compounds_with_chebi_ids_arabidopsis_thaliana.tsv",
+            "output": "data/wikidata/created/compounds_with_chebi_ids_arabidopsis_thaliana_updatedchebis.tsv",
+            "smiles_columns": ["canonicalSmiles", "isomericSmiles"],
+            "chebi_column": "chebi_id",
+        },
+        "lotus_hs": {
+            "input": "data/wikidata/created/lotus_homo_sapiens_with_chebi_ids.tsv",
+            "output": "data/wikidata/created/lotus_homo_sapiens_with_chebi_ids_updatedchebis.tsv",
+            "smiles_columns": ["compound_smiles_conn", "compound_smiles_iso"],
+            "chebi_column": "chebi_id",
+        },
+        "lotus_at": {
+            "input": "data/wikidata/created/lotus_arabidopsis_thaliana_with_chebi_ids.tsv",
+            "output": "data/wikidata/created/lotus_arabidopsis_thaliana_with_chebi_ids_updatedchebis.tsv",
+            "smiles_columns": ["compound_smiles_conn", "compound_smiles_iso"],
+            "chebi_column": "chebi_id",
+        },
     }
 
     parser = argparse.ArgumentParser(
@@ -400,7 +430,9 @@ def main_find_missing_chebis(source):
     preset = SOURCE_PRESETS[args.source]
     compounds_file = args.compounds_file if args.compounds_file else preset["input"]
     output_file = args.output_file if args.output_file else preset["output"]
-    smiles_columns = args.smiles_columns if args.smiles_columns else preset["smiles_columns"]
+    smiles_columns = (
+        args.smiles_columns if args.smiles_columns else preset["smiles_columns"]
+    )
     chebi_column = args.chebi_column if args.chebi_column else preset["chebi_column"]
 
     print(f"Source preset: {args.source}")
@@ -416,7 +448,9 @@ def main_find_missing_chebis(source):
 
     elapsed_seconds = time.time() - start_time
     elapsed_minutes = elapsed_seconds / 60
-    print(f"Total runtime: {elapsed_seconds:.2f} seconds ({elapsed_minutes:.2f} minutes)")
+    print(
+        f"Total runtime: {elapsed_seconds:.2f} seconds ({elapsed_minutes:.2f} minutes)",
+    )
 
 
 if __name__ == "__main__":

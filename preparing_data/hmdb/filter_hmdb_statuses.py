@@ -38,7 +38,7 @@ def filter_hmdb_extract_by_status(
         if status_column not in reader.fieldnames:
             raise ValueError(
                 f"Input file must contain a '{status_column}' column. "
-                f"Found columns: {reader.fieldnames}"
+                f"Found columns: {reader.fieldnames}",
             )
 
         with output_path.open("w", encoding="utf-8", newline="") as fout:
