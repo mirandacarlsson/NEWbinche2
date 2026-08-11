@@ -10,10 +10,6 @@ Tests verify:
 6. Enrichment value calculations
 """
 
-import json
-import tempfile
-from pathlib import Path
-
 import pytest
 
 from calculations.fishers_calculations import (
@@ -26,7 +22,7 @@ from calculations.multiple_test_corrections import benjamini_hochberg_fdr_correc
 
 class TestCalculatePValue:
     """Test Fisher's exact p-value calculation.
-    
+
     Returns (odds_ratio, p_value) tuple.
     """
 
@@ -35,8 +31,10 @@ class TestCalculatePValue:
         # 2x2 contingency table:
         # Study: 10 annotated, 40 not annotated
         # Background: 50 annotated (excluding study), 950 not annotated
-        odds, p_val = calculate_p_value(n_ss_annotated=10, n_ss_leaves=50, n_bg_annotated=60, n_bg_leaves=1000)
-        
+        odds, p_val = calculate_p_value(
+            n_ss_annotated=10, n_ss_leaves=50, n_bg_annotated=60, n_bg_leaves=1000
+        )
+
         # With valid data, should get numeric results
         assert odds is not None or p_val is not None  # At least one valid result
         if p_val is not None:
@@ -45,45 +43,57 @@ class TestCalculatePValue:
     def test_no_enrichment_case(self):
         """Test case with no enrichment (random distribution)."""
         # Equal proportion: 50/100 in study, 500/1000 in background
-        odds, p_val = calculate_p_value(n_ss_annotated=50, n_ss_leaves=100, n_bg_annotated=500, n_bg_leaves=1000)
-        
+        odds, p_val = calculate_p_value(
+            n_ss_annotated=50, n_ss_leaves=100, n_bg_annotated=500, n_bg_leaves=1000
+        )
+
         assert isinstance(p_val, (float, type(None)))
         if p_val is not None:
             assert 0 <= p_val <= 1
 
     def test_zero_study_set(self):
         """Test edge case: no annotations in study set (odds=0, p-value=1)."""
-        odds, p_val = calculate_p_value(n_ss_annotated=0, n_ss_leaves=100, n_bg_annotated=50, n_bg_leaves=1000)
-        
+        odds, p_val = calculate_p_value(
+            n_ss_annotated=0, n_ss_leaves=100, n_bg_annotated=50, n_bg_leaves=1000
+        )
+
         # odds should be 0, p-value should be high (no enrichment)
         assert odds == 0.0 or p_val is not None
 
     def test_zero_background(self):
         """Test edge case: no annotations in background (invalid table)."""
-        odds, p_val = calculate_p_value(n_ss_annotated=10, n_ss_leaves=100, n_bg_annotated=0, n_bg_leaves=1000)
-        
+        odds, p_val = calculate_p_value(
+            n_ss_annotated=10, n_ss_leaves=100, n_bg_annotated=0, n_bg_leaves=1000
+        )
+
         # Should return (None, None) for invalid table
         assert odds is None and p_val is None
 
     def test_negative_values_return_none(self):
         """Test that negative contingency table values return None."""
-        odds, p_val = calculate_p_value(n_ss_annotated=-1, n_ss_leaves=100, n_bg_annotated=50, n_bg_leaves=1000)
-        
+        odds, p_val = calculate_p_value(
+            n_ss_annotated=-1, n_ss_leaves=100, n_bg_annotated=50, n_bg_leaves=1000
+        )
+
         # Should return None for invalid table
         assert odds is None and p_val is None
 
     def test_all_zeros(self):
         """Test edge case: all zeros."""
-        odds, p_val = calculate_p_value(n_ss_annotated=0, n_ss_leaves=0, n_bg_annotated=0, n_bg_leaves=0)
-        
+        odds, p_val = calculate_p_value(
+            n_ss_annotated=0, n_ss_leaves=0, n_bg_annotated=0, n_bg_leaves=0
+        )
+
         # Should handle gracefully (might be valid for specific edge case)
         assert odds is None or isinstance(odds, (int, float))
         assert p_val is None or isinstance(p_val, (int, float))
 
     def test_single_element(self):
         """Test with minimal non-zero values."""
-        odds, p_val = calculate_p_value(n_ss_annotated=1, n_ss_leaves=1, n_bg_annotated=1, n_bg_leaves=1)
-        
+        odds, p_val = calculate_p_value(
+            n_ss_annotated=1, n_ss_leaves=1, n_bg_annotated=1, n_bg_leaves=1
+        )
+
         # May return NaN in edge cases, which is valid
         if p_val is not None:
             # NaN is acceptable for edge case, or valid p-value
@@ -91,8 +101,10 @@ class TestCalculatePValue:
 
     def test_returns_tuple(self):
         """Test that function returns (odds_ratio, p_value) tuple."""
-        result = calculate_p_value(n_ss_annotated=5, n_ss_leaves=50, n_bg_annotated=10, n_bg_leaves=1000)
-        
+        result = calculate_p_value(
+            n_ss_annotated=5, n_ss_leaves=50, n_bg_annotated=10, n_bg_leaves=1000
+        )
+
         assert isinstance(result, tuple)
         assert len(result) == 2
         # Both elements should be numeric or None
@@ -102,7 +114,7 @@ class TestCalculatePValue:
 
 class TestNormalizeId:
     """Test ID normalization function.
-    
+
     The function converts short ChEBI IDs to full IRIs.
     """
 
@@ -148,9 +160,9 @@ class TestBenjaminiHochbergWithNone:
             "class3": {"p_value": 0.1},
             "class4": {"p_value": 0.5},
         }
-        
+
         result = benjamini_hochberg_fdr_correction(enrichment_results)
-        
+
         # All should have corrected p-values
         for cls in enrichment_results:
             assert "p_value_corrected" in result[cls]
@@ -164,10 +176,10 @@ class TestBenjaminiHochbergWithNone:
             "class3": {"p_value": 0.1},
             "class4": {"p_value": None},
         }
-        
+
         # Should not crash on None values
         result = benjamini_hochberg_fdr_correction(enrichment_results)
-        
+
         # Check that function succeeded
         assert result is not None
         # Classes with None should have None corrected p-value
@@ -184,10 +196,10 @@ class TestBenjaminiHochbergWithNone:
             "class2": {"p_value": None},
             "class3": {"p_value": None},
         }
-        
+
         # Should handle gracefully
         result = benjamini_hochberg_fdr_correction(enrichment_results)
-        
+
         # All should have None corrected p-values
         for cls in enrichment_results:
             assert result[cls]["p_value_corrected"] is None
@@ -200,9 +212,9 @@ class TestBenjaminiHochbergWithNone:
             "class3": {"p_value": 0.05},
             "class4": {"p_value": 0.1},
         }
-        
+
         result = benjamini_hochberg_fdr_correction(enrichment_results)
-        
+
         # Extract corrected p-values in order
         p_vals_raw = [0.001, 0.01, 0.05, 0.1]
         p_vals_corrected = [
@@ -211,7 +223,7 @@ class TestBenjaminiHochbergWithNone:
             result["class3"]["p_value_corrected"],
             result["class4"]["p_value_corrected"],
         ]
-        
+
         # Corrected p-values should be >= raw p-values
         for raw, corrected in zip(p_vals_raw, p_vals_corrected):
             assert corrected >= raw
@@ -223,9 +235,9 @@ class TestBenjaminiHochbergWithNone:
             "class2": {"p_value": 0.9},
             "class3": {"p_value": 0.99},
         }
-        
+
         result = benjamini_hochberg_fdr_correction(enrichment_results)
-        
+
         for cls in enrichment_results:
             assert result[cls]["p_value_corrected"] <= 1.0
 
@@ -241,7 +253,7 @@ class TestGetNSSAnnotatedErrorHandling:
             "class1": ["leaf1", "leaf2"],
             "class2": ["leaf3"],
         }
-        
+
         with pytest.raises(ValueError, match="not found in class_to_leaf_map"):
             get_n_ss_annotated(
                 studyset_leaves,
@@ -260,7 +272,7 @@ class TestGetNSSAnnotatedErrorHandling:
             "class1": ["leaf1", "leaf2", "leaf3", "leaf4"],
             "class2": ["leaf5"],
         }
-        
+
         n_annotated = get_n_ss_annotated(
             studyset_leaves,
             class_to_check,
@@ -269,7 +281,7 @@ class TestGetNSSAnnotatedErrorHandling:
             {},
             {},
         )
-        
+
         # Should count intersection: {leaf1, leaf2} ∩ class1's leaves = 2
         assert n_annotated == 2
 
@@ -280,7 +292,7 @@ class TestGetNSSAnnotatedErrorHandling:
         class_to_leaf_map = {
             "class1": ["leaf1", "leaf2", "leaf3"],
         }
-        
+
         n_annotated = get_n_ss_annotated(
             studyset_leaves,
             class_to_check,
@@ -289,7 +301,7 @@ class TestGetNSSAnnotatedErrorHandling:
             {},
             {},
         )
-        
+
         assert n_annotated == 0
 
     def test_invalid_classification_raises_error(self):
@@ -297,7 +309,7 @@ class TestGetNSSAnnotatedErrorHandling:
         studyset_leaves = {"leaf1"}
         class_to_check = "class1"
         class_to_leaf_map = {"class1": ["leaf1"]}
-        
+
         with pytest.raises(ValueError, match="not supported"):
             get_n_ss_annotated(
                 studyset_leaves,
@@ -315,7 +327,7 @@ class TestGetNSSAnnotatedErrorHandling:
         class_to_leaf_map = {
             "class1": ["leaf1", "leaf2", "leaf3"],
         }
-        
+
         n_annotated = get_n_ss_annotated(
             studyset_leaves,
             class_to_check,
@@ -324,7 +336,7 @@ class TestGetNSSAnnotatedErrorHandling:
             {},
             {},
         )
-        
+
         assert n_annotated == 3
 
 
@@ -338,22 +350,23 @@ class TestEnrichmentValueIntegration:
         n_ss_leaves = 100
         n_bg_annotated = 50
         n_bg_leaves = 1000
-        
-        p_val, _ = calculate_p_value(n_ss_annotated, n_ss_leaves, n_bg_annotated, n_bg_leaves)
-        
+
+        p_val, _ = calculate_p_value(
+            n_ss_annotated, n_ss_leaves, n_bg_annotated, n_bg_leaves
+        )
+
         # Should compute some p-value
         assert p_val is None or isinstance(p_val, float)
 
     def test_sequential_corrections(self):
         """Test that multiple tests can be corrected sequentially."""
         enrichment_results = {
-            f"class_{i}": {"p_value": 0.01 * i if i > 0 else 0.001}
-            for i in range(1, 6)
+            f"class_{i}": {"p_value": 0.01 * i if i > 0 else 0.001} for i in range(1, 6)
         }
-        
+
         # Apply correction
         corrected = benjamini_hochberg_fdr_correction(enrichment_results)
-        
+
         # Should have corrected values for all
         for cls in enrichment_results:
             assert "p_value_corrected" in corrected[cls]
@@ -368,9 +381,9 @@ class TestEdgeCasesAndBoundaries:
             "class1": {"p_value": 1e-10},
             "class2": {"p_value": 1e-15},
         }
-        
+
         result = benjamini_hochberg_fdr_correction(enrichment_results)
-        
+
         # Should not crash or produce inf/nan
         for cls in enrichment_results:
             p_corr = result[cls]["p_value_corrected"]
@@ -385,7 +398,7 @@ class TestEdgeCasesAndBoundaries:
             n_bg_annotated=50000,
             n_bg_leaves=1000000,
         )
-        
+
         # Should complete without overflow
         assert p_val is None or isinstance(p_val, float)
 
@@ -394,7 +407,7 @@ class TestEdgeCasesAndBoundaries:
         # Single test
         enrichment_single = {"class1": {"p_value": 0.05}}
         result_single = benjamini_hochberg_fdr_correction(enrichment_single)
-        
+
         # Multiple tests with same raw p-value
         enrichment_multiple = {
             "class1": {"p_value": 0.05},
@@ -402,7 +415,7 @@ class TestEdgeCasesAndBoundaries:
             "class3": {"p_value": 0.05},
         }
         result_multiple = benjamini_hochberg_fdr_correction(enrichment_multiple)
-        
+
         # Correction should be different due to multiple testing
         # (single test: 1 × 0.05 / 1 = 0.05)
         # (triple test: 3 × 0.05 / 3 = 0.05 for first, but adjust for BH procedure)
@@ -429,7 +442,7 @@ class TestParameterValidation:
         studyset_leaves = ["leaf1", "leaf2"]  # List, not set
         class_to_check = "class1"
         class_to_leaf_map = {"class1": ["leaf1"]}
-        
+
         # Should handle gracefully even if type is different
         try:
             result = get_n_ss_annotated(

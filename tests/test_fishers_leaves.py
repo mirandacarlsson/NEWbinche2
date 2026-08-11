@@ -11,8 +11,6 @@ import json
 import tempfile
 from pathlib import Path
 
-import pytest
-
 from calculations.fishers_calculations import (
     get_ancestors_for_inputs,
     get_leaves,
@@ -26,13 +24,15 @@ class TestGetLeavesBasic:
     def test_single_leaf_single_studyset(self):
         """Test extracting single leaf from single study set."""
         studyset_list = ["http://purl.obolibrary.org/obo/CHEBI_12345"]
-        
+
         # Create leaves.csv with correct IRI column
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("IRI,parent_id\n")
-            f.write("http://purl.obolibrary.org/obo/CHEBI_12345,http://purl.obolibrary.org/obo/CHEBI_1000\n")
+            f.write(
+                "http://purl.obolibrary.org/obo/CHEBI_12345,http://purl.obolibrary.org/obo/CHEBI_1000\n"
+            )
             leaves_file = f.name
-        
+
         try:
             result = get_leaves(studyset_list, leaves_file, {})
             assert result is not None
@@ -47,13 +47,13 @@ class TestGetLeavesBasic:
             "http://purl.obolibrary.org/obo/CHEBI_12346",
             "http://purl.obolibrary.org/obo/CHEBI_12347",
         ]
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("IRI,parent_id\n")
             for i in range(12345, 12348):
                 f.write(f"http://purl.obolibrary.org/obo/CHEBI_{i},CHEBI:1000\n")
             leaves_file = f.name
-        
+
         try:
             result = get_leaves(studyset_list, leaves_file, {})
             assert result is not None
@@ -65,12 +65,12 @@ class TestGetLeavesBasic:
     def test_empty_studyset(self):
         """Test with empty study set."""
         studyset_list = []
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("IRI,parent_id\n")
             f.write("http://purl.obolibrary.org/obo/CHEBI_12345,CHEBI:1000\n")
             leaves_file = f.name
-        
+
         try:
             result = get_leaves(studyset_list, leaves_file, {})
             # Should return empty list
@@ -83,11 +83,11 @@ class TestGetLeavesBasic:
     def test_empty_leaves_file(self):
         """Test with empty leaves CSV."""
         studyset_list = ["http://purl.obolibrary.org/obo/CHEBI_12345"]
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("IRI,parent_id\n")  # Header only
             leaves_file = f.name
-        
+
         try:
             result = get_leaves(studyset_list, leaves_file, {})
             # Should handle gracefully
@@ -104,13 +104,13 @@ class TestGetLeavesBasic:
             "http://purl.obolibrary.org/obo/CHEBI_12347",
             "http://purl.obolibrary.org/obo/CHEBI_12345",  # Duplicate
         ]
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("IRI,parent_id\n")
             for i in range(12345, 12348):
                 f.write(f"http://purl.obolibrary.org/obo/CHEBI_{i},CHEBI:1000\n")
             leaves_file = f.name
-        
+
         try:
             result = get_leaves(studyset_list, leaves_file, {})
             assert result is not None
@@ -125,15 +125,15 @@ class TestGetLeavesBasic:
             "http://purl.obolibrary.org/obo/CHEBI_1000": [
                 "http://purl.obolibrary.org/obo/CHEBI_12345",
                 "http://purl.obolibrary.org/obo/CHEBI_12346",
-            ]
+            ],
         }
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("IRI,parent_id\n")
             f.write("http://purl.obolibrary.org/obo/CHEBI_12345,CHEBI:1000\n")
             f.write("http://purl.obolibrary.org/obo/CHEBI_12346,CHEBI:1000\n")
             leaves_file = f.name
-        
+
         try:
             result = get_leaves(studyset_list, leaves_file, class_to_leaf_map)
             assert result is not None
@@ -154,13 +154,13 @@ class TestGetLeavesWithFiltering:
             "http://purl.obolibrary.org/obo/CHEBI_12346",
         ]
         structural_leaf_ids = {"http://purl.obolibrary.org/obo/CHEBI_12345"}
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("IRI,parent_id\n")
             f.write("http://purl.obolibrary.org/obo/CHEBI_12345,CHEBI:1000\n")
             f.write("http://purl.obolibrary.org/obo/CHEBI_12346,CHEBI:1000\n")
             leaves_file = f.name
-        
+
         try:
             result = get_leaves(
                 studyset_list,
@@ -187,12 +187,12 @@ class TestGetLeavesWithFiltering:
                 "http://purl.obolibrary.org/obo/CHEBI_12346",
             ],
         }
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("IRI,parent_id\n")
             f.write("http://purl.obolibrary.org/obo/CHEBI_12345,CHEBI:1000\n")
             leaves_file = f.name
-        
+
         try:
             result = get_leaves(studyset_list, leaves_file, class_to_leaf_map)
             assert result is not None
@@ -209,19 +209,19 @@ class TestGetAncestorsForInputs:
     def test_single_leaf_ancestors(self):
         """Test getting ancestors for single leaf."""
         studyset_leaves = {"CHEBI:12345"}
-        
+
         # Create leaf_to_all_parents_map JSON
         leaf_map = {
             "http://purl.obolibrary.org/obo/CHEBI_12345": [
                 "http://purl.obolibrary.org/obo/CHEBI_1000",
                 "http://purl.obolibrary.org/obo/CHEBI_0",
-            ]
+            ],
         }
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(leaf_map, f)
             map_file = f.name
-        
+
         try:
             result = get_ancestors_for_inputs(studyset_leaves, map_file)
             assert result is not None
@@ -232,7 +232,7 @@ class TestGetAncestorsForInputs:
     def test_multiple_leaves_ancestors(self):
         """Test getting ancestors for multiple leaves."""
         studyset_leaves = {"CHEBI:12345", "CHEBI:12346"}
-        
+
         leaf_map = {
             "http://purl.obolibrary.org/obo/CHEBI_12345": [
                 "http://purl.obolibrary.org/obo/CHEBI_1000",
@@ -241,11 +241,11 @@ class TestGetAncestorsForInputs:
                 "http://purl.obolibrary.org/obo/CHEBI_2000",
             ],
         }
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(leaf_map, f)
             map_file = f.name
-        
+
         try:
             result = get_ancestors_for_inputs(studyset_leaves, map_file)
             assert result is not None
@@ -255,17 +255,17 @@ class TestGetAncestorsForInputs:
     def test_missing_leaf_in_map(self):
         """Test handling of leaves not in ancestor map."""
         studyset_leaves = {"CHEBI:99999"}  # Not in map
-        
+
         leaf_map = {
             "http://purl.obolibrary.org/obo/CHEBI_12345": [
                 "http://purl.obolibrary.org/obo/CHEBI_1000",
             ],
         }
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(leaf_map, f)
             map_file = f.name
-        
+
         try:
             # Should handle gracefully without crashing
             result = get_ancestors_for_inputs(studyset_leaves, map_file)
@@ -277,15 +277,15 @@ class TestGetAncestorsForInputs:
     def test_empty_ancestors_list(self):
         """Test leaf with no ancestors."""
         studyset_leaves = {"CHEBI:12345"}
-        
+
         leaf_map = {
-            "http://purl.obolibrary.org/obo/CHEBI_12345": []  # No ancestors
+            "http://purl.obolibrary.org/obo/CHEBI_12345": [],  # No ancestors
         }
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(leaf_map, f)
             map_file = f.name
-        
+
         try:
             result = get_ancestors_for_inputs(studyset_leaves, map_file)
             # Should handle empty ancestor list
@@ -300,7 +300,7 @@ class TestLeafErrorHandling:
     def test_missing_leaves_file(self):
         """Test handling of missing leaves CSV file."""
         studyset_list = [["CHEBI:12345"]]
-        
+
         try:
             result = get_leaves(studyset_list, "/nonexistent/path.csv", {})
             # Should either raise or return None
@@ -312,11 +312,11 @@ class TestLeafErrorHandling:
     def test_invalid_json_ancestor_map(self):
         """Test handling of invalid JSON in ancestor map."""
         studyset_leaves = {"CHEBI:12345"}
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.json', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             f.write("{ invalid json }")  # Not valid JSON
             map_file = f.name
-        
+
         try:
             # Should either raise or handle gracefully
             try:
@@ -331,12 +331,12 @@ class TestLeafErrorHandling:
     def test_malformed_csv_leaves_file(self):
         """Test handling of malformed CSV."""
         studyset_list = [["CHEBI:12345"]]
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("not,enough,columns\n")  # Missing expected columns
             f.write("CHEBI:12345\n")  # Wrong format
             leaves_file = f.name
-        
+
         try:
             # Should handle gracefully
             result = get_leaves(studyset_list, leaves_file, {})
@@ -355,10 +355,10 @@ class TestLeafConsistency:
         """Test that ID normalization is consistent."""
         id1 = "CHEBI:12345"
         id2 = "http://purl.obolibrary.org/obo/CHEBI_12345"
-        
+
         norm1 = normalize_id(id1)
         norm2 = normalize_id(id2)
-        
+
         # Both should produce the same normalized form
         assert norm1 == norm2
 
@@ -370,13 +370,13 @@ class TestLeafConsistency:
             "http://purl.obolibrary.org/obo/CHEBI_12345",  # Duplicate
             "http://purl.obolibrary.org/obo/CHEBI_12347",
         ]
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("IRI,parent_id\n")
             for i in range(12345, 12348):
                 f.write(f"http://purl.obolibrary.org/obo/CHEBI_{i},CHEBI:1000\n")
             leaves_file = f.name
-        
+
         try:
             result = get_leaves(studyset_list, leaves_file, {})
             # Result should not contain duplicates
@@ -400,17 +400,17 @@ class TestLeafConsistency:
             "http://purl.obolibrary.org/obo/CHEBI_12345",
             "http://purl.obolibrary.org/obo/CHEBI_12346",
         ]
-        
-        with tempfile.NamedTemporaryFile(mode='w', suffix='.csv', delete=False) as f:
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:
             f.write("IRI,parent_id\n")
             for i in range(12345, 12348):
                 f.write(f"http://purl.obolibrary.org/obo/CHEBI_{i},CHEBI:1000\n")
             leaves_file = f.name
-        
+
         try:
             result1 = get_leaves(studyset_list1, leaves_file, {})
             result2 = get_leaves(studyset_list2, leaves_file, {})
-            
+
             # Results should be equivalent (same elements, possibly different order)
             assert set(result1) == set(result2)
         finally:
