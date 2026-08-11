@@ -10,6 +10,8 @@ Tests verify:
 6. Enrichment value calculations
 """
 
+import math
+
 import pytest
 
 from calculations.fishers_calculations import (
@@ -32,7 +34,10 @@ class TestCalculatePValue:
         # Study: 10 annotated, 40 not annotated
         # Background: 50 annotated (excluding study), 950 not annotated
         odds, p_val = calculate_p_value(
-            n_ss_annotated=10, n_ss_leaves=50, n_bg_annotated=60, n_bg_leaves=1000
+            n_ss_annotated=10,
+            n_ss_leaves=50,
+            n_bg_annotated=60,
+            n_bg_leaves=1000,
         )
 
         # With valid data, should get numeric results
@@ -43,8 +48,11 @@ class TestCalculatePValue:
     def test_no_enrichment_case(self):
         """Test case with no enrichment (random distribution)."""
         # Equal proportion: 50/100 in study, 500/1000 in background
-        odds, p_val = calculate_p_value(
-            n_ss_annotated=50, n_ss_leaves=100, n_bg_annotated=500, n_bg_leaves=1000
+        _, p_val = calculate_p_value(
+            n_ss_annotated=50,
+            n_ss_leaves=100,
+            n_bg_annotated=500,
+            n_bg_leaves=1000,
         )
 
         assert isinstance(p_val, (float, type(None)))
@@ -54,7 +62,10 @@ class TestCalculatePValue:
     def test_zero_study_set(self):
         """Test edge case: no annotations in study set (odds=0, p-value=1)."""
         odds, p_val = calculate_p_value(
-            n_ss_annotated=0, n_ss_leaves=100, n_bg_annotated=50, n_bg_leaves=1000
+            n_ss_annotated=0,
+            n_ss_leaves=100,
+            n_bg_annotated=50,
+            n_bg_leaves=1000,
         )
 
         # odds should be 0, p-value should be high (no enrichment)
@@ -63,7 +74,10 @@ class TestCalculatePValue:
     def test_zero_background(self):
         """Test edge case: no annotations in background (invalid table)."""
         odds, p_val = calculate_p_value(
-            n_ss_annotated=10, n_ss_leaves=100, n_bg_annotated=0, n_bg_leaves=1000
+            n_ss_annotated=10,
+            n_ss_leaves=100,
+            n_bg_annotated=0,
+            n_bg_leaves=1000,
         )
 
         # Should return (None, None) for invalid table
@@ -72,7 +86,10 @@ class TestCalculatePValue:
     def test_negative_values_return_none(self):
         """Test that negative contingency table values return None."""
         odds, p_val = calculate_p_value(
-            n_ss_annotated=-1, n_ss_leaves=100, n_bg_annotated=50, n_bg_leaves=1000
+            n_ss_annotated=-1,
+            n_ss_leaves=100,
+            n_bg_annotated=50,
+            n_bg_leaves=1000,
         )
 
         # Should return None for invalid table
@@ -81,7 +98,10 @@ class TestCalculatePValue:
     def test_all_zeros(self):
         """Test edge case: all zeros."""
         odds, p_val = calculate_p_value(
-            n_ss_annotated=0, n_ss_leaves=0, n_bg_annotated=0, n_bg_leaves=0
+            n_ss_annotated=0,
+            n_ss_leaves=0,
+            n_bg_annotated=0,
+            n_bg_leaves=0,
         )
 
         # Should handle gracefully (might be valid for specific edge case)
@@ -90,19 +110,26 @@ class TestCalculatePValue:
 
     def test_single_element(self):
         """Test with minimal non-zero values."""
-        odds, p_val = calculate_p_value(
-            n_ss_annotated=1, n_ss_leaves=1, n_bg_annotated=1, n_bg_leaves=1
+        _, p_val = calculate_p_value(
+            n_ss_annotated=1,
+            n_ss_leaves=1,
+            n_bg_annotated=1,
+            n_bg_leaves=1,
         )
 
         # May return NaN in edge cases, which is valid
         if p_val is not None:
-            # NaN is acceptable for edge case, or valid p-value
-            assert p_val is None or not (p_val != p_val) or 0 <= p_val <= 1
+            # Use math.isnan for proper NaN check
+            is_valid = not math.isnan(p_val) and 0 <= p_val <= 1
+            assert is_valid or math.isnan(p_val)
 
     def test_returns_tuple(self):
         """Test that function returns (odds_ratio, p_value) tuple."""
         result = calculate_p_value(
-            n_ss_annotated=5, n_ss_leaves=50, n_bg_annotated=10, n_bg_leaves=1000
+            n_ss_annotated=5,
+            n_ss_leaves=50,
+            n_bg_annotated=10,
+            n_bg_leaves=1000,
         )
 
         assert isinstance(result, tuple)
@@ -352,7 +379,10 @@ class TestEnrichmentValueIntegration:
         n_bg_leaves = 1000
 
         p_val, _ = calculate_p_value(
-            n_ss_annotated, n_ss_leaves, n_bg_annotated, n_bg_leaves
+            n_ss_annotated,
+            n_ss_leaves,
+            n_bg_annotated,
+            n_bg_leaves,
         )
 
         # Should compute some p-value
@@ -388,7 +418,9 @@ class TestEdgeCasesAndBoundaries:
         for cls in enrichment_results:
             p_corr = result[cls]["p_value_corrected"]
             assert p_corr is None or (0 <= p_corr <= 1)
-            assert not (p_corr != p_corr)  # Check for NaN
+            # Corrected p-values should be finite (not NaN)
+            if p_corr is not None:
+                assert not math.isnan(p_corr)
 
     def test_large_contingency_table(self):
         """Test with large numbers (shouldn't overflow)."""
