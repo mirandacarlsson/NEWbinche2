@@ -14,16 +14,16 @@ if str(REPO_ROOT) not in sys.path:
 from preparing_data.load_chebi import download_chebi
 
 
-def _normalize_iri(value):
+def _normalize_iri(value: str) -> str:
     return str(value).strip("<>")
 
 
 def find_has_role_connections_from_owl(
-    owl_file,
-    has_role_property,
-    deprecated_property,
-    roles_map_json,
-):
+    owl_file: str,
+    has_role_property: str,
+    deprecated_property: str,
+    roles_map_json: str,
+) -> dict[str, set[str]]:
     """Parse OWL XML directly to find has_role restrictions (streaming to save memory)."""
     roles_map = defaultdict(set)
 
@@ -106,11 +106,11 @@ def find_has_role_connections_from_owl(
 
 
 def create_leaves_to_all_roles_map(
-    roles_map_json,
-    leaves_to_all_parents_json,
-    leaves_to_all_roles_json,
-    parent_map_json,
-):
+    roles_map_json: str,
+    leaves_to_all_parents_json: str,
+    leaves_to_all_roles_json: str,
+    parent_map_json: str,
+) -> None:
     """Create a map from each leaf class to all roles associated with it via its ancestors and directly.
 
     Includes role ancestors (via parent map) so if a leaf has role X, then all ancestors of X are also included.
@@ -125,15 +125,15 @@ def create_leaves_to_all_roles_map(
     with open(parent_map_json) as f:
         parent_map = json.load(f)  # All classes to direct parents
 
-    role_ancestor_cache = {}
+    role_ancestor_cache: dict[str, set[str]] = {}
 
-    def get_role_ancestors(role_iri):
+    def get_role_ancestors(role_iri: str) -> set[str]:
         if role_iri in role_ancestor_cache:
             return role_ancestor_cache[role_iri]
 
-        ancestors = set()
+        ancestors: set[str] = set()
         stack = [role_iri]
-        visited = set()
+        visited: set[str] = set()
 
         while stack:
             current = stack.pop()
@@ -149,10 +149,10 @@ def create_leaves_to_all_roles_map(
         role_ancestor_cache[role_iri] = ancestors
         return ancestors
 
-    leaves_to_all_roles = {}
+    leaves_to_all_roles: dict[str, list[str]] = {}
 
     for leaf_iri, all_parents in leaves_to_all_parents.items():
-        all_roles = set()
+        all_roles: set[str] = set()
         # Include direct roles on the leaf itself, if any
         if leaf_iri in roles_map:
             all_roles.update(roles_map[leaf_iri])
@@ -179,10 +179,10 @@ def create_leaves_to_all_roles_map(
 
 
 def create_class_to_all_roles_map(
-    roles_map_json,
-    parent_map_json,
-    class_to_all_roles_json,
-):
+    roles_map_json: str,
+    parent_map_json: str,
+    class_to_all_roles_json: str,
+) -> None:
     """Create a map from each class to all roles associated with it (direct + inherited from ancestors).
 
     Includes direct roles on the class, direct roles on ancestor classes,
@@ -196,15 +196,15 @@ def create_class_to_all_roles_map(
         parent_map = json.load(f)
 
     # Build ancestor cache for classes
-    class_ancestor_cache = {}
+    class_ancestor_cache: dict[str, set[str]] = {}
 
-    def get_class_ancestors(class_iri):
+    def get_class_ancestors(class_iri: str) -> set[str]:
         if class_iri in class_ancestor_cache:
             return class_ancestor_cache[class_iri]
 
-        ancestors = set()
+        ancestors: set[str] = set()
         stack = [class_iri]
-        visited = set()
+        visited: set[str] = set()
 
         while stack:
             current = stack.pop()
@@ -221,21 +221,21 @@ def create_class_to_all_roles_map(
         return ancestors
 
     # Build role descendant cache
-    role_descendant_cache = {}
+    role_descendant_cache: dict[str, set[str]] = {}
 
     # Build child map for quick role descendant lookup
-    child_map = defaultdict(list)
+    child_map: dict[str, list[str]] = defaultdict(list)
     for child, parents in parent_map.items():
         for parent in parents:
             child_map[parent].append(child)
 
-    def get_role_descendants(role_iri):
+    def get_role_descendants(role_iri: str) -> set[str]:
         if role_iri in role_descendant_cache:
             return role_descendant_cache[role_iri]
 
-        descendants = set()
+        descendants: set[str] = set()
         stack = [role_iri]
-        visited = set()
+        visited: set[str] = set()
 
         while stack:
             current = stack.pop()
@@ -282,13 +282,16 @@ def create_class_to_all_roles_map(
         json.dump(class_to_all_roles, f, indent=2)
 
 
-def create_roles_to_all_leaves_map(leaves_to_all_roles_json, roles_to_all_leaves_json):
+def create_roles_to_all_leaves_map(
+    leaves_to_all_roles_json: str,
+    roles_to_all_leaves_json: str,
+) -> None:
     """Create a map from each role to all leaf classes associated with it via descendants."""
 
     with open(leaves_to_all_roles_json) as f:
         leaves_to_all_roles = json.load(f)
 
-    roles_to_all_leaves = defaultdict(set)
+    roles_to_all_leaves: dict[str, set[str]] = defaultdict(set)
 
     for leaf_iri, all_roles in leaves_to_all_roles.items():
         for role in all_roles:

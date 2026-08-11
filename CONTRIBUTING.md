@@ -1,10 +1,13 @@
 # Contributing to ChEBI-N
 
-Thank you for your interest in contributing to ChEBI-N! This document provides guidelines and instructions for contributing to the project.
+Thank you for your interest in contributing to ChEBI-N! This document provides
+guidelines and instructions for contributing to the project.
 
 ## Code of Conduct
 
-We are committed to providing a welcoming and inclusive environment for all contributors. All participants are expected to treat each other with respect and to maintain a harassment-free environment.
+We are committed to providing a welcoming and inclusive environment for all
+contributors. All participants are expected to treat each other with respect and
+to maintain a harassment-free environment.
 
 ## Getting Started
 
@@ -36,12 +39,16 @@ We are committed to providing a welcoming and inclusive environment for all cont
 
 ### Code Quality Standards
 
-We maintain high standards for code quality across the project. All contributions must:
+We maintain high standards for code quality across the project. All
+contributions must:
 
 1. **Pass all tests**: Run `uv run pytest tests/ -v` and ensure all tests pass
-2. **Pass all linting checks**: Run `uv run prek --all-files` to check code quality
-3. **Include type hints**: Use Python 3.12+ union syntax (`str | None` instead of `Optional[str]`)
-4. **Have docstrings**: All public functions and classes must have clear docstrings
+2. **Pass all linting checks**: Run `uv run prek --all-files` to check code
+   quality
+3. **Include type hints**: Use Python 3.12+ union syntax (`str | None` instead
+   of `Optional[str]`)
+4. **Have docstrings**: All public functions and classes must have clear
+   docstrings
 5. **Follow project conventions**: Match existing code style and patterns
 
 ### Running Quality Checks
@@ -80,6 +87,7 @@ All new features and bug fixes must include tests. We use pytest for testing:
 - Include docstrings explaining what the test validates
 
 Example test structure:
+
 ```python
 def test_calculate_p_value_valid_contingency_table():
     """Test p-value calculation with standard 2x2 contingency table."""
@@ -110,13 +118,10 @@ cases.
 Fixes #123"
 ```
 
-Commit message format:
-- **feat**: New feature
-- **fix**: Bug fix
-- **docs**: Documentation updates
-- **test**: Test additions or fixes
-- **chore**: Configuration, dependencies, tooling
-- **refactor**: Code refactoring without changing behavior
+Commit message format: - **feat**: New feature - **fix**: Bug fix - **docs**:
+Documentation updates - **test**: Test additions or fixes - **chore**:
+Configuration, dependencies, tooling - **refactor**: Code refactoring without
+changing behavior
 
 ## Pull Request Process
 
@@ -143,7 +148,8 @@ Commit message format:
    - List of any breaking changes
    - Screenshots/results if relevant
 
-5. **Address review feedback**: Respond to code review comments and update your PR as needed
+5. **Address review feedback**: Respond to code review comments and update your
+   PR as needed
 
 ## Testing Guidelines
 
@@ -224,7 +230,8 @@ When reporting bugs, please include:
 
 ## License
 
-By contributing to ChEBI-N, you agree that your contributions will be licensed under the MIT License.
+By contributing to ChEBI-N, you agree that your contributions will be licensed
+under the MIT License.
 
 ## Questions?
 

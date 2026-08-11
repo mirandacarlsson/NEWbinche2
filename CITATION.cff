@@ -2,8 +2,8 @@ cff-version: 1.2.0
 type: software
 title: "ChEBI-N: Chemical Enrichment Analysis Tool"
 authors:
-  - family-names: "Adrutz"
-    given-names: ""
+  - family-names: "TODO"
+    given-names: "TODO"
     orcid: "https://orcid.org/0000-0000-0000-0000"
 description: "A Python enrichment analysis tool for chemical ontologies using ChEBI"
 repository-code: "https://github.com/ontology-tools/chebin"
@@ -17,13 +17,13 @@ keywords:
 version: "0.1.0"
 date-released: 2024-08-10
 contact:
-  - family-names: "Adrutz"
-    given-names: ""
+  - family-names: "TODO"
+    given-names: "TODO"
 preferred-citation:
   type: software
   authors:
-    - family-names: "Adrutz"
-      given-names: ""
+    - family-names: "TODO"
+      given-names: "TODO"
   title: "ChEBI-N: Chemical Enrichment Analysis Tool"
   version: "0.1.0"
   date-released: 2024-08-10

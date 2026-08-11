@@ -1,6 +1,7 @@
 ## Description
 
-Please include a summary of the changes and related context. Explain the motivation and any relevant issues this PR addresses.
+Please include a summary of the changes and related context. Explain the
+motivation and any relevant issues this PR addresses.
 
 Fixes #(issue number)
 
@@ -10,7 +11,8 @@ Please delete options that are not relevant:
 
 - [ ] Bug fix (non-breaking change that fixes an issue)
 - [ ] New feature (non-breaking change that adds functionality)
-- [ ] Breaking change (fix or feature that would cause existing functionality to change)
+- [ ] Breaking change (fix or feature that would cause existing functionality to
+  change)
 - [ ] Documentation update
 - [ ] Performance improvement
 - [ ] Refactoring
@@ -65,7 +67,8 @@ Does this PR introduce any breaking changes?
 
 ## Screenshots (if applicable)
 
-If this PR includes UI changes or visualization improvements, please add screenshots.
+If this PR includes UI changes or visualization improvements, please add
+screenshots.
 
 ## Additional Context
 

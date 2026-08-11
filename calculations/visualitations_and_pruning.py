@@ -79,7 +79,10 @@ def strip_prefix(class_id: str) -> str:
 #     return paths
 
 
-def find_paths_to_root_with_map(start_class, parents_map):
+def find_paths_to_root_with_map(
+    start_class: str,
+    parents_map: dict[str, list[str]],
+) -> list[list[str]]:
     """
     Find all paths from a class to root(s) in the ontology hierarchy.
 
@@ -94,9 +97,9 @@ def find_paths_to_root_with_map(start_class, parents_map):
         list: List of paths, where each path is a list of class IRIs from
             start_class to a root class (inclusive).
     """
-    paths = []
+    paths: list[list[str]] = []
 
-    def dfs(current_class, current_path):
+    def dfs(current_class: str, current_path: list[str]) -> None:
         # if the class has no parents in the map, it's a root
         parents = parents_map.get(current_class, [])
         if not parents:
@@ -113,13 +116,14 @@ def find_paths_to_root_with_map(start_class, parents_map):
 # Not used anymore
 def find_paths_to_root_with_ontology(
     ontology,
-    start_class,
-    leaf_to_parents_json_file="data/removed_leaf_classes_to_direct_parents_map.json",
-):  # should work for leaf classes too
-    paths = []
+    start_class: str,
+    leaf_to_parents_json_file: str = "data/removed_leaf_classes_to_direct_parents_map.json",
+) -> list[list[str]]:
+    """Find all paths from start_class to ontology roots."""
+    paths: list[list[str]] = []
 
     # Unified DFS (works for both ontology and leaf parents)
-    def dfs(current_class, current_path):
+    def dfs(current_class: str, current_path: list[str]) -> None:
         superclasses = ontology.get_superclasses(current_class)
         superclasses = [s for s in superclasses if s not in current_path]
 
@@ -156,7 +160,8 @@ def find_paths_to_root_with_ontology(
         return paths
 
 
-def get_name(chebi_ontology, iri):
+def get_name(chebi_ontology: str, iri: str) -> str | None:
+    """Get human-readable name for a class IRI from OWL ontology."""
     tree = ET.parse(chebi_ontology)
     root = tree.getroot()
     ns = {
@@ -216,7 +221,11 @@ def create_graph_from_paths(paths: list) -> nx.DiGraph:
 #     return G
 
 
-def create_graph_from_map(classes, parent_map_json_file, max_n_leaf_classes=inf):
+def create_graph_from_map(
+    classes: list[str],
+    parent_map_json_file: str,
+    max_n_leaf_classes: float = inf,
+) -> nx.DiGraph:
     """
     Create a directed graph of class hierarchy from a parent map JSON file.
 
@@ -236,7 +245,7 @@ def create_graph_from_map(classes, parent_map_json_file, max_n_leaf_classes=inf)
     with open(parent_map_json_file) as f:
         parents_map = json.load(f)
 
-    G = nx.DiGraph()
+    G: nx.DiGraph = nx.DiGraph()
     j = 0
 
     for cls in classes:
@@ -267,13 +276,13 @@ def create_graph_from_map(classes, parent_map_json_file, max_n_leaf_classes=inf)
 
 
 def create_graph_with_roles_and_structures(
-    studyset_leaves,
-    structural_ancestors,
-    enriched_roles,
-    parent_map_file,
-    class_to_all_roles_map,
-    classification,
-):
+    studyset_leaves: list[str],
+    structural_ancestors: list[str] | set[str],
+    enriched_roles: list[str] | set[str],
+    parent_map_file: str,
+    class_to_all_roles_map: dict,
+    classification: str,
+) -> nx.DiGraph:
 
     if classification == "structural" or classification == "full":
         # Build structural graph

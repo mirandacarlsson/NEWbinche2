@@ -2,9 +2,10 @@
 
 ## Reporting Security Vulnerabilities
 
-We take the security of ChEBI-N seriously. If you discover a security vulnerability,
-please **do not** open a public GitHub issue. Instead, please report it responsibly by
-emailing us at security@example.com with details about the vulnerability.
+We take the security of ChEBI-N seriously. If you discover a security
+vulnerability, please **do not** open a public GitHub issue. Instead, please
+report it responsibly by emailing us at security@example.com with details about
+the vulnerability.
 
 When reporting a security issue, please include:
 
@@ -54,18 +55,19 @@ uv run pytest tests/  # Run full test suite
 
 ### Supported Versions
 
-| Version | Status | Support |
-|---------|--------|---------|
-| 0.1.x   | Active | Security fixes |
+  | Version | Status | Support        |
+  | ------- | ------ | -------------- |
+  | 0.1.x   | Active | Security fixes |
 
-Security fixes will be provided for the current version. We recommend
-upgrading to the latest version to receive security updates.
+Security fixes will be provided for the current version. We recommend upgrading
+to the latest version to receive security updates.
 
 ## Security Best Practices
 
 When using ChEBI-N in your applications:
 
-1. **Keep dependencies updated**: Regularly run `uv sync` and review dependency updates
+1. **Keep dependencies updated**: Regularly run `uv sync` and review dependency
+   updates
 2. **Use virtual environments**: Always use isolated Python environments
 3. **Validate inputs**: Verify all inputs to enrichment functions
 4. **Test thoroughly**: Run the full test suite before deployment
@@ -84,7 +86,8 @@ chemical data sources.
 
 ## Additional Security Resources
 
-- Python Security Best Practices: https://python.readthedocs.io/en/latest/library/security_warnings.html
+- Python Security Best Practices:
+  https://python.readthedocs.io/en/latest/library/security_warnings.html
 - RDKit Security: https://www.rdkit.org/docs/
 - Dependency Management with uv: https://docs.astral.sh/uv/
 
@@ -97,5 +100,5 @@ If a security vulnerability is discovered in ChEBI-N:
 3. A security advisory will be issued
 4. Users will be notified to update
 
-For additional security information or to report a vulnerability,
-contact the maintainers directly.
+For additional security information or to report a vulnerability, contact the
+maintainers directly.

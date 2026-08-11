@@ -3,26 +3,30 @@
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+and this project adheres to [Semantic
+Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
 ### Added
 
-- Comprehensive type hints for all core calculation functions (Python 3.12+ syntax)
+- Comprehensive type hints for all core calculation functions (Python 3.12+
+  syntax)
 - 173+ unit tests covering enrichment analysis, visualization, and edge cases
 - Integration tests validating end-to-end enrichment pipeline
 - Great-docs configuration for API documentation generation
 - Edge case tests for label cleaning and ChEBI ID extraction
 - Support for narrow background enrichment analysis (human, A. thaliana, ReconX)
 - Multiple testing correction: Bonferroni and Benjamini-Hochberg FDR methods
-- Graph pruning strategies: root-children, linear-branch, high-p-value, zero-degree
+- Graph pruning strategies: root-children, linear-branch, high-p-value,
+  zero-degree
 - Visualization utilities: graph construction, node filtering, ID normalization
 
 ### Changed
 
 - Fixed return type annotations for functions returning 4-tuples
-- Improved website enrichment endpoint to handle classification parameter properly
+- Improved website enrichment endpoint to handle classification parameter
+  properly
 - Enhanced error handling in edge cases
 - Refactored test structure for better organization
 
@@ -57,14 +61,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Features
 
 #### Core Calculations
+
 - `calculate_p_value()`: Fisher's exact test for 2x2 contingency tables
 - `run_enrichment_analysis()`: Full enrichment pipeline with multiple strategies
-- `run_enrichment_analysis_plain_enrich_pruning_strategy()`: Fixed pruning strategy
+- `run_enrichment_analysis_plain_enrich_pruning_strategy()`: Fixed pruning
+  strategy
 - `calculate_weighted_p_value()`: Weighted variant of Fisher's test
 - `run_weighted_enrichment_analysis()`: Full weighted enrichment pipeline
 - Multiple testing correction (Bonferroni, Benjamini-Hochberg FDR)
 
 #### Visualization & Pruning
+
 - Graph construction from enrichment results
 - Root-children pruning (distance from root)
 - Linear-branch pruning (collapse short branches)
@@ -73,6 +80,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Graph-to-JSON export for visualization
 
 #### Data Processing
+
 - ChEBI data loading and normalization
 - ID-to-name mapping
 - Role classification (structural, functional)
@@ -97,6 +105,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Dependency auditing with deptry
 - Test framework: pytest
 
----
+--------------------------------------------------------------------------------
 
-For detailed commit history, see the [Git log](https://github.com/ontology-tools/chebin/commits/).
+For detailed commit history, see the [Git
+log](https://github.com/ontology-tools/chebin/commits/).

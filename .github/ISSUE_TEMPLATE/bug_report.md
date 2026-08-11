@@ -3,7 +3,7 @@ name: Bug Report
 about: Report a bug or unexpected behavior
 title: "[BUG] "
 labels: bug
-assignees: ''
+assignees: ""
 ---
 
 ## Description
@@ -26,9 +26,9 @@ What actually happened instead.
 
 ## Environment
 
-- Python version: 
-- OS: 
-- Package version: 
+- Python version:
+- OS:
+- Package version:
 - Other relevant context:
 
 ## Error Messages
