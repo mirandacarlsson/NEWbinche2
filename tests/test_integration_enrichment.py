@@ -5,15 +5,10 @@ end-to-end with realistic data structures, testing interactions between
 modules and the consistency of results across different strategies.
 """
 
-import json
-from pathlib import Path
-
 import networkx as nx
-import pytest
 
 from calculations.fishers_calculations import (
     calculate_p_value,
-    get_leaves,
     normalize_id,
 )
 from calculations.multiple_test_corrections import benjamini_hochberg_fdr_correction
@@ -211,7 +206,10 @@ class TestGraphPruningPipeline:
         graph.add_edges_from([("A", "B"), ("B", "C"), ("C", "D")])
 
         # With n=2, should collapse linear chains of 2+ nodes
-        collapsed_graph, removed = linear_branch_collapser_pruner_remove_less(graph, n=2)
+        collapsed_graph, removed = linear_branch_collapser_pruner_remove_less(
+            graph,
+            n=2,
+        )
 
         assert isinstance(collapsed_graph, nx.DiGraph)
         assert isinstance(removed, (list, set))
@@ -308,6 +306,7 @@ class TestWeightedCalculationConsistency:
 
     def test_saddlepoint_with_uniform_weights(self):
         """Test weighted calculations with uniform weights."""
+
         # Mock SaddleSum object for testing
         class MockSaddler:
             def pvalue(self, score, n_ss_annotated):
@@ -322,7 +321,10 @@ class TestWeightedCalculationConsistency:
         weights = {"leaf1": 1.0, "leaf2": 1.0, "leaf3": 1.0}
 
         score, count, p_val = calculate_weighted_p_value(
-            saddler, term_leaves, studyset_leaves, weights
+            saddler,
+            term_leaves,
+            studyset_leaves,
+            weights,
         )
 
         # Verify return values are in expected ranges
@@ -332,6 +334,7 @@ class TestWeightedCalculationConsistency:
 
     def test_saddlepoint_with_zero_weights(self):
         """Test weighted calculations with some zero weights."""
+
         class MockSaddler:
             def pvalue(self, score, n_ss_annotated):
                 if score < 0:
@@ -344,7 +347,10 @@ class TestWeightedCalculationConsistency:
         weights = {"leaf1": 2.0, "leaf2": 0.0, "leaf3": 0.0}
 
         score, count, p_val = calculate_weighted_p_value(
-            saddler, term_leaves, studyset_leaves, weights
+            saddler,
+            term_leaves,
+            studyset_leaves,
+            weights,
         )
 
         # Verify return values are in expected ranges
@@ -422,9 +428,7 @@ class TestDataFormatConsistency:
         graph = create_graph_from_paths(paths)
 
         # Create p-value dict in expected format
-        p_value_dict = {
-            node: {"p_value": 0.01} for node in graph.nodes()
-        }
+        p_value_dict = {node: {"p_value": 0.01} for node in graph.nodes()}
 
         # This should not raise an error
         try:

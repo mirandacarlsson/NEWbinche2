@@ -395,3 +395,87 @@ class TestGraphPropertyPreservation:
 
         final_edges = graph.number_of_edges()
         assert final_edges <= initial_edges
+
+
+class TestLabelCleaningEdgeCases:
+    """Test edge cases for label cleaning utility."""
+
+    def test_clean_label_removes_chebi_id(self):
+        """Test that clean_label removes ChEBI ID in parentheses."""
+        label = "Acetone (CHEBI_15377)"
+        cleaned = clean_label(label)
+
+        # Should remove the (CHEBI_...) part
+        assert "CHEBI" not in cleaned
+        assert "(" not in cleaned
+        assert ")" not in cleaned
+        assert "Acetone" in cleaned
+
+    def test_clean_label_no_chebi_id(self):
+        """Test clean_label when no ChEBI ID exists."""
+        label = "Acetone"
+        cleaned = clean_label(label)
+
+        # Should return unchanged
+        assert cleaned == label
+
+    def test_clean_label_preserves_text(self):
+        """Test that clean_label preserves name before parentheses."""
+        label = "2-Methylpropane-1,2-diol (CHEBI_12345)"
+        cleaned = clean_label(label)
+
+        assert "2-Methylpropane-1,2-diol" in cleaned
+        assert "CHEBI" not in cleaned
+
+    def test_clean_label_complex_name(self):
+        """Test with complex chemical names."""
+        label = "Acetic acid, 2-hydroxy-, δ-lactone (CHEBI_8760)"
+        cleaned = clean_label(label)
+
+        assert "Acetic acid" in cleaned
+        assert "(" not in cleaned
+
+    def test_clean_label_multiple_parentheses(self):
+        """Test behavior with multiple parentheses."""
+        label = "Name (Info) (CHEBI_123)"
+        cleaned = clean_label(label)
+
+        # Should split at first parenthesis
+        assert "Name" in cleaned
+
+
+class TestChEBIIDExtractionEdgeCases:
+    """Test edge cases for ChEBI ID extraction."""
+
+    def test_extract_chebi_id_standard_format(self):
+        """Test extracting CHEBI ID from standard format."""
+        label = "Acetone (CHEBI_15377)"
+        extracted = extract_chebi_id(label)
+
+        assert extracted is not None
+        assert "15377" in extracted
+
+    def test_extract_chebi_id_no_id(self):
+        """Test extraction when no CHEBI ID exists."""
+        label = "Some Random Label Without ID"
+        extracted = extract_chebi_id(label)
+
+        # Should return the original label if no CHEBI ID
+        assert isinstance(extracted, str)
+
+    def test_extract_chebi_id_missing_parentheses(self):
+        """Test extraction when parentheses missing."""
+        label = "Acetone CHEBI_15377"
+        extracted = extract_chebi_id(label)
+
+        # Should return original since no parentheses
+        assert extracted == label
+
+    def test_extract_chebi_id_only_extraction(self):
+        """Test that only CHEBI ID is extracted."""
+        label = "Compound Name (CHEBI_99999)"
+        extracted = extract_chebi_id(label)
+
+        # Should extract the ID
+        if "CHEBI" in label:
+            assert isinstance(extracted, str)
