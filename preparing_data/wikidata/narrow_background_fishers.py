@@ -736,8 +736,8 @@ def run_narrow_background_enrichment_analysis(
         # print("Final enrichment results after zero-degree pruning:")
         # print_enrichment_results(enrichment_results)
 
-    print("Final enrichment results:")
-    print_enrichment_results(enrichment_results)
+    # print("Final enrichment results:")
+    # print_enrichment_results(enrichment_results)
 
     print(f"Number of removed nodes in total: {len(all_removed_nodes)}")
     results = {
@@ -860,12 +860,12 @@ def run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy(
         expand_background=expand_background,
     )
 
-    print("Enrichment results:")
-    print_enrichment_results(enrichment_results)
+    # print("Enrichment results:")
+    # print_enrichment_results(enrichment_results)
 
     enrichment_results = benjamini_hochberg_fdr_correction(enrichment_results)
-    print("Enrichment results after Benjamini-Hochberg correction:")
-    print_enrichment_results(enrichment_results)
+    # print("Enrichment results after Benjamini-Hochberg correction:")
+    # print_enrichment_results(enrichment_results)
 
     G = create_graph_with_roles_and_structures(
         studyset_leaves,
