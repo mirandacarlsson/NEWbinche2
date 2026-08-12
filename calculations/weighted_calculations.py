@@ -1177,8 +1177,8 @@ def run_weighted_enrichment_analysis(
         for cls in removed_nodes:
             enrichment_results.pop(cls, None)
 
-    print("Final weighted enrichment results:")
-    print_enrichment_results(enrichment_results)
+    # print("Final weighted enrichment results:")
+    # print_enrichment_results(enrichment_results)
     print(f"Total removed nodes: {len(all_removed_nodes)}")
     _print_non_finite_pvalue_diagnostics(enrichment_results, "final-post-pruning")
 
@@ -1297,12 +1297,12 @@ def run_weighted_enrichment_analysis_plain_enrich_pruning_strategy(
         structural_leaf_ids,
     )
 
-    print("Enrichment results (raw):")
-    print_enrichment_results(enrichment_results)
+    # print("Enrichment results (raw):")
+    # print_enrichment_results(enrichment_results)
 
     enrichment_results = benjamini_hochberg_fdr_correction(enrichment_results)
-    print("After BH correction:")
-    print_enrichment_results(enrichment_results)
+    # print("After BH correction:")
+    # print_enrichment_results(enrichment_results)
 
     print("Starting pre-loop pruning phase.")
     G, removed_nodes = high_p_value_branch_pruner(
@@ -1550,8 +1550,8 @@ def run_weighted_narrow_background_enrichment_analysis(
         for cls in removed_nodes:
             enrichment_results.pop(cls, None)
 
-    print("Final weighted enrichment results:")
-    print_enrichment_results(enrichment_results)
+    # print("Final weighted enrichment results:")
+    # print_enrichment_results(enrichment_results)
     print(f"Total removed nodes: {len(all_removed_nodes)}")
     _print_non_finite_pvalue_diagnostics(enrichment_results, "final-post-pruning")
 
@@ -1670,12 +1670,12 @@ def run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_stra
         expand_background,
     )
 
-    print("Enrichment results (raw):")
-    print_enrichment_results(enrichment_results)
+    # print("Enrichment results (raw):")
+    # print_enrichment_results(enrichment_results)
 
     enrichment_results = benjamini_hochberg_fdr_correction(enrichment_results)
-    print("After BH correction:")
-    print_enrichment_results(enrichment_results)
+    # print("After BH correction:")
+    # print_enrichment_results(enrichment_results)
 
     print("Starting pre-loop pruning phase.")
     G, removed_nodes = high_p_value_branch_pruner(
