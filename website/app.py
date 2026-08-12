@@ -512,7 +512,7 @@ def run_analysis():
         session["background"] = background_from_form
 
     # Get expand_background from form (allow changing it during re-run)
-    if request.method == "POST":
+    if request.method == "POST" and "expand_background" in request.form:
         session["expand_background"] = bool(request.form.get("expand_background"))
 
     # Keep the correction selection stable across re-runs.
