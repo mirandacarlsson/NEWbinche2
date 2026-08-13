@@ -206,7 +206,13 @@ Hovering over a node displays more detailed information about it. Both raw and
 corrected p-values are shown, as well as its ChEBI ID.
 
 Nodes can be selected by clicking on them. Right-clicking on a node provides
-options such as 'Select first neighbors' and 'Select descendants'.
+options such as 'Select first neighbors' and 'Select descendants'. Nodes can be
+repositioned by clicking and dragging them.
+
+Leaf classes are not shown in the graph, since they do not receive p-values.
+Beyond the initial display described above, nodes can also be shown or hidden
+manually: options are available to hide all insignificant nodes (p-value >
+0.05), to show all nodes, or to show/hide only the currently selected ones.
 
 ## Workflow
 
