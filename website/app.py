@@ -230,7 +230,8 @@ def submission():
         study_set = request.form.get("study_set")
         session["study_set"] = study_set  # Store the study set in session
         classification = request.form.get("classification")
-        session["classification"] = classification  # Store classification in session
+        if classification:
+            session["classification"] = classification  # Store classification in session
         smiles_option = request.form.get("smiles_option")
         session["smiles_option"] = smiles_option  # Store smiles option in session
         background = request.form.get("background")
@@ -552,13 +553,13 @@ def run_analysis():
             if weights_dict:
                 results, pruned_G = run_weighted_enrichment_analysis(
                     weights_dict,
-                    classification=session.get("classification", "structural"),
+                    classification=session.get("classification") or "structural",
                 )
             else:
                 results, pruned_G = (
                     run_enrichment_analysis_plain_enrich_pruning_strategy(
                         studyset_list,
-                        classification=session.get("classification", "structural"),
+                        classification=session.get("classification") or "structural",
                     )
                 )
             # Save JSON representation of pruned_G in session for graph visualization
@@ -593,7 +594,7 @@ def run_analysis():
                     parents_to_expand_background,
                 ) = run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy(
                     weights_dict,
-                    classification=session.get("classification", "structural"),
+                    classification=session.get("classification") or "structural",
                     narrow_background_leaves_json=NARROW_BACKGROUND_LEAVES_JSON[
                         background
                     ],
@@ -607,7 +608,7 @@ def run_analysis():
                     parents_to_expand_background,
                 ) = run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy(
                     studyset_list,
-                    classification=session.get("classification", "structural"),
+                    classification=session.get("classification") or "structural",
                     narrow_background_leaves_json=NARROW_BACKGROUND_LEAVES_JSON[
                         background
                     ],
@@ -669,7 +670,7 @@ def run_analysis():
                 levels=levels,
                 n=linear_branch_n,
                 p_value_threshold=p_value_threshold,
-                classification=session.get("classification", "structural"),
+                classification=session.get("classification") or "structural",
                 root_children_prune=root_children_prune,
                 linear_branch_prune=linear_branch_prune,
                 high_p_value_prune=high_p_value_prune,
@@ -685,7 +686,7 @@ def run_analysis():
                 levels=levels,
                 n=linear_branch_n,
                 p_value_threshold=p_value_threshold,
-                classification=session.get("classification", "structural"),
+                classification=session.get("classification") or "structural",
                 root_children_prune=root_children_prune,
                 linear_branch_prune=linear_branch_prune,
                 high_p_value_prune=high_p_value_prune,
@@ -711,7 +712,7 @@ def run_analysis():
                 high_p_value_prune=high_p_value_prune,
                 p_value_threshold=p_value_threshold,
                 zero_degree_prune=zero_degree_prune,
-                classification=session.get("classification"),
+                classification=session.get("classification") or "structural",
                 narrow_background_leaves_json=NARROW_BACKGROUND_LEAVES_JSON[background],
                 expand_background=session.get("expand_background", True),
             )
@@ -727,7 +728,7 @@ def run_analysis():
                 high_p_value_prune=high_p_value_prune,
                 p_value_threshold=p_value_threshold,
                 zero_degree_prune=zero_degree_prune,
-                classification=session.get("classification", "structural"),
+                classification=session.get("classification") or "structural",
             )
 
     # Save JSON representation of pruned_G in session for graph visualization
