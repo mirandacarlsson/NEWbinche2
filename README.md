@@ -136,10 +136,19 @@ pruners are available (and found in
   nodes in the branch can be removed (set n = 0). E.g., n = 3 will keep every
   third node in the branch.
 
+  Note that this pruner selects nodes by graph topology alone and does not
+  consider p-values: an intermediate node is removed because of its position in
+  a chain, regardless of how significant it is. Since ChEBI contains many long
+  single-inheritance chains, a statistically significant class can be collapsed
+  away if it happens to sit mid-chain. Use a non-zero n to retain more of each
+  branch.
+
 - **High P-Value Branch Pruner:** Removes branches from the graph that only
   contain nodes with a p-value greater than 0.05 (this value can be changed). A
   node with a higher p-value will still be kept if it has at least one
-  descendant with a p-value lower than the threshold.
+  descendant with a p-value lower than the threshold. Study-set leaf classes are
+  never tested and therefore have no p-value, so they do not count as
+  significant descendants and do not protect their ancestors from being pruned.
 
 - **Zero-degree Pruner:** Removes nodes that have no connections with other
   nodes; that is, nodes with a total degree of zero.
@@ -153,9 +162,13 @@ until no more changes are made. The looping option is:
 - **Plain Enrichment Pruning Strategy:** The pre-loop phase applies the high
   p-value branch pruner (with a threshold of 0.05), the linear branch collapser
   pruner (with n = 0), and the root children pruner (levels = 2). The loop phase
-  applies the high p-value branch pruner (with a threshold of 0.05), the linear
-  branch collapser pruner (with n = 0), and the zero-degree vertex pruner.
-  Benjamini-Hochberg is used as the p-value correction method.
+  applies the high p-value branch pruner (with a threshold of 0.05) and the
+  zero-degree vertex pruner. Benjamini-Hochberg is used as the p-value
+  correction method, and is recomputed over the surviving classes on each loop
+  iteration.
+
+  The linear branch collapser is deliberately applied only in the pre-loop
+  phase, not in the loop, to avoid removing too many nodes.
 
 ### Calculations
 

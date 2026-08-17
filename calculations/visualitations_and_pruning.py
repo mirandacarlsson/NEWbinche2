@@ -13,23 +13,41 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 
+ID_TO_NAME_MAP_FILE = "data/chebi_id_to_name_map.json"
+
+# (mtime, map) of the last loaded name map. id_to_name is called once per graph
+# node, per tested class and per result entry -- thousands of times per analysis --
+# so re-reading this 17 MB / ~225k-entry file per call dominated runtime. Cached on
+# mtime rather than outright so the monthly data/ refresh (finalize_folder_structure)
+# is picked up without restarting the server.
+_id_to_name_cache: tuple[float, dict] | None = None
+
+
+def _load_id_to_name_map(path: str = ID_TO_NAME_MAP_FILE) -> dict:
+    """Return the ChEBI id->name map, re-reading it only when the file changes."""
+    global _id_to_name_cache
+
+    mtime = os.path.getmtime(path)
+    if _id_to_name_cache is None or _id_to_name_cache[0] != mtime:
+        with open(path) as f:
+            _id_to_name_cache = (mtime, json.load(f))
+    return _id_to_name_cache[1]
+
+
 def id_to_name(class_id: str) -> str:
     """
     Convert ChEBI class IRI to human-readable name with ID.
 
-    Loads name mapping from JSON file and returns formatted string
-    "Name (CHEBI_ID)" or just the ID if name not found.
+    Uses the cached name mapping and returns formatted string
+    "Name (CHEBI:ID)" or just the ID if name not found.
 
     Args:
         class_id: Class IRI (e.g., http://purl.obolibrary.org/obo/CHEBI_12345).
 
     Returns:
-        str: Formatted name like "ascorbic acid (CHEBI_15377)" or just class_id.
+        str: Formatted name like "ascorbic acid (CHEBI:15377)" or just class_id.
     """
-    id_to_name_map_file = "data/chebi_id_to_name_map.json"
-
-    with open(id_to_name_map_file) as f:
-        id_to_name_map = json.load(f)
+    id_to_name_map = _load_id_to_name_map()
 
     prefix = "http://purl.obolibrary.org/obo/"
     if class_id.startswith(prefix):
@@ -532,9 +550,54 @@ def linear_branch_collapser_pruner_remove_less(G, n):
 # with a p-value below the threshold, the branch is kept.
 
 
+def _new_p_value_pruner_stats():
+    """Accumulator for conditions worth reporting once per run rather than per visit."""
+    return {
+        "no_pvalue_visits": 0,
+        "no_pvalue_leaf": set(),
+        "no_pvalue_non_leaf": set(),
+        "already_removed_visits": 0,
+        "already_removed_nodes": set(),
+    }
+
+
+def _log_p_value_pruner_stats(stats):
+    """Summarise the pruner walk in a few lines.
+
+    These conditions used to print once per node *visit*. Because the walk below
+    is not memoised and ChEBI is a DAG with heavy multiple inheritance, a node is
+    re-entered once per distinct root path, which produced ~400k near-identical
+    lines in a single real run. Aggregating mirrors graph_to_cytospace_json.
+    """
+    leaves = stats["no_pvalue_leaf"]
+    non_leaves = stats["no_pvalue_non_leaf"]
+
+    if leaves or non_leaves:
+        print(
+            f"High p-value pruner: {len(leaves) + len(non_leaves)} nodes had no p-value "
+            f"across {stats['no_pvalue_visits']} visits; {len(leaves)} are untested "
+            f"study-set leaves (expected, they are never assigned p-values).",
+        )
+
+    # A node with children should have been tested, so this one is worth seeing.
+    if non_leaves:
+        sample = sorted(non_leaves)[:10]
+        print(
+            f"High p-value pruner: WARNING {len(non_leaves)} non-leaf node(s) had no "
+            f"p-value, which is unexpected. First {len(sample)}: {sample}",
+        )
+
+    if stats["already_removed_nodes"]:
+        print(
+            f"High p-value pruner: revisited {len(stats['already_removed_nodes'])} "
+            f"already-removed node(s) across {stats['already_removed_visits']} visits.",
+        )
+
+
 def high_p_value_branch_pruner(G, p_value_dict, p_value_threshold=0.05):
     removed_nodes = set()
     roots = [n for n, d in G.out_degree() if d == 0]
+    stats = _new_p_value_pruner_stats()
 
     for root in roots:
         size_before = G.number_of_nodes()
@@ -544,6 +607,7 @@ def high_p_value_branch_pruner(G, p_value_dict, p_value_threshold=0.05):
             p_value_dict,
             p_value_threshold,
             removed_nodes,
+            stats,
         )
         size_after = G.number_of_nodes()
         # Keep pruning until nothing more is removed
@@ -555,8 +619,11 @@ def high_p_value_branch_pruner(G, p_value_dict, p_value_threshold=0.05):
                 p_value_dict,
                 p_value_threshold,
                 removed_nodes,
+                stats,
             )
             size_after = G.number_of_nodes()
+
+    _log_p_value_pruner_stats(stats)
 
     return G, removed_nodes
 
@@ -567,11 +634,14 @@ def process_node_for_p_value_pruner(
     p_value_dict,
     p_value_threshold,
     removed_nodes,
+    stats=None,
 ):  # Returns a boolean. Tells whether node or any descendant has p-value below threshold
 
     # Check if node still exists (might have been removed in another branch)
     if not G.has_node(node):
-        print(f"Node {node} no longer exists in graph.")
+        if stats is not None:
+            stats["already_removed_visits"] += 1
+            stats["already_removed_nodes"].add(node)
         return False
 
     has_good_descendant = False  # whether any descendant has p-value below threshold
@@ -584,6 +654,7 @@ def process_node_for_p_value_pruner(
             p_value_dict,
             p_value_threshold,
             removed_nodes,
+            stats,
         ):
             has_good_descendant = True
         else:
@@ -597,10 +668,24 @@ def process_node_for_p_value_pruner(
         node_p_value = p_value_dict.get(node, {}).get("p_value", None)
 
     if node_p_value is None:
-        print(f"Warning: p-value for node {node} not found.")
-        return (
-            True  # Keep node if p-value not found since it is most likely a leaf node.
-        )
+        # Expected for study-set leaves: the graph is built from leaf->root paths,
+        # but only ancestors are tested, so leaves never receive a p-value. Counted
+        # instead of printed -- see _log_p_value_pruner_stats. A node that still has
+        # children should have been tested, so it is tracked separately as unexpected.
+        if stats is not None:
+            stats["no_pvalue_visits"] += 1
+            if children:
+                stats["no_pvalue_non_leaf"].add(node)
+            else:
+                stats["no_pvalue_leaf"].add(node)
+        # Report False: this node contributes no evidence of significance, which is
+        # what the return value means to the caller. It previously returned True to
+        # express "don't delete me", but the caller reads that as "this branch is
+        # significant", so a single untested leaf shielded its entire ancestor chain
+        # from pruning. Returning early (before the removal branch below) already
+        # keeps the node itself; any leaf left stranded by its pruned parent is
+        # cleaned up by zero_degree_pruner.
+        return False
 
     if node_p_value <= p_value_threshold:
         has_good_descendant = True
@@ -644,7 +729,23 @@ def extract_chebi_id(label: str) -> str | None:
     return label
 
 
-def graph_to_cytospace_json(G, output_file, enrichment_results=None):
+def graph_to_cytospace_json(
+    G,
+    output_file,
+    enrichment_results=None,
+    include_untested_leaves=False,
+):
+    """Write the graph as Cytoscape JSON.
+
+    include_untested_leaves: study-set leaf classes are graph nodes (the graph is
+    built from leaf->root paths) but are never tested, so they can never carry a
+    p-value and are not part of the significance view. They typically make up the
+    large majority of nodes -- ~86% in a real run -- so shipping them forces the
+    browser to lay out thousands of nodes it will never colour. They are excluded
+    by default; pass True to keep them for debugging. This only affects what is
+    drawn: pruning and all p-values are already final by this point, and the full
+    study set is still reported in enrichment_results["study_set"].
+    """
     data = {"elements": []}
 
     # Create the directory if it doesn't exist
@@ -658,6 +759,7 @@ def graph_to_cytospace_json(G, output_file, enrichment_results=None):
         set(enrichment_results.get("study_set", [])) if enrichment_results else set()
     )
     missing_pvalue_nodes = []
+    skipped_leaves = set()
 
     # Nodes
     for node, attrs in G.nodes(data=True):
@@ -686,13 +788,22 @@ def graph_to_cytospace_json(G, output_file, enrichment_results=None):
             node_data["p_value_reason"] = reason
             missing_pvalue_nodes.append((label, reason))
 
+            # Untested study-set leaves are not part of the significance view.
+            # Note this deliberately keeps "node_not_in_enrichment_results" nodes,
+            # which are unexpected and worth seeing.
+            if not include_untested_leaves and reason == "study_set_leaf_not_tested":
+                skipped_leaves.add(node)
+                continue
+
         data["elements"].append({"data": node_data})
 
     # enrichment_results entries contain class metadata, counts, odds ratio,
     # and p-values; the JSON structure is built above.
 
-    # Edges
+    # Edges (skip any edge touching an omitted leaf, so no edge dangles)
     for source, target in G.edges():
+        if source in skipped_leaves or target in skipped_leaves:
+            continue
         data["elements"].append(
             {
                 "data": {
@@ -701,6 +812,13 @@ def graph_to_cytospace_json(G, output_file, enrichment_results=None):
                     "target": target,
                 },
             },
+        )
+
+    if skipped_leaves:
+        print(
+            f"Graph view: omitted {len(skipped_leaves)} untested study-set leaf "
+            f"node(s) from the graph JSON (they never receive p-values); "
+            f"{G.number_of_nodes() - len(skipped_leaves)} node(s) written.",
         )
 
     if missing_pvalue_nodes:
