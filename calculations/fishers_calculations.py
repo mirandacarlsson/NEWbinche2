@@ -38,7 +38,34 @@ from calculations.visualitations_and_pruning import (
 #   d = background compounds not in this class (excluding the study set)
 
 
-def calculate_p_value(n_ss_annotated, n_ss_leaves, n_bg_annotated, n_bg_leaves):
+def calculate_p_value(
+    n_ss_annotated: int,
+    n_ss_leaves: int,
+    n_bg_annotated: int,
+    n_bg_leaves: int,
+) -> tuple[float | None, float | None]:
+    """
+    Calculate Fisher's exact test p-value for enrichment.
+
+    Constructs a 2x2 contingency table from enrichment counts and returns
+    the odds ratio and p-value using Fisher's exact test (greater-tail).
+
+    Contingency table:
+        - a: items in study set annotated to class
+        - b: items in study set NOT annotated to class
+        - c: items in background NOT in study set, annotated to class
+        - d: items in background NOT in study set, NOT annotated to class
+
+    Args:
+        n_ss_annotated: Count of study set items annotated to this class.
+        n_ss_leaves: Total count of items in study set.
+        n_bg_annotated: Count of background items annotated to this class.
+        n_bg_leaves: Total count of items in background.
+
+    Returns:
+        tuple: (odds_ratio, p_value) if valid contingency table, else (None, None).
+            Odds ratio and p-value for greater-tail Fisher's exact test.
+    """
     a = n_ss_annotated
     b = n_ss_leaves - n_ss_annotated
     c = n_bg_annotated - n_ss_annotated
@@ -61,6 +88,18 @@ def calculate_p_value(n_ss_annotated, n_ss_leaves, n_bg_annotated, n_bg_leaves):
 
 
 def normalize_id(raw_id: str) -> str:
+    """
+    Normalize ChEBI identifiers to full IRIs.
+
+    Converts various ChEBI ID formats (CHEBI:12345, raw IDs, or full IRIs)
+    to the standard http://purl.obolibrary.org/obo/CHEBI_XXXXX IRI format.
+
+    Args:
+        raw_id: ChEBI identifier in any format (CHEBI:12345, numeric ID, or IRI).
+
+    Returns:
+        str: Normalized IRI in http://purl.obolibrary.org/obo/CHEBI_XXXXX format.
+    """
     value = raw_id.strip().replace('"', "")
     if value.startswith(("http://", "https://")):
         return value
@@ -83,7 +122,6 @@ def get_leaves(studyset_list, leaves_csv, class_to_leaf_map, structural_leaf_ids
     studyset_leaves = set()
 
     leaves_df = pd.read_csv(leaves_csv)
-    print(leaves_df["IRI"].iloc[0].encode())
     all_leaf_ids = set(leaves_df["IRI"].values)
 
     for cls in studyset_list:
@@ -110,16 +148,30 @@ def get_leaves(studyset_list, leaves_csv, class_to_leaf_map, structural_leaf_ids
     return list(studyset_leaves)
 
 
-def get_ancestors_for_inputs(studyset_leaves, leaf_to_all_parents_map_json):
+def get_ancestors_for_inputs(
+    studyset_leaves: list[str],
+    leaf_to_all_parents_map_json: str,
+) -> list[str]:
+    """
+    Extract all ancestors (parents at all levels) of the given leaf classes.
+
+    Args:
+        studyset_leaves: Iterable of leaf class IRIs.
+        leaf_to_all_parents_map_json: Path to JSON file mapping leaf IRIs to
+            lists of all ancestor (parent) IRIs.
+
+    Returns:
+        list: All unique ancestor class IRIs reachable from studyset_leaves.
+    """
     with open(leaf_to_all_parents_map_json) as f:
         leaf_to_all_parents_map = json.load(f)
 
-    studyset_ancestors = set()
+    studyset_ancestors: set[str] = set()
     for leaf in studyset_leaves:
         parents = leaf_to_all_parents_map.get(leaf, [])
         studyset_ancestors.update(parents)
 
-    return studyset_ancestors
+    return list(studyset_ancestors)
 
 
 def get_n_ss_annotated(
@@ -133,15 +185,31 @@ def get_n_ss_annotated(
     """
     n_ss_annotated = number of input classes that are leaf descendants of the given class.
 
-    studyset_leaves: list of class IDs that were provided by the user (the study set)
-    class_to_check: the ontology class for which we want n_ss_annotated
-    map_file: JSON file mapping each class to all its leaf descendants
+    Parameters:
+        studyset_leaves: list of class IDs that were provided by the user (the study set)
+        class_to_check: the ontology class for which we want n_ss_annotated
+        class_to_leaf_map: JSON mapping each class to all its leaf descendants
+        classification: "structural", "functional", or "full"
+        class_to_all_roles_map: Maps classes to all roles (used for functional classification)
+        roles_to_leaves_map: Maps role classes to their associated leaves
+
+    Returns:
+        int: Count of study set leaves that are descendants of class_to_check
+
+    Raises:
+        ValueError: If classification is not supported or class not found
     """
 
     leaves = set()
 
     if classification in ["structural", "full"]:
         # descendants of the class we are calculating enrichment for
+        if class_to_check not in class_to_leaf_map:
+            raise ValueError(
+                f"Class {class_to_check} not found in class_to_leaf_map. "
+                "Ensure map file is loaded and class IRI is valid.",
+            )
+
         leaf_descendants = set(class_to_leaf_map.get(class_to_check, []))
         leaves.update(leaf_descendants)
 
@@ -156,8 +224,10 @@ def get_n_ss_annotated(
     #         leaves.update(roles_to_leaves_map.get(role, []))
 
     else:
-        print(f"Classification {classification} is not supported for counting classes.")
-        return 0
+        raise ValueError(
+            f"Classification '{classification}' is not supported. "
+            "Use 'structural', 'functional', or 'full'.",
+        )
 
 
 def get_n_ss_annotated_for_roles(
@@ -166,6 +236,18 @@ def get_n_ss_annotated_for_roles(
     class_to_all_roles_map,
     roles_to_leaves_map,
 ):
+    """
+    Count study set items annotated to a role/functional class.
+
+    Args:
+        studyset_leaves: Set/list of study set leaf class IRIs.
+        class_to_check: Role/functional class IRI to check annotation for.
+        class_to_all_roles_map: Map (unused in this function, kept for API consistency).
+        roles_to_leaves_map: Mapping from role IRIs to lists of leaf IRIs.
+
+    Returns:
+        int: Number of study set items with this role annotation.
+    """
     leaves = set()
     leaves.update(roles_to_leaves_map.get(class_to_check, []))
     n_ss_annotated = len(leaves.intersection(set(studyset_leaves)))
@@ -183,6 +265,28 @@ def get_enrichment_values(
     studyset_ancestors_roles,
     structural_leaf_ids=None,
 ):
+    """
+    Calculate Fisher's exact p-values for enrichment of classes in study set.
+
+    Iterates over all candidate classes (structural ancestors or functional roles)
+    and computes the contingency table for each, returning p-values and odds ratios.
+
+    Args:
+        removed_leaves_csv: Path to CSV with all leaf classes and their counts.
+        classification: Classification type: "structural" or "functional".
+        studyset_leaves: List of leaf class IRIs in study set.
+        studyset_ancestors: List of all ancestor class IRIs reachable from study set.
+        class_to_leaf_map: Mapping from class IRIs to their leaf descendants.
+        class_to_all_roles_map: Mapping from structural classes to functional roles.
+        roles_to_leaves_map: Mapping from role IRIs to leaf descendants.
+        studyset_ancestors_roles: List of role IRIs reachable from study set
+            (only used if classification="functional").
+        structural_leaf_ids: Optional set of valid structural leaf IRIs
+            (filtering parameter).
+
+    Returns:
+        dict: Mapping from class/role IRIs to (odds_ratio, p_value) tuples.
+    """
 
     # n_bg_leaves and n_ss_leaves will be the same for all classes
     n_bg_leaves = count_removed_leaves(removed_leaves_csv)
@@ -303,24 +407,14 @@ def print_enrichment_results(enrichment_results):
 # Graphing and pruning strategies.
 
 
-def run_enrichment_analysis(
-    studyset_list,
-    bonferroni_correct=False,
-    benjamini_hochberg_correct=True,
-    root_children_prune=False,
-    levels=2,
-    linear_branch_prune=False,
-    n=2,
-    high_p_value_prune=False,
-    p_value_threshold=0.05,
-    zero_degree_prune=False,
-    classification="structural",
-    check_leaf_classes=False,
-):
+def _load_data_files():
+    """
+    Load common data files needed for enrichment analysis.
 
-    pruning_before_enrichment = root_children_prune or linear_branch_prune
-
-    # Files
+    Returns:
+        tuple: (class_to_leaf_map, class_to_all_roles_map, roles_to_leaves_map,
+                removed_leaves_csv, leaf_to_ancestors_map_file, parent_map_file)
+    """
     removed_leaves_csv = "data/removed_leaf_classes_with_smiles.csv"
     leaf_to_ancestors_map_file = "data/removed_leaf_classes_to_ALL_parents_map.json"
     class_to_leaf_map_file = "data/class_to_leaf_descendants_map.json"
@@ -334,6 +428,43 @@ def run_enrichment_analysis(
         class_to_all_roles_map = json.load(f)
     with open(roles_to_leaves_map_json) as f:
         roles_to_leaves_map = json.load(f)
+
+    return (
+        class_to_leaf_map,
+        class_to_all_roles_map,
+        roles_to_leaves_map,
+        removed_leaves_csv,
+        leaf_to_ancestors_map_file,
+        parent_map_file,
+    )
+
+
+def run_enrichment_analysis(
+    studyset_list: list[str],
+    bonferroni_correct: bool = False,
+    benjamini_hochberg_correct: bool = True,
+    root_children_prune: bool = False,
+    levels: int = 2,
+    linear_branch_prune: bool = False,
+    n: int = 2,
+    high_p_value_prune: bool = False,
+    p_value_threshold: float = 0.05,
+    zero_degree_prune: bool = False,
+    classification: str = "structural",
+    check_leaf_classes: bool = False,
+) -> tuple[dict, object]:
+
+    pruning_before_enrichment = root_children_prune or linear_branch_prune
+
+    # Load common data files
+    (
+        class_to_leaf_map,
+        class_to_all_roles_map,
+        roles_to_leaves_map,
+        removed_leaves_csv,
+        leaf_to_ancestors_map_file,
+        parent_map_file,
+    ) = _load_data_files()
 
     structural_leaf_ids = get_structural_leaf_ids(removed_leaves_csv)
 
@@ -547,28 +678,23 @@ def run_enrichment_analysis(
 
 
 def run_enrichment_analysis_plain_enrich_pruning_strategy(
-    studyset_list,
-    levels=2,  # for root children pruner
-    n=0,  # for linear branch pruner
-    p_value_threshold=0.05,  # for high p-value pruner
-    classification="structural",
-    check_leaf_classes=False,
-):
+    studyset_list: list[str],
+    levels: int = 2,
+    n: int = 0,
+    p_value_threshold: float = 0.05,
+    classification: str = "structural",
+    check_leaf_classes: bool = False,
+) -> tuple[dict, object]:
 
-    # Files
-    removed_leaves_csv = "data/removed_leaf_classes_with_smiles.csv"
-    leaf_to_ancestors_map_file = "data/removed_leaf_classes_to_ALL_parents_map.json"
-    class_to_leaf_map_file = "data/class_to_leaf_descendants_map.json"
-    parent_map_file = "data/chebi_parent_map.json"
-    class_to_all_roles_map_json = "data/class_to_all_roles_map.json"
-    roles_to_leaves_map_json = "data/roles_to_leaves_map.json"
-
-    with open(class_to_leaf_map_file) as f:
-        class_to_leaf_map = json.load(f)
-    with open(class_to_all_roles_map_json) as f:
-        class_to_all_roles_map = json.load(f)
-    with open(roles_to_leaves_map_json) as f:
-        roles_to_leaves_map = json.load(f)
+    # Load common data files
+    (
+        class_to_leaf_map,
+        class_to_all_roles_map,
+        roles_to_leaves_map,
+        removed_leaves_csv,
+        leaf_to_ancestors_map_file,
+        parent_map_file,
+    ) = _load_data_files()
 
     structural_leaf_ids = get_structural_leaf_ids(removed_leaves_csv)
 
@@ -758,10 +884,12 @@ if __name__ == "__main__":
     check_leaf_classes = False  # Checks that the found the leaf classes are of the expected type (Functional or Structural). If the classification is correct,
     # this should never be a problem and can be set to False.
 
-
     # For testing purposes, you can use the following study set of two compounds:
 
-    studyset_list = ["http://purl.obolibrary.org/obo/CHEBI_77030","http://purl.obolibrary.org/obo/CHEBI_79036"]
+    studyset_list = [
+        "http://purl.obolibrary.org/obo/CHEBI_77030",
+        "http://purl.obolibrary.org/obo/CHEBI_79036",
+    ]
 
     results = run_enrichment_analysis(
         studyset_list,
@@ -784,4 +912,3 @@ if __name__ == "__main__":
     #                         p_value_threshold=0.05, # for high p-value pruner
     #                         classification="structural",
     #                         check_leaf_classes=False)
-

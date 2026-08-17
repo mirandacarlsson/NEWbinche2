@@ -1,0 +1,224 @@
+# Great Docs Configuration
+# See https://posit-dev.github.io/great-docs/user-guide/configuration.html
+
+# Module Name (optional)
+# ----------------------
+# Set this if your importable module name differs from the project name.
+# Example: project 'py-yaml12' with module name 'yaml12'
+module: calculations
+
+# Docstring Parser
+# ----------------
+# The docstring format used in your package (numpy, google, or sphinx)
+parser: google
+
+# Dynamic Introspection
+# ---------------------
+# Use runtime introspection for more accurate documentation (default: true)
+# Set to false if your package has cyclic alias issues (e.g., PyO3/Rust bindings)
+dynamic: true
+
+# API Discovery Settings
+# ----------------------
+# Exclude items from auto-documentation
+# exclude:
+#   - InternalClass
+#   - helper_function
+
+# Logo & Favicon
+# ---------------
+# Point to a single logo file (replaces the text title in the navbar):
+# logo: assets/logo.svg
+#
+# For light/dark variants:
+# logo:
+#   light: assets/logo-light.svg
+#   dark: assets/logo-dark.svg
+#
+# To show the text title alongside the logo, add: show_title: true
+
+# Funding / Copyright Holder
+# --------------------------
+# Credit the organization that funds or holds copyright for this package.
+# Displays in sidebar and footer. Homepage and ROR provide links.
+# funding:
+#   name: "Posit Software, PBC"
+#   roles:
+#     - Copyright holder
+#     - funder
+#   homepage: https://posit.co
+#   ror: https://ror.org/03wc8by49
+
+# API Reference Structure
+# -----------------------
+# Customize the sections below to organize your API documentation.
+# - Reorder items within a section to change their display order
+# - Move items between sections or create new sections
+# - Use 'members: false' to exclude methods from documentation
+# - Add 'desc:' to sections for descriptions
+
+reference:
+  - title: Functions
+    desc: Utility functions
+    contents:
+      - fishers_calculations.benjamini_hochberg_fdr_correction
+      - fishers_calculations.bonferroni_correction
+      - fishers_calculations.calculate_p_value
+      - fishers_calculations.count_removed_classes_for_class
+      - fishers_calculations.count_removed_classes_for_roles
+      - fishers_calculations.count_removed_leaves
+      - fishers_calculations.create_graph_with_roles_and_structures
+      - fishers_calculations.get_ancestors_for_inputs
+      - fishers_calculations.get_enrichment_values
+      - fishers_calculations.get_leaves
+      - fishers_calculations.get_n_ss_annotated
+      - fishers_calculations.get_n_ss_annotated_for_roles
+      - fishers_calculations.get_structural_leaf_ids
+      - fishers_calculations.high_p_value_branch_pruner
+      - fishers_calculations.id_to_name
+      - fishers_calculations.linear_branch_collapser_pruner_remove_less
+      - fishers_calculations.normalize_id
+      - fishers_calculations.print_enrichment_results
+      - fishers_calculations.root_children_pruner
+      - fishers_calculations.run_enrichment_analysis
+      - fishers_calculations.run_enrichment_analysis_plain_enrich_pruning_strategy
+      - fishers_calculations.zero_degree_pruner
+      - multiple_test_corrections.benjamini_hochberg_fdr_correction
+      - multiple_test_corrections.bonferroni_correction
+      - pre_fishers_calculations.build_class_to_leaf_map
+      - pre_fishers_calculations.count_removed_classes_for_class
+      - pre_fishers_calculations.count_removed_classes_for_roles
+      - pre_fishers_calculations.count_removed_leaves
+      - pre_fishers_calculations.get_structural_leaf_ids
+      - prepare_role_calculations.create_class_to_all_roles_map
+      - prepare_role_calculations.create_leaves_to_all_roles_map
+      - prepare_role_calculations.create_roles_to_all_leaves_map
+      - prepare_role_calculations.find_has_role_connections_from_owl
+      - visualitations_and_pruning.clean_label
+      - visualitations_and_pruning.create_graph_from_map
+      - visualitations_and_pruning.create_graph_from_paths
+      - visualitations_and_pruning.create_graph_with_roles_and_structures
+      - visualitations_and_pruning.delete_children
+      - visualitations_and_pruning.extract_chebi_id
+      - visualitations_and_pruning.find_paths_to_root_with_map
+      - visualitations_and_pruning.find_paths_to_root_with_ontology
+      - visualitations_and_pruning.get_name
+      - visualitations_and_pruning.graph_to_cytospace_json
+      - visualitations_and_pruning.high_p_value_branch_pruner
+      - visualitations_and_pruning.id_to_name
+      - visualitations_and_pruning.linear_branch_collapser_pruner_remove_less
+      - visualitations_and_pruning.process_branch_remove_less
+      - visualitations_and_pruning.process_node_for_p_value_pruner
+      - visualitations_and_pruning.root_children_pruner
+      - visualitations_and_pruning.strip_prefix
+      - visualitations_and_pruning.zero_degree_pruner
+      - weighted_calculations.auto_scale_weights
+      - weighted_calculations.benjamini_hochberg_fdr_correction
+      - weighted_calculations.bonferroni_correction
+      - weighted_calculations.calculate_weighted_p_value
+      - weighted_calculations.count_removed_classes_for_class
+      - weighted_calculations.count_removed_classes_for_roles
+      - weighted_calculations.count_removed_leaves
+      - weighted_calculations.create_graph_with_roles_and_structures
+      - weighted_calculations.get_ancestors_for_inputs
+      - weighted_calculations.get_leaves
+      - weighted_calculations.get_structural_leaf_ids
+      - weighted_calculations.get_weighted_enrichment_values
+      - weighted_calculations.get_weighted_enrichment_values_narrow
+      - weighted_calculations.high_p_value_branch_pruner
+      - weighted_calculations.id_to_name
+      - weighted_calculations.linear_branch_collapser_pruner_remove_less
+      - weighted_calculations.normalize_id
+      - weighted_calculations.print_enrichment_results
+      - weighted_calculations.root_children_pruner
+      - weighted_calculations.run_weighted_enrichment_analysis
+      - weighted_calculations.run_weighted_enrichment_analysis_plain_enrich_pruning_strategy
+      - weighted_calculations.run_weighted_narrow_background_enrichment_analysis
+      - weighted_calculations.run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy
+      - weighted_calculations.zero_degree_pruner
+
+  - title: Constants
+    desc: Module-level constants and data
+    contents:
+      - fishers_calculations.REPO_ROOT
+      - fishers_calculations.benjamini_hochberg_correct
+      - fishers_calculations.bonferroni_correct
+      - fishers_calculations.check_leaf_classes
+      - fishers_calculations.classification
+      - fishers_calculations.high_p_value_prune
+      - fishers_calculations.levels
+      - fishers_calculations.linear_branch_prune
+      - fishers_calculations.n
+      - fishers_calculations.p_value_threshold
+      - fishers_calculations.results
+      - fishers_calculations.root_children_prune
+      - fishers_calculations.studyset_list
+      - fishers_calculations.zero_degree_prune
+      - pre_fishers_calculations.REPO_ROOT
+      - pre_fishers_calculations.check_leaf_classes
+      - pre_fishers_calculations.class_iri
+      - pre_fishers_calculations.class_to_all_roles_json
+      - pre_fishers_calculations.class_to_all_roles_map
+      - pre_fishers_calculations.class_to_leaf_output_file
+      - pre_fishers_calculations.classification
+      - pre_fishers_calculations.leaf_to_ancestors_file
+      - pre_fishers_calculations.logger
+      - pre_fishers_calculations.map_file
+      - pre_fishers_calculations.n_removed_leaves
+      - pre_fishers_calculations.n_tot_removed_leaves
+      - pre_fishers_calculations.prob_of_success
+      - pre_fishers_calculations.removed_leaves_csv
+      - pre_fishers_calculations.roles_to_leaves_map
+      - pre_fishers_calculations.roles_to_leaves_map_json
+      - pre_fishers_calculations.task
+      - prepare_role_calculations.REPO_ROOT
+      - prepare_role_calculations.avg_roles
+      - prepare_role_calculations.class_to_all_roles_json
+      - prepare_role_calculations.deprecated_property
+      - prepare_role_calculations.expected
+      - prepare_role_calculations.found
+      - prepare_role_calculations.has_role_property
+      - prepare_role_calculations.leaves_to_all_parents_json
+      - prepare_role_calculations.leaves_to_all_roles_json
+      - prepare_role_calculations.max_roles_class
+      - prepare_role_calculations.owl_file
+      - prepare_role_calculations.parent_map_json
+      - prepare_role_calculations.roles_map
+      - prepare_role_calculations.roles_map_json
+      - prepare_role_calculations.roles_to_all_leaves_json
+      - prepare_role_calculations.task
+      - prepare_role_calculations.test_class_iri
+      - prepare_role_calculations.total_role_connections
+      - visualitations_and_pruning.REPO_ROOT
+      - weighted_calculations.REPO_ROOT
+      - weighted_calculations.logger
+
+# Site URL
+# --------
+# Canonical address of the deployed documentation site.
+# Required for subdirectory deployments, skills page install commands,
+# .well-known/ discovery, and sitemaps.
+# site_url: "https://your-org.github.io/your-package/"
+
+# Site Settings
+# -------------
+# site:
+#   theme: flatly              # Quarto theme (default: flatly)
+#   toc: true                  # Show table of contents (default: true)
+#   toc-depth: 2               # TOC heading depth (default: 2)
+#   toc-title: On this page    # TOC title (default: "On this page")
+
+# Jupyter Kernel
+# --------------
+# Jupyter kernel to use for executing code cells in .qmd files.
+# This is set at the project level so it applies to all pages, including
+# auto-generated API reference pages. Can be overridden in individual .qmd
+# file frontmatter if needed for special cases.
+jupyter: python3
+
+# CLI Documentation
+# -----------------
+# cli:
+#   enabled: true              # Enable CLI documentation
+#   module: my_package.cli     # Module containing Click commands
+#   name: cli                  # Name of the Click command object

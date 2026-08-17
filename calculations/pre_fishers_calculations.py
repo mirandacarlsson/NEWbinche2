@@ -25,7 +25,7 @@ _missing_role_warning_suppressed = 0
 _structural_leaf_ids_cache = {}
 
 
-def get_structural_leaf_ids(removed_classes_csv):
+def get_structural_leaf_ids(removed_classes_csv: str) -> set[str]:
     """
     Return the set of leaf class IRIs correctly classified as 'structural'.
     Leaves classified as 'functional' or 'neither' are ChEBI ontology labeling
@@ -39,11 +39,14 @@ def get_structural_leaf_ids(removed_classes_csv):
     return _structural_leaf_ids_cache[removed_classes_csv]
 
 
-def count_removed_leaves(removed_classes_csv):
+def count_removed_leaves(removed_classes_csv: str) -> int:
     return len(get_structural_leaf_ids(removed_classes_csv))
 
 
-def build_class_to_leaf_map(leaf_to_ancestors_file, class_to_leaf_output_file):
+def build_class_to_leaf_map(
+    leaf_to_ancestors_file: str,
+    class_to_leaf_output_file: str,
+) -> None:
     """Build a JSON map from each class IRI to ALL its leaf descendants using an existing leaf-to-ancestors map."""
 
     print(f"Loading leaf to ancestors map from {leaf_to_ancestors_file}...")
@@ -51,7 +54,7 @@ def build_class_to_leaf_map(leaf_to_ancestors_file, class_to_leaf_output_file):
         leaf_to_ancestors = json.load(f)
     print(f"Loaded leaf to ancestors map with {len(leaf_to_ancestors)} leaf classes.")
 
-    class_to_leaves = defaultdict(set)
+    class_to_leaves: dict[str, set[str]] = defaultdict(set)
     print("Building class to leaf descendants map...")
 
     # For each leaf, add it to all its ancestors
@@ -78,57 +81,61 @@ def build_class_to_leaf_map(leaf_to_ancestors_file, class_to_leaf_output_file):
 
 
 def count_removed_classes_for_class(
-    class_iri,
-    leaf_descendants_map,
-    classification,
-    class_to_all_roles_map,
-    roles_to_leaves_map,
-    structural_leaf_ids=None,
-):
+    class_iri: str,
+    class_to_leaf_map: dict[str, list[str]],
+    classification: str,
+    class_to_all_roles_map: dict[str, list[str]],
+    roles_to_leaves_map: dict[str, list[str]],
+    structural_leaf_ids: set[str] | None = None,
+) -> tuple[set[str], int]:
     """
     Count how many leaf classes are associated with the given class_iri.
 
     Parameters:
         class_iri: The class to check
-        leaf_descendants_map: Maps structural classes to their leaf descendants
+        class_to_leaf_map: Maps structural classes to their leaf descendants
         classification: "structural", "functional", or "full"
+        class_to_all_roles_map: Maps classes to all roles (used for functional classification)
         roles_to_leaves_map: Maps role classes to their associated leaves
         structural_leaf_ids: If given, leaf descendants are restricted to this
             set (the genuine 'structural'-classified leaves), excluding any
             leaf classes mislabeled with another Classification in ChEBI
 
     Returns:
-        leaves: Set of leaf class IRIs
-        n_leaves: Count of leaves
-        :param class_to_all_roles_map:
+        Tuple of (leaves set, leaf count).
+
+    Raises:
+        ValueError: If class_iri not in class_to_leaf_map for structural/full classification
     """
 
-    # if classification not in ["structural", "functional", "full"]:
-    # print("Classification must be either 'structural', 'functional' or 'full'.")
-    # return 0, 0
+    if classification not in ["structural", "functional", "full"]:
+        raise ValueError(
+            f"Classification must be 'structural', 'functional', or 'full', got: {classification}",
+        )
 
-    leaves = set()
+    leaves: set[str] = set()
 
     if classification in ["structural", "full"]:
-        if str(class_iri) not in leaf_descendants_map:
-            print(f"⚠️ Class {class_iri} is not found in map file.")
-            return 0, 0
-        elif (
-            len(leaf_descendants_map[str(class_iri)]) == 0
-        ):  # Should not happen since then it would be a leaf
-            print(f"⚠️ Class {class_iri} has no descendants in full ontology.")
-            return 0, 0
+        if str(class_iri) not in class_to_leaf_map:
+            raise ValueError(
+                f"Class {class_iri} not found in class_to_leaf_map. "
+                "Check that the map file was loaded correctly and the class IRI is valid.",
+            )
 
-        # Get string of subclasses from the map
-        leaves_structure = leaf_descendants_map[str(class_iri)]
+        leaves_structure = class_to_leaf_map[str(class_iri)]
+        if len(leaves_structure) == 0:
+            raise ValueError(
+                f"Class {class_iri} has no leaf descendants in ontology. "
+                "This should not happen if the map was built correctly.",
+            )
+
         leaves.update(leaves_structure)
 
         if structural_leaf_ids is not None:
             leaves &= structural_leaf_ids
 
     else:
-        print(f"Classification {classification} is not supported for counting classes.")
-        return 0, 0
+        raise ValueError("Functional classification is not yet implemented.")
 
     # if classification in ["functional", "full"]:
     #     # Get ALL roles for the class being tested (direct + inherited from ancestors)
@@ -155,17 +162,28 @@ def count_removed_classes_for_class(
 
 
 def count_removed_classes_for_roles(
-    class_iri,
-    leaf_descendants_map,
-    classification,
-    roles_to_leaves_map,
-):
+    class_iri: str,
+    leaf_descendants_map: dict[str, list[str]],
+    classification: str,
+    roles_to_leaves_map: dict[str, list[str]],
+) -> tuple[set[str], int]:
+    """
+    Count leaf classes associated with the given role IRI.
 
+    Parameters:
+        class_iri: The role IRI to check
+        leaf_descendants_map: Unused (kept for API compatibility)
+        classification: "functional" or "full"
+        roles_to_leaves_map: Maps role classes to their associated leaves
+
+    Returns:
+        Tuple of (leaves set, leaf count).
+    """
     if classification not in ["functional", "full"]:
         print(f"Classification {classification} is not supported for counting roles.")
-        return 0, 0
+        return set(), 0
 
-    leaves = set()
+    leaves: set[str] = set()
     leaves.update(roles_to_leaves_map.get(class_iri, []))
 
     if not leaves:

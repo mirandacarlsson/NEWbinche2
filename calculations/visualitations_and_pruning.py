@@ -13,7 +13,19 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 
-def id_to_name(class_id):
+def id_to_name(class_id: str) -> str:
+    """
+    Convert ChEBI class IRI to human-readable name with ID.
+
+    Loads name mapping from JSON file and returns formatted string
+    "Name (CHEBI_ID)" or just the ID if name not found.
+
+    Args:
+        class_id: Class IRI (e.g., http://purl.obolibrary.org/obo/CHEBI_12345).
+
+    Returns:
+        str: Formatted name like "ascorbic acid (CHEBI_15377)" or just class_id.
+    """
     id_to_name_map_file = "data/chebi_id_to_name_map.json"
 
     with open(id_to_name_map_file) as f:
@@ -27,7 +39,18 @@ def id_to_name(class_id):
     return f"{name} ({class_id})" if name else class_id
 
 
-def strip_prefix(class_id):
+def strip_prefix(class_id: str) -> str:
+    """
+    Remove OBO namespace prefix from class IRI.
+
+    Converts http://purl.obolibrary.org/obo/CHEBI_12345 to CHEBI_12345.
+
+    Args:
+        class_id: Class IRI (with or without prefix).
+
+    Returns:
+        str: Class ID without the OBO prefix.
+    """
     prefix = "http://purl.obolibrary.org/obo/"
     if class_id.startswith(prefix):
         return class_id.replace(prefix, "")
@@ -56,10 +79,27 @@ def strip_prefix(class_id):
 #     return paths
 
 
-def find_paths_to_root_with_map(start_class, parents_map):
-    paths = []
+def find_paths_to_root_with_map(
+    start_class: str,
+    parents_map: dict[str, list[str]],
+) -> list[list[str]]:
+    """
+    Find all paths from a class to root(s) in the ontology hierarchy.
 
-    def dfs(current_class, current_path):
+    Uses depth-first search to explore parent relationships until reaching
+    a root class (one with no parents in the map).
+
+    Args:
+        start_class: Starting class IRI.
+        parents_map: Dictionary mapping class IRIs to lists of parent IRIs.
+
+    Returns:
+        list: List of paths, where each path is a list of class IRIs from
+            start_class to a root class (inclusive).
+    """
+    paths: list[list[str]] = []
+
+    def dfs(current_class: str, current_path: list[str]) -> None:
         # if the class has no parents in the map, it's a root
         parents = parents_map.get(current_class, [])
         if not parents:
@@ -76,13 +116,14 @@ def find_paths_to_root_with_map(start_class, parents_map):
 # Not used anymore
 def find_paths_to_root_with_ontology(
     ontology,
-    start_class,
-    leaf_to_parents_json_file="data/removed_leaf_classes_to_direct_parents_map.json",
-):  # should work for leaf classes too
-    paths = []
+    start_class: str,
+    leaf_to_parents_json_file: str = "data/removed_leaf_classes_to_direct_parents_map.json",
+) -> list[list[str]]:
+    """Find all paths from start_class to ontology roots."""
+    paths: list[list[str]] = []
 
     # Unified DFS (works for both ontology and leaf parents)
-    def dfs(current_class, current_path):
+    def dfs(current_class: str, current_path: list[str]) -> None:
         superclasses = ontology.get_superclasses(current_class)
         superclasses = [s for s in superclasses if s not in current_path]
 
@@ -119,7 +160,8 @@ def find_paths_to_root_with_ontology(
         return paths
 
 
-def get_name(chebi_ontology, iri):
+def get_name(chebi_ontology: str, iri: str) -> str | None:
+    """Get human-readable name for a class IRI from OWL ontology."""
     tree = ET.parse(chebi_ontology)
     root = tree.getroot()
     ns = {
@@ -141,7 +183,7 @@ def get_name(chebi_ontology, iri):
     return None  # if not found
 
 
-def create_graph_from_paths(paths):
+def create_graph_from_paths(paths: list) -> nx.DiGraph:
     G = nx.DiGraph()
     for path in paths:
         for i in range(len(path) - 1):
@@ -179,12 +221,31 @@ def create_graph_from_paths(paths):
 #     return G
 
 
-def create_graph_from_map(classes, parent_map_json_file, max_n_leaf_classes=inf):
+def create_graph_from_map(
+    classes: list[str],
+    parent_map_json_file: str,
+    max_n_leaf_classes: float = inf,
+) -> nx.DiGraph:
+    """
+    Create a directed graph of class hierarchy from a parent map JSON file.
+
+    Constructs a networkx DiGraph where nodes are classes and edges represent
+    parent-child relationships. Uses paths from each class to root(s).
+
+    Args:
+        classes: Iterable of starting class IRIs (typically leaves).
+        parent_map_json_file: Path to JSON file with parent mapping.
+        max_n_leaf_classes: Maximum number of starting classes to process
+            (for memory efficiency on large datasets).
+
+    Returns:
+        networkx.DiGraph: Directed graph of the class hierarchy.
+    """
 
     with open(parent_map_json_file) as f:
         parents_map = json.load(f)
 
-    G = nx.DiGraph()
+    G: nx.DiGraph = nx.DiGraph()
     j = 0
 
     for cls in classes:
@@ -215,13 +276,13 @@ def create_graph_from_map(classes, parent_map_json_file, max_n_leaf_classes=inf)
 
 
 def create_graph_with_roles_and_structures(
-    studyset_leaves,
-    structural_ancestors,
-    enriched_roles,
-    parent_map_file,
-    class_to_all_roles_map,
-    classification,
-):
+    studyset_leaves: list[str],
+    structural_ancestors: list[str] | set[str],
+    enriched_roles: list[str] | set[str],
+    parent_map_file: str,
+    class_to_all_roles_map: dict,
+    classification: str,
+) -> nx.DiGraph:
 
     if classification == "structural" or classification == "full":
         # Build structural graph
@@ -353,6 +414,26 @@ def delete_children(node, G, next_level, removed_nodes):
 
 
 def root_children_pruner(G, levels, allow_re_execution=False, execution_count=0):
+    """
+    Remove nodes from levels 1 to `levels` of the root (not including root itself).
+
+    Args:
+        G (networkx.DiGraph): Ontology graph
+        levels (int): Number of levels to prune from root
+        allow_re_execution (bool): If False, only executes on first call (count=0)
+                                   If True, can execute multiple times
+        execution_count (int): Counter tracking how many times this pruner has run
+
+    Returns:
+        tuple: (G, removed_nodes, execution_count) where removed_nodes is the
+               set of removed node IDs, and execution_count is incremented if
+               the pruner executed.
+
+    Note:
+        The allow_re_execution and execution_count parameters track whether
+        pruners can run multiple times in a pipeline. Currently these are used
+        but the logic is basic; potential future optimization to streamline.
+    """
     removed_nodes = set()
     if allow_re_execution or execution_count == 0:
         roots = [n for n, d in G.out_degree() if d == 0]
@@ -360,9 +441,6 @@ def root_children_pruner(G, levels, allow_re_execution=False, execution_count=0)
             delete_children(root, G, levels, removed_nodes)
         execution_count += 1
     return G, removed_nodes, execution_count
-
-
-# TODO: look over if execution count and allow_re_execution is needed anywhere
 
 
 # Linear branch collapser pruner - remove fewer nodes:
@@ -535,7 +613,7 @@ def process_node_for_p_value_pruner(
     return has_good_descendant
 
 
-def zero_degree_pruner(G):
+def zero_degree_pruner(G: nx.DiGraph) -> tuple[nx.DiGraph, list]:
     to_remove = []
     removed = []
 
@@ -553,12 +631,12 @@ def zero_degree_pruner(G):
 #####################################
 # Converting NetworkX graph to Cytoscape compatible format
 #####################################
-def clean_label(label):
+def clean_label(label: str) -> str:
     """Changes label from 'Name (CHEBI_ID)' to 'Name'"""
     return label.split(" (")[0] if " (" in label else label
 
 
-def extract_chebi_id(label):
+def extract_chebi_id(label: str) -> str | None:
     """Finds CHEBI_XXXX inside parentheses"""
     if " (" in label and "CHEBI_" in label:
         return label.split(" (")[1][:-1]  # Extract CHEBI_ID without parentheses
