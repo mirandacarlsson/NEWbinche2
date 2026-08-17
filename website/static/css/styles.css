@@ -101,6 +101,28 @@ body:has(.graph-wrapper) .site-footer {
 }
 
 /* ============================================================
+   Skip link (accessibility)
+   ============================================================ */
+.skip-link {
+  position: absolute;
+  top: -3rem;
+  left: 1rem;
+  z-index: 2000;
+  padding: 0.5rem 1rem;
+  background-color: var(--maroon);
+  color: #ffffff;
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-lg);
+  text-decoration: none;
+  transition: top 0.15s ease;
+}
+
+.skip-link:focus {
+  top: 1rem;
+  color: #ffffff;
+}
+
+/* ============================================================
    Navbar
    ============================================================ */
 .custom-navbar {
