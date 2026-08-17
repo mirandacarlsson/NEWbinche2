@@ -36,7 +36,8 @@ def id_to_name(class_id: str) -> str:
         # remove prefix
         class_id = class_id.replace(prefix, "")
     name = id_to_name_map.get(class_id)
-    return f"{name} ({class_id})" if name else class_id
+    display_id = class_id.replace("_", ":", 1)
+    return f"{name} ({display_id})" if name else display_id
 
 
 def strip_prefix(class_id: str) -> str:
