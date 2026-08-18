@@ -836,9 +836,10 @@ def run_enrichment_analysis_plain_enrich_pruning_strategy(
         )
         all_removed_nodes.update(removed_nodes)
         print(f"Removed nodes by high p-value pruner: {removed_nodes}")
-        # not including since we do not want to remove too many nodes
-        # G, removed_nodes = linear_branch_collapser_pruner_remove_less(G, n)
-        # all_removed_nodes.update(removed_nodes)
+
+        G, removed_nodes = linear_branch_collapser_pruner_remove_less(G, n)
+        all_removed_nodes.update(removed_nodes)
+        print(f"Removed nodes by linear branch pruner: {removed_nodes}")
 
         G, removed_nodes = zero_degree_pruner(G)
         all_removed_nodes.update(removed_nodes)

@@ -2,21 +2,20 @@
 #SBATCH --job-name=create_files
 #SBATCH --output=logs/out/create_files%A_%a.out
 #SBATCH --error=logs/err/create_files%A_%a.err
-#SBATCH --partition=gpu
+#SBATCH --partition=cpu
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
 #SBATCH --mem=20GB
-#SBATCH --gpus rtx3090:1
-#SBATCH --time=23:00:00
+#SBATCH --time=10:00:00
 #SBATCH --account metabolinkai
 
 echo "Running on $(hostname) at $(date)"
 
-cd /idiap/temp/mcarlsson/binche2 || exit
+cd /idiap/temp/mcarlsson/chebin/binche2 || exit
 
 # shellcheck source=/dev/null
-source bincheEnv/bin/activate
+source .venv/bin/activate
 
-python preparing_data/create_files.py
+python -m preparing_data.create_files
 
 echo Done!
