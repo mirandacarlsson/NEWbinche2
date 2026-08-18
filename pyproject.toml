@@ -33,5 +33,11 @@ known_first_party = ["calculations", "old_scripts", "preparing_data", "website"]
 [tool.deptry.package_module_name_map]
 py-horned-owl = ["pyhornedowl"]
 
+[tool.typos.default.extend-words]
+# "cose" is the Cytoscape.js Compound Spring Embedder layout, not a typo of
+# "case". Without this the typos hook rewrites it and breaks graph rendering
+# in website/templates/graph.html (reverted before in 6f97f56 and 24db0a0).
+cose = "cose"
+
 [tool.uv]
 package = false
