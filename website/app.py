@@ -231,7 +231,9 @@ def submission():
         session["study_set"] = study_set  # Store the study set in session
         classification = request.form.get("classification")
         if classification:
-            session["classification"] = classification  # Store classification in session
+            session["classification"] = (
+                classification  # Store classification in session
+            )
         smiles_option = request.form.get("smiles_option")
         session["smiles_option"] = smiles_option  # Store smiles option in session
         background = request.form.get("background")

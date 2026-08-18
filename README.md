@@ -242,29 +242,29 @@ automatically once every month.
 
 ### 0. Python environment
 
-Dependencies
-and the Python version requirement (`>=3.12`) are declared in `pyproject.toml`, and
-`uv.lock` pins every dependency (and transitive dependency) to an exact version, so
-the environment is fully reproducible across machines.
+Dependencies and the Python version requirement (`>=3.12`) are declared in
+`pyproject.toml`, and `uv.lock` pins every dependency (and transitive
+dependency) to an exact version, so the environment is fully reproducible across
+machines.
 
-To create it, install [uv](https://docs.astral.sh/uv/) and run, from the repository
-root:
+To create it, install [uv](https://docs.astral.sh/uv/) and run, from the
+repository root:
 
 ```bash
 uv sync
 ```
 
-This creates (or updates) `.venv/` with every package pinned to the exact version in
-`uv.lock`. `.python-version` pins the interpreter itself (3.14); `uv sync` downloads
-a matching Python automatically if one isn't already available, so no separate Python
-install step is needed.
+This creates (or updates) `.venv/` with every package pinned to the exact
+version in `uv.lock`. `.python-version` pins the interpreter itself (3.14);
+`uv sync` downloads a matching Python automatically if one isn't already
+available, so no separate Python install step is needed.
 
 Development-only tools (`pytest`, `prek` linting, `coverage`, `great-docs`) are
 declared as a separate dependency group and are included by the plain `uv sync`
 above. To skip them, e.g. for a production-only install, use `uv sync --no-dev`.
 
-If you'd rather not use uv, the runtime dependencies (see `pyproject.toml` for the
-authoritative, version-constrained list) can be installed manually with:
+If you'd rather not use uv, the runtime dependencies (see `pyproject.toml` for
+the authoritative, version-constrained list) can be installed manually with:
 
 `pip install flask networkx numpy pandas py-horned-owl rdkit requests scipy`
 
