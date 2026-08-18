@@ -46,7 +46,7 @@
     </a>
     <ul class="dropdown-menu" aria-labelledby="layoutDropdown">
         <li><a href="#" class="dropdown-item layout-option" data-layout="breadthfirst">Breadthfirst</a></li>
-        <li><a href="#" class="dropdown-item layout-option" data-layout="case">Case</a></li>
+        <li><a href="#" class="dropdown-item layout-option" data-layout="cose">Cose</a></li>
         <li><a href="#" class="dropdown-item layout-option" data-layout="grid">Grid</a></li>
         <li><a href="#" class="dropdown-item layout-option" data-layout="circle">Circle</a></li>
     </ul>
@@ -91,6 +91,26 @@
             </div>
         </div>
         <p class="text-muted">(−log₁₀ scale)</p>
+    </div>
+
+    <!-- Client-side view filter. Distinct from the p-value threshold in the
+         Settings modal, which re-runs the analysis server-side. -->
+    <div id="p-filter" aria-label="p-value threshold filter">
+        <div class="p-filter-handle" title="Drag to move">
+            <i class="fa fa-arrows"></i> p-value filter
+        </div>
+        <label for="p-threshold-slider">
+            Hide nodes with p &gt; <output id="p-threshold-value">5.0e-2</output>
+        </label>
+        <input type="range" id="p-threshold-slider" min="0" max="2" step="0.01" value="1.30">
+        <div class="p-filter-ends">
+            <span>p = 1</span>
+            <span id="p-filter-max"></span>
+        </div>
+        <div class="form-check">
+            <input class="form-check-input" type="checkbox" id="keep-paths-toggle" checked>
+            <label class="form-check-label" for="keep-paths-toggle">Keep paths to root</label>
+        </div>
     </div>
 </div>
 
@@ -164,6 +184,10 @@
         // Center the graph in the viewport
         cy.fit(50); // 50px padding
 
+        // Single source of truth for "the" p-value of a node: corrected if
+        // available, else raw.
+        const getP = node => node.data('p_value_corrected') ?? node.data('p_value');
+
         /////////
         // Colouring
         /////////
@@ -176,7 +200,7 @@
             // Determine max exponent from data
             var maxExponent = 0;
             cy.nodes().forEach(node => {
-                const p = node.data('p_value_corrected') ?? node.data('p_value'); // Use corrected p-value if available, else raw p-value
+                const p = getP(node);
                 if (p != null && p > 0) {
                     const exponent = -Math.log10(p);
                     if (exponent > maxExponent) {
@@ -230,7 +254,7 @@
         const colorHigh = "#ffffff";
 
         cy.nodes().forEach(node => {
-            const p = node.data('p_value_corrected') ?? node.data('p_value'); // Use corrected p-value if available, else raw p-value
+            const p = getP(node);
 
             let color = "lightgrey"; // default color
 
@@ -509,69 +533,155 @@
         });
         });
 
-        // Default view: Show only significant nodes (p <= 0.05) with their paths to roots
-        // If no significant nodes exist, fall back to nodes with p < 1
-        // If still no nodes found, show all nodes
+        /////////
+        // Visibility
+        /////////
 
-        // First, hide all nodes and edges
-        cy.nodes().style('display', 'none');
-        cy.edges().style('display', 'none');
+        // Current client-side view filter state.
+        let pThreshold      = 0.05;   // hide nodes whose p-value exceeds this
+        let keepPathsToRoot = true;   // keep ancestors so survivors stay connected
 
-        // Find all significant nodes (p <= 0.05)
-        let significantNodes = cy.nodes().filter(node => {
-            const p = node.data('p_value_corrected') ?? node.data('p_value');
-            return p != null && p <= 0.05;
+        // Walk upward (outgoers = parents in this directed graph) collecting
+        // ancestors. Memoised on entry, so shared spines are visited once and
+        // any cycle terminates.
+        function collectAncestors(nodes) {
+            const keep = new Set();
+            const visit = node => {
+                if (keep.has(node.id())) return;
+                keep.add(node.id());
+                node.outgoers('edge').forEach(edge => visit(edge.target()));
+            };
+            nodes.forEach(visit);
+            return keep;
+        }
+
+        // Recompute display from scratch rather than only ever hiding. This is
+        // what lets the threshold slider work in both directions.
+        function showOnly(idSet) {
+            cy.nodes().style('display', 'none');
+            cy.edges().style('display', 'none');
+            idSet.forEach(id => cy.getElementById(id).style('display', 'element'));
+            cy.edges().forEach(edge => {
+                if (idSet.has(edge.source().id()) && idSet.has(edge.target().id())) {
+                    edge.style('display', 'element');
+                }
+            });
+        }
+
+        // Show nodes at or below the current threshold, optionally keeping their
+        // paths to the roots.
+        //
+        // allowFallback is for the initial render only: if nothing is significant
+        // in this dataset we widen to p < 1 (then to everything) rather than
+        // opening on a blank graph. It must stay off for user-driven changes --
+        // otherwise dragging the slider to maximum stringency would flood the
+        // view with every node instead of narrowing to none.
+        function applyVisibility(allowFallback = false) {
+            let passing = cy.nodes().filter(node => {
+                const p = getP(node);
+                return p != null && p <= pThreshold;
+            });
+
+            if (allowFallback && passing.length === 0) {
+                passing = cy.nodes().filter(node => {
+                    const p = getP(node);
+                    return p != null && p < 1;
+                });
+
+                if (passing.length === 0) {
+                    cy.nodes().style('display', 'element');
+                    cy.edges().style('display', 'element');
+                    return;
+                }
+            }
+
+            const ids = keepPathsToRoot
+                ? collectAncestors(passing)
+                : new Set(passing.map(node => node.id()));
+            showOnly(ids);
+        }
+
+        /////////
+        // Threshold filter controls
+        /////////
+
+        const slider        = document.getElementById('p-threshold-slider');
+        const thresholdOut  = document.getElementById('p-threshold-value');
+        const pathsToggle   = document.getElementById('keep-paths-toggle');
+
+        // Slider travels in exponent space (E), where threshold p = 10^-E, so the
+        // orders of magnitude spread evenly instead of bunching near zero.
+        // Span at least to p = 0.01 so the control stays usable on datasets whose
+        // best p-value is weak.
+        const sliderMax = Math.max(Math.ceil(maxExponent), 2);
+        slider.max = sliderMax;
+        document.getElementById('p-filter-max').textContent =
+            `p = ${Math.pow(10, -sliderMax).toExponential(0)}`;
+
+        // Push current state back into the controls, so menu actions and slider
+        // never disagree.
+        function syncFilterControls() {
+            const exponent = pThreshold > 0 ? -Math.log10(pThreshold) : sliderMax;
+            slider.value = Math.max(0, Math.min(sliderMax, exponent));
+            thresholdOut.textContent = pThreshold.toExponential(1);
+            pathsToggle.checked = keepPathsToRoot;
+        }
+
+        slider.addEventListener('input', () => {
+            pThreshold = Math.pow(10, -parseFloat(slider.value));
+            thresholdOut.textContent = pThreshold.toExponential(1);
+            applyVisibility();
         });
 
-        // If no significant nodes found, use nodes with p < 1 instead
-        if (significantNodes.length === 0) {
-            significantNodes = cy.nodes().filter(node => {
-                const p = node.data('p_value_corrected') ?? node.data('p_value');
-                return p != null && p < 1;
-            });
-        }
+        // Park the panel under the colour legend by default, measured rather
+        // than hard-coded so it still lands correctly if the legend changes size.
+        const panel  = document.getElementById('p-filter');
+        const legend = document.getElementById('color-legend');
+        panel.style.top = (legend.offsetTop + legend.offsetHeight + 10) + 'px';
 
-        // If still no nodes found, show all nodes
-        if (significantNodes.length === 0) {
-            cy.nodes().style('display', 'element');
-            cy.edges().style('display', 'element');
-        } else {
-            // Set to track all nodes to display
-            const nodesToShow = new Set();
+        // Drag by the title bar only, so the slider and checkbox stay usable.
+        (function makeDraggable(el, handle) {
+            let dragging = false, grabX = 0, grabY = 0;
 
-            // For each significant node, find all paths to roots and mark nodes
-            significantNodes.forEach(sigNode => {
-                nodesToShow.add(sigNode.id());
-
-                // Traverse upward to find all ancestors (parents) until reaching a root
-                const traverseToRoot = (node) => {
-                    // Get outgoing edges (to parents in this directed graph)
-                    const parentEdges = node.outgoers('edge');
-
-                    parentEdges.forEach(edge => {
-                        const parent = edge.target();
-                        if (!nodesToShow.has(parent.id())) {
-                            nodesToShow.add(parent.id());
-                            traverseToRoot(parent); // Recursively traverse
-                        }
-                    });
-                };
-
-                traverseToRoot(sigNode);
+            handle.addEventListener('mousedown', e => {
+                const box    = el.getBoundingClientRect();
+                const bounds = el.offsetParent.getBoundingClientRect();
+                grabX = e.clientX - box.left;
+                grabY = e.clientY - box.top;
+                // Switch from right-anchored to left-anchored, otherwise the
+                // panel fights the drag.
+                el.style.left   = (box.left - bounds.left) + 'px';
+                el.style.top    = (box.top - bounds.top) + 'px';
+                el.style.right  = 'auto';
+                el.style.bottom = 'auto';
+                dragging = true;
+                e.preventDefault(); // no text selection while dragging
             });
 
-            // Show the nodes and their connecting edges
-            nodesToShow.forEach(nodeId => {
-                const node = cy.getElementById(nodeId);
-                node.style('display', 'element');
-                // Show edges between visible nodes
-                node.connectedEdges().forEach(edge => {
-                    if (nodesToShow.has(edge.source().id()) && nodesToShow.has(edge.target().id())) {
-                        edge.style('display', 'element');
-                    }
-                });
+            document.addEventListener('mousemove', e => {
+                if (!dragging) return;
+                const bounds = el.offsetParent.getBoundingClientRect();
+                // Clamp inside the graph area so it can't be lost off-screen.
+                const x = Math.max(0, Math.min(bounds.width  - el.offsetWidth,
+                                               e.clientX - bounds.left - grabX));
+                const y = Math.max(0, Math.min(bounds.height - el.offsetHeight,
+                                               e.clientY - bounds.top  - grabY));
+                el.style.left = x + 'px';
+                el.style.top  = y + 'px';
             });
-        }
+
+            document.addEventListener('mouseup', () => { dragging = false; });
+        })(panel, panel.querySelector('.p-filter-handle'));
+
+        pathsToggle.addEventListener('change', () => {
+            keepPathsToRoot = pathsToggle.checked;
+            applyVisibility();
+        });
+
+        // Default view: significant nodes plus their paths to the roots.
+        // Fallback enabled so a dataset with nothing significant still renders.
+        syncFilterControls();
+        applyVisibility(true);
 
         // Show/hide nodes when respective menu item is clicked
         document.querySelectorAll('.show-hide-option').forEach(item => {
@@ -581,6 +691,8 @@
                 const action = e.target.dataset.action;
 
                 switch(action) {
+                    // One-off manual operations. The next threshold change
+                    // recomputes visibility over the top of them.
                     case 'hide-unselected':
                         // Hide all nodes that are not selected
                         cy.nodes(':unselected').style('display', 'none');
@@ -602,7 +714,7 @@
 
                         // Hide leaf nodes with no p-value (all proper leaves)
                         cy.nodes().forEach(node => {
-                            const p = node.data('p_value_corrected') ?? node.data('p_value');
+                            const p = getP(node);
                             if (p == null && node.indegree() === 0) {
                                 node.style('display', 'none');
                                 node.connectedEdges().style('display', 'none');
@@ -624,80 +736,20 @@
                         break;
 
                     case 'hide-non-significant':
-                        // Hide nodes with p-value (corrected if available) above 0.05 and p-value N/A nodes
-                        cy.nodes().forEach(node => {
-                            const p = node.data('p_value_corrected') ?? node.data('p_value');
-                            if (p != null && p > 0.05) {
-                                node.style('display', 'none');
-                                // Also hide connected edges
-                                node.connectedEdges().style('display', 'none');
-                            }
-                            if (p == null) {
-                                node.style('display', 'none');
-                                // Also hide connected edges
-                                node.connectedEdges().style('display', 'none');
-                            }
-                        });
+                        // Reset the threshold to the conventional 0.05 and drop
+                        // ancestors, matching this action's original behaviour.
+                        pThreshold = 0.05;
+                        keepPathsToRoot = false;
+                        syncFilterControls();
+                        applyVisibility();
                         break;
 
                     case 'show-significant-with-paths':
-                        // Show only significant nodes (p <= 0.05) plus all nodes on paths connecting them to roots
-                        // If no significant nodes exist, fall back to nodes with p < 1
-
-                        // First, hide all nodes and edges
-                        cy.nodes().style('display', 'none');
-                        cy.edges().style('display', 'none');
-
-                        // Find all significant nodes (p <= 0.05)
-                        let significantNodes = cy.nodes().filter(node => {
-                            const p = node.data('p_value_corrected') ?? node.data('p_value');
-                            return p != null && p <= 0.05;
-                        });
-
-                        // If no significant nodes found, use nodes with p < 1 instead
-                        if (significantNodes.length === 0) {
-                            significantNodes = cy.nodes().filter(node => {
-                                const p = node.data('p_value_corrected') ?? node.data('p_value');
-                                return p != null && p < 1;
-                            });
-                        }
-
-
-                        // Set to track all nodes to display
-                        const nodesToShow = new Set();
-
-                        // For each significant node, find all paths to roots and mark nodes
-                        significantNodes.forEach(sigNode => {
-                            nodesToShow.add(sigNode.id());
-
-                            // Traverse upward to find all ancestors (parents) until reaching a root
-                            const traverseToRoot = (node) => {
-                                // Get outgoing edges (to parents in this directed graph)
-                                const parentEdges = node.outgoers('edge');
-
-                                parentEdges.forEach(edge => {
-                                    const parent = edge.target();
-                                    if (!nodesToShow.has(parent.id())) {
-                                        nodesToShow.add(parent.id());
-                                        traverseToRoot(parent); // Recursively traverse
-                                    }
-                                });
-                            };
-
-                            traverseToRoot(sigNode);
-                        });
-
-                        // Show the nodes and their connecting edges
-                        nodesToShow.forEach(nodeId => {
-                            const node = cy.getElementById(nodeId);
-                            node.style('display', 'element');
-                            // Show edges between visible nodes
-                            node.connectedEdges().forEach(edge => {
-                                if (nodesToShow.has(edge.source().id()) && nodesToShow.has(edge.target().id())) {
-                                    edge.style('display', 'element');
-                                }
-                            });
-                        });
+                        // Same threshold, but keep the paths connecting
+                        // survivors up to the roots.
+                        keepPathsToRoot = true;
+                        syncFilterControls();
+                        applyVisibility();
                         break;
 
                 }

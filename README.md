@@ -162,10 +162,10 @@ until no more changes are made. The looping option is:
 - **Plain Enrichment Pruning Strategy:** The pre-loop phase applies the high
   p-value branch pruner (with a threshold of 0.05), the linear branch collapser
   pruner (with n = 0), and the root children pruner (levels = 2). The loop phase
-  applies the high p-value branch pruner (with a threshold of 0.05), the branch collapser pruner and the
-  zero-degree vertex pruner. Benjamini-Hochberg is used as the p-value
-  correction method, and is recomputed over the surviving classes on each loop
-  iteration.
+  applies the high p-value branch pruner (with a threshold of 0.05), the branch
+  collapser pruner and the zero-degree vertex pruner. Benjamini-Hochberg is used
+  as the p-value correction method, and is recomputed over the surviving classes
+  on each loop iteration.
 
 ### Calculations
 

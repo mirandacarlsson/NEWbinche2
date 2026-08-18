@@ -273,6 +273,66 @@ body:has(.graph-wrapper) .site-footer {
 }
 
 /* ============================================================
+   p-value threshold filter (graph page)
+   ============================================================ */
+/* Default position is under #color-legend; the exact `top` is measured in JS
+   so it follows the legend's real height. Dragging overwrites left/top. */
+#p-filter {
+  position: absolute;
+  right: 0;
+  background: rgba(255, 255, 255, 0.85);
+  padding: 0 0 10px 0;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 11px;
+  width: 190px;
+  z-index: 1000;
+}
+
+.p-filter-handle {
+  cursor: move;
+  user-select: none;
+  background: rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid #ddd;
+  border-radius: 4px 4px 0 0;
+  padding: 4px 8px;
+  margin-bottom: 8px;
+  font-weight: bold;
+  color: #555;
+}
+
+#p-filter > *:not(.p-filter-handle) {
+  margin-left: 10px;
+  margin-right: 10px;
+}
+
+#p-filter label {
+  font-weight: bold;
+}
+
+#p-filter input[type="range"] {
+  width: 100%;
+  margin: 6px 0 2px 0;
+}
+
+.p-filter-ends {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+#p-filter .form-check-label {
+  font-weight: normal;
+}
+
+#p-filter p {
+  font-size: 10px;
+  margin-top: 4px;
+}
+
+/* ============================================================
    Pruning popup styles (graph page navbar)
    ============================================================ */
 .popup-wrapper {
