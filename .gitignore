@@ -11,6 +11,11 @@ bincheEnv/
 venv/
 env/
 
+# Coverage artifacts
+.coverage
+.coverage.*
+htmlcov/
+
 # Great Docs build directory (ephemeral, do not commit)
 great-docs/
 
