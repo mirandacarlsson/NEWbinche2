@@ -24,6 +24,7 @@ from calculations.fishers_calculations import (
     normalize_id,
     print_enrichment_results,
 )
+from calculations.log_utils import describe
 from calculations.multiple_test_corrections import (
     benjamini_hochberg_fdr_correction,
     bonferroni_correction,
@@ -618,7 +619,7 @@ def run_narrow_background_enrichment_analysis(
 
     if pruning_before_enrichment:
         if root_children_prune:
-            print(f"studyset_leaves: {studyset_leaves}")
+            print(f"studyset_leaves: {describe(studyset_leaves)}")
             print(f"Root children pruner activated, pruning {levels} levels from root")
             time_start_total = time.time()
             pruned_G, removed_nodes, _execution_count = root_children_pruner(
@@ -787,7 +788,7 @@ def run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy(
             expand_background,
         )
     )
-    print(f"Study set leaves: {studyset_leaves}")
+    print(f"Study set leaves: {describe(studyset_leaves)}")
 
     studyset_ancestors = get_ancestors_for_inputs(
         studyset_leaves,
@@ -885,11 +886,11 @@ def run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy(
         p_value_threshold,
     )
     all_removed_nodes.update(removed_nodes)
-    print(f"Removed nodes by high p-value pruner: {removed_nodes}")
+    print(f"Removed nodes by high p-value pruner: {describe(removed_nodes)}")
 
     G, removed_nodes = linear_branch_collapser_pruner_remove_less(G, n)
     all_removed_nodes.update(removed_nodes)
-    print(f"Removed nodes by linear branch pruner: {removed_nodes}")
+    print(f"Removed nodes by linear branch pruner: {describe(removed_nodes)}")
 
     G, removed_nodes, _execution_count = root_children_pruner(
         G,
@@ -898,7 +899,7 @@ def run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy(
         execution_count=0,
     )
     all_removed_nodes.update(removed_nodes)
-    print(f"Removed nodes by root children pruner: {removed_nodes}")
+    print(f"Removed nodes by root children pruner: {describe(removed_nodes)}")
 
     ## Loop phase ##
     print("Starting loop pruning phase.")
@@ -928,11 +929,11 @@ def run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy(
             p_value_threshold,
         )
         all_removed_nodes.update(removed_nodes)
-        print(f"Removed nodes by high p-value pruner: {removed_nodes}")
+        print(f"Removed nodes by high p-value pruner: {describe(removed_nodes)}")
 
         G, removed_nodes = zero_degree_pruner(G)
         all_removed_nodes.update(removed_nodes)
-        print(f"Removed nodes by zero-degree pruner: {removed_nodes}")
+        print(f"Removed nodes by zero-degree pruner: {describe(removed_nodes)}")
 
         size_after = G.number_of_nodes()
         first_iteration = False
@@ -1007,8 +1008,8 @@ if __name__ == "__main__":
                 class_to_leaf_map=class_to_leaf_map,
             )
         )
-        print(f"Study set leaves: {studyset_leaves}")
-        print(f"Leaves to expand background: {leaves_to_expand}")
-        print(f"Parents to expand background: {parents_to_expand}")
+        print(f"Study set leaves: {describe(studyset_leaves)}")
+        print(f"Leaves to expand background: {describe(leaves_to_expand)}")
+        print(f"Parents to expand background: {describe(parents_to_expand)}")
     else:
         print(f"Unknown task: {task}")

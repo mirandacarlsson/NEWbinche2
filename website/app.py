@@ -17,6 +17,7 @@ from calculations.fishers_calculations import (
     run_enrichment_analysis,
     run_enrichment_analysis_plain_enrich_pruning_strategy,
 )
+from calculations.log_utils import preview
 from calculations.visualitations_and_pruning import graph_to_cytospace_json
 from calculations.weighted_calculations import (
     run_weighted_enrichment_analysis,
@@ -455,7 +456,9 @@ def convert_smiles_to_chebi(smiles_string):
                             f"No parents found in one of the classification results for SMILES {cleaned_smiles}",
                         )
                         # print response content for debugging
-                        print(f"Classification response content: {response.content}")
+                        print(
+                            f"Classification response content: {preview(response.content)}",
+                        )
                 if chebi_ids:
                     was_resolved = True
 

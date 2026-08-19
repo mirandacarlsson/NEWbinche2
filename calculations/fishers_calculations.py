@@ -12,6 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
+from calculations.log_utils import describe
 from calculations.multiple_test_corrections import (
     benjamini_hochberg_fdr_correction,
     bonferroni_correction,
@@ -535,7 +536,7 @@ def run_enrichment_analysis(
 
     if pruning_before_enrichment:
         if root_children_prune:
-            print(f"studyset_leaves: {studyset_leaves}")
+            print(f"studyset_leaves: {describe(studyset_leaves)}")
             print(f"Root children pruner activated, pruning {levels} levels from root")
             time_start_total = time.time()
             pruned_G, removed_nodes, _execution_count = root_children_pruner(
@@ -548,7 +549,7 @@ def run_enrichment_analysis(
             print(
                 f"Total time for root children pruning: {time_end_total - time_start_total} seconds",
             )
-            # print(f"Removed nodes by root children pruner: {removed_nodes}")
+            # print(f"Removed nodes by root children pruner: {describe(removed_nodes)}")
             all_removed_nodes.update(removed_nodes)
 
         if linear_branch_prune:
@@ -560,7 +561,7 @@ def run_enrichment_analysis(
                 pruned_G,
                 n,
             )
-            # print(f"Removed nodes by linear branch pruner: {removed_nodes}")
+            # print(f"Removed nodes by linear branch pruner: {describe(removed_nodes)}")
             all_removed_nodes.update(removed_nodes)
 
         # Remove pruned nodes from studyset_ancestors_all
@@ -615,7 +616,7 @@ def run_enrichment_analysis(
         print(
             f"Total time for high p-value pruning: {time_end_total - time_start_total} seconds",
         )
-        # print(f"Removed nodes by high p-value pruner: {removed_nodes}")
+        # print(f"Removed nodes by high p-value pruner: {describe(removed_nodes)}")
         print(f"Number of pruned nodes: {len(removed_nodes)}")
 
         # update all_removed_nodes
@@ -638,7 +639,7 @@ def run_enrichment_analysis(
         print(
             f"Total time for zero-degree pruning: {time_end_total - time_start_total} seconds",
         )
-        # print(f"Removed nodes by zero-degree pruner: {removed_nodes}")
+        # print(f"Removed nodes by zero-degree pruner: {describe(removed_nodes)}")
         print(f"Number of pruned nodes: {len(removed_nodes)}")
 
         # update all_removed_nodes
@@ -706,13 +707,13 @@ def run_enrichment_analysis_plain_enrich_pruning_strategy(
         class_to_leaf_map,
         structural_leaf_ids,
     )
-    print(f"Study set leaves: {studyset_leaves}")
+    print(f"Study set leaves: {describe(studyset_leaves)}")
 
     studyset_ancestors = get_ancestors_for_inputs(
         studyset_leaves,
         leaf_to_ancestors_map_file,
     )
-    print(f"Study set ancestors: {studyset_ancestors}")
+    print(f"Study set ancestors: {describe(studyset_ancestors)}")
     print(f"Number of study set ancestors: {len(studyset_ancestors)}")
 
     all_removed_nodes = set()
@@ -789,11 +790,11 @@ def run_enrichment_analysis_plain_enrich_pruning_strategy(
         p_value_threshold,
     )
     all_removed_nodes.update(removed_nodes)
-    print(f"Removed nodes by high p-value pruner: {removed_nodes}")
+    print(f"Removed nodes by high p-value pruner: {describe(removed_nodes)}")
 
     G, removed_nodes = linear_branch_collapser_pruner_remove_less(G, n)
     all_removed_nodes.update(removed_nodes)
-    print(f"Removed nodes by linear branch pruner: {removed_nodes}")
+    print(f"Removed nodes by linear branch pruner: {describe(removed_nodes)}")
 
     G, removed_nodes, _execution_count = root_children_pruner(
         G,
@@ -802,7 +803,7 @@ def run_enrichment_analysis_plain_enrich_pruning_strategy(
         execution_count=0,
     )
     all_removed_nodes.update(removed_nodes)
-    print(f"Removed nodes by root children pruner: {removed_nodes}")
+    print(f"Removed nodes by root children pruner: {describe(removed_nodes)}")
 
     ## Loop phase ##
     print("Starting loop pruning phase.")
@@ -835,15 +836,15 @@ def run_enrichment_analysis_plain_enrich_pruning_strategy(
             p_value_threshold,
         )
         all_removed_nodes.update(removed_nodes)
-        print(f"Removed nodes by high p-value pruner: {removed_nodes}")
+        print(f"Removed nodes by high p-value pruner: {describe(removed_nodes)}")
 
         G, removed_nodes = linear_branch_collapser_pruner_remove_less(G, n)
         all_removed_nodes.update(removed_nodes)
-        print(f"Removed nodes by linear branch pruner: {removed_nodes}")
+        print(f"Removed nodes by linear branch pruner: {describe(removed_nodes)}")
 
         G, removed_nodes = zero_degree_pruner(G)
         all_removed_nodes.update(removed_nodes)
-        print(f"Removed nodes by zero-degree pruner: {removed_nodes}")
+        print(f"Removed nodes by zero-degree pruner: {describe(removed_nodes)}")
 
         size_after = G.number_of_nodes()
         first_iteration = False
