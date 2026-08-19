@@ -205,6 +205,8 @@ p-value, the same will be done but for nodes with p-values lower than 1. If
 there only exists nodes where all p-values are 1 or N/A, then all nodes will be
 shown.
 
+There is a slider with a p-value pruner making it possible to more precisely adapt what signficance to show on the graph. Either paths to the root of nodes of the chosen p-value will be kept (even if their p-value is higher) or nodes will just be looked at individually. The second option will keep _only_ the nodes with the chosen significance but may give 'island' nodes that are not connected to anything else. This slider is particularly useful for large datasets.  
+
 There are options to choose the layout of the graph, which nodes are shown, and
 how to export the graph.
 
