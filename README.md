@@ -8,7 +8,9 @@ background population.
 
 ## The Application
 
-The web application is available at https://chebin.hastingslab.org/.
+The web application is available at https://chebin.hastingslab.org/. 
+
+NOTE: We are also working on turning ChEBI-N into a package.
 
 ### Running The Analysis
 
