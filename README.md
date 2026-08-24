@@ -8,7 +8,7 @@ background population.
 
 ## The Application
 
-The web application is available at https://chebin.hastingslab.org/. 
+The web application is available at https://chebin.hastingslab.org/.
 
 NOTE: We are also working on turning ChEBI-N into a package.
 
@@ -189,9 +189,8 @@ have been removed through pruning is available.
 
 ### The Graph
 
-On the next webpage, a graph based on the enrichment analysis is displayed. 
-The colouring of the nodes is based on the significance of the p-values. 
-It is
+On the next webpage, a graph based on the enrichment analysis is displayed. The
+colouring of the nodes is based on the significance of the p-values. It is
 dependent on the values in that session; it is relative by default. Making the
 colour scale absolute can currently only be done by changing the code (not
 available on the online webpage). To make this change in your local version, go
@@ -208,8 +207,14 @@ p-value, the same will be done but for nodes with p-values lower than 1. If
 there only exists nodes where all p-values are 1 or N/A, then all nodes will be
 shown.
 
-There is a slider with a p-value pruner making it possible to more precisely adapt what signficance to show on the graph. Either paths to the root of nodes of the chosen p-value will be kept (even if their p-value is higher) or nodes will just be looked at individually. The second option will keep _only_ the nodes with the chosen significance but may give 'island' nodes that are not connected to anything else. This slider is particularly useful for large datasets.
-The range of the slider is relatove to the values obtained in that analysis. It can look like this:
+There is a slider with a p-value pruner making it possible to more precisely
+adapt what significance to show on the graph. Either paths to the root of nodes
+of the chosen p-value will be kept (even if their p-value is higher) or nodes
+will just be looked at individually. The second option will keep *only* the
+nodes with the chosen significance but may give 'island' nodes that are not
+connected to anything else. This slider is particularly useful for large
+datasets. The range of the slider is relatove to the values obtained in that
+analysis. It can look like this:
 
 ![Alt text](/binche2/figs_for_README/screenshot_pfilter.png)
 
@@ -223,13 +228,12 @@ be pre-selected.
 Hovering over a node displays more detailed information about it. Both raw and
 corrected p-values are shown, as well as its ChEBI ID.
 
-Nodes can be selected by clicking on them. Right-clicking on a node provides
-the options as seen in the figure below. 
+Nodes can be selected by clicking on them. Right-clicking on a node provides the
+options as seen in the figure below.
 
 ![Alt text](/binche2/figs_for_README/screenshot_graphnodes.png)
 
-Nodes can be
-repositioned by clicking and dragging them.
+Nodes can be repositioned by clicking and dragging them.
 
 Leaf classes are not shown in the graph, since they do not receive p-values.
 Beyond the initial display described above, nodes can also be shown or hidden
