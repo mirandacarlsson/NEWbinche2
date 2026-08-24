@@ -28,7 +28,11 @@ exact string match against the local table of ChEBI leaf classes, (2) a match
 via the InChIKey computed from the SMILES, (3) a direct lookup through the
 [Chebifier](https://chebifier.hastingslab.org/) API. If none of these resolve,
 its predicted direct parent classes (also from Chebifier) can optionally be used
-for enrichment calculations instead.
+for enrichment calculations instead. Where a SMILES matches several ChEBI
+entries, only one of them is included in the analysis (the lowest ChEBI ID); the
+alternatives are listed on the results page as ambiguous matches. Note that this
+applies to a structure matching several ChEBI terms --- where a SMILES is instead
+resolved to its predicted parent classes, *all* of those parents are included.
 
 ### Background
 

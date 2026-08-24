@@ -49,16 +49,24 @@ def convert_smiles_to_chebi(smiles_string):
         },
     )
 
-    lookup_infotext = (
-        response.json().get("models", {}).get("ChEBI Lookup", {}).get("highlights", [])
-    )
+    lookup_model = response.json().get("models", {}).get("ChEBI Lookup", {})
 
-    # If the lookup highlights contain a ChEBI ID, use that directly.
-    if lookup_infotext and "CHEBI:" in lookup_infotext[0][1]:
-        chebi_id = lookup_infotext[0][1].split("CHEBI:")[1].split()[0].rstrip(".")
-        chebi_ids.append(f"CHEBI:{chebi_id}")
+    # Prefer the API's structured chebi_ids list, falling back to pulling the
+    # IDs out of the human-readable highlights text.
+    lookup_ids = lookup_model.get("chebi_ids")
+    if not lookup_ids:
+        lookup_infotext = lookup_model.get("highlights", [])
+        if lookup_infotext:
+            lookup_ids = re.findall(r"CHEBI:(\d+)", lookup_infotext[0][1])
+
+    # If the lookup found a ChEBI ID, use that directly. A SMILES matching
+    # several entries contributes only one of them, tie-broken on the lowest
+    # ChEBI ID to match the website's behaviour.
+    if lookup_ids:
+        chosen_id = min(lookup_ids, key=int)
+        chebi_ids.append(f"CHEBI:{chosen_id}")
         was_resolved_directly = True
-        # print(f"Found ChEBI ID from lookup: CHEBI:{chebi_id} for SMILES {smiles_string}")
+        # print(f"Found ChEBI ID from lookup: CHEBI:{chosen_id} for SMILES {smiles_string}")
     else:
         # print(f"No direct ChEBI ID found from lookup for SMILES {smiles_string}, attempting classification...")
         response = requests.post(

@@ -364,12 +364,19 @@ def convert_smiles_to_chebi(smiles_string):
     lookup_key = canonical_smiles or cleaned_smiles
     local_chebi_id = LOCAL_SMILES_TO_CHEBI.get(lookup_key)
     if local_chebi_id:
-        chebi_ids.append(local_chebi_id.replace("_", ":", 1))
+        chosen_id = local_chebi_id.replace("_", ":", 1)
+        chebi_ids.append(chosen_id)
         was_resolved = True
         if lookup_key in LOCAL_SMILES_COLLISIONS:
-            ambiguous_match = (local_chebi_id, LOCAL_SMILES_COLLISIONS[lookup_key])
+            ambiguous_match = (
+                chosen_id,
+                [
+                    candidate.replace("_", ":", 1)
+                    for candidate in LOCAL_SMILES_COLLISIONS[lookup_key]
+                ],
+            )
         print(
-            f"Found local ChEBI ID from exact SMILES match: {local_chebi_id} for SMILES {cleaned_smiles}",
+            f"Found local ChEBI ID from exact SMILES match: {chosen_id} for SMILES {cleaned_smiles}",
         )
         return chebi_ids, was_resolved, ambiguous_match
 
@@ -380,15 +387,19 @@ def convert_smiles_to_chebi(smiles_string):
             user_inchikey = inchi.MolToInchiKey(mol).upper()
             local_chebi_id = LOCAL_INCHIKEY_TO_CHEBI.get(user_inchikey)
             if local_chebi_id:
-                chebi_ids.append(local_chebi_id.replace("_", ":", 1))
+                chosen_id = local_chebi_id.replace("_", ":", 1)
+                chebi_ids.append(chosen_id)
                 was_resolved = True
                 if user_inchikey in LOCAL_INCHIKEY_COLLISIONS:
                     ambiguous_match = (
-                        local_chebi_id,
-                        LOCAL_INCHIKEY_COLLISIONS[user_inchikey],
+                        chosen_id,
+                        [
+                            candidate.replace("_", ":", 1)
+                            for candidate in LOCAL_INCHIKEY_COLLISIONS[user_inchikey]
+                        ],
                     )
                 print(
-                    f"Found local ChEBI ID from InChIKey match: {local_chebi_id} "
+                    f"Found local ChEBI ID from InChIKey match: {chosen_id} "
                     f"for SMILES {cleaned_smiles} (InChIKey {user_inchikey})",
                 )
                 return chebi_ids, was_resolved, ambiguous_match
@@ -409,17 +420,37 @@ def convert_smiles_to_chebi(smiles_string):
         },
     )
 
-    lookup_infotext = (
-        response.json().get("models", {}).get("ChEBI Lookup", {}).get("highlights", [])
-    )
+    lookup_model = response.json().get("models", {}).get("ChEBI Lookup", {})
 
-    # If the lookup highlights contain a ChEBI ID, use that for classification instead of the SMILES string.
-    if lookup_infotext and "CHEBI:" in lookup_infotext[0][1]:
-        chebi_id = lookup_infotext[0][1].split("CHEBI:")[1].split()[0].rstrip(".")
-        chebi_ids.append(f"CHEBI:{chebi_id}")
+    # Prefer the API's structured chebi_ids list, falling back to pulling the
+    # IDs out of the human-readable highlights text.
+    lookup_ids = lookup_model.get("chebi_ids")
+    if not lookup_ids:
+        lookup_infotext = lookup_model.get("highlights", [])
+        if lookup_infotext:
+            lookup_ids = re.findall(r"CHEBI:(\d+)", lookup_infotext[0][1])
+
+    if lookup_ids:
+        # As with the local lookups above, an ambiguous hit contributes a single
+        # node and reports the runners-up as alternatives rather than adding
+        # every candidate to the study set. The lowest ChEBI ID is used as the
+        # tie-break so that every ambiguous match resolves the same way,
+        # whichever table or lookup produced it.
+        matched_ids = sorted(
+            (f"CHEBI:{chebi_id}" for chebi_id in lookup_ids),
+            key=lambda cid: int(cid.split(":")[1]),
+        )
+        chebi_ids.append(matched_ids[0])
         was_resolved = True
+        if len(matched_ids) > 1:
+            ambiguous_match = (matched_ids[0], matched_ids[1:])
         print(
-            f"Found ChEBI ID from lookup: CHEBI:{chebi_id} for SMILES {cleaned_smiles}",
+            f"Found ChEBI ID from lookup: {matched_ids[0]} for SMILES {cleaned_smiles}"
+            + (
+                f" (ambiguous, also matched {', '.join(matched_ids[1:])})"
+                if len(matched_ids) > 1
+                else ""
+            ),
         )
     else:
         # Get direct parents from classification
