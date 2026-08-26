@@ -483,7 +483,7 @@ needed) or run `website/app.py` locally.
    `data/hmdb_metabolites.xml` is required and must be downloaded manually from
    https://hmdb.ca/downloads (use the 'All Metabolites' XML).
 
-   Output: - `data/hmdb_metabolites_extract.tsv`
+   Output: `data/hmdb_metabolites_extract.tsv`
 
 4. Filter HMDB to only keep compounds with status "quantified" or "detected"
    using `filter_hmdb_statuses_main()` in

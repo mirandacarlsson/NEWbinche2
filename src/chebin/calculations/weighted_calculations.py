@@ -24,23 +24,23 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from calculations.fishers_calculations import (
+from chebin.calculations.fishers_calculations import (
     get_ancestors_for_inputs,
     get_leaves,
     normalize_id,
     print_enrichment_results,
 )
-from calculations.multiple_test_corrections import (
+from chebin.calculations.multiple_test_corrections import (
     benjamini_hochberg_fdr_correction,
     bonferroni_correction,
 )
-from calculations.pre_fishers_calculations import (
+from chebin.calculations.pre_fishers_calculations import (
     count_removed_classes_for_class,
     count_removed_classes_for_roles,
     count_removed_leaves,
     get_structural_leaf_ids,
 )
-from calculations.visualitations_and_pruning import (
+from chebin.calculations.visualitations_and_pruning import (
     create_graph_with_roles_and_structures,
     high_p_value_branch_pruner,
     id_to_name,
@@ -48,7 +48,7 @@ from calculations.visualitations_and_pruning import (
     root_children_pruner,
     zero_degree_pruner,
 )
-from preparing_data.wikidata.narrow_background_fishers import (
+from chebin.preparing_data.wikidata.narrow_background_fishers import (
     count_narrow_leaves,
     count_narrow_leaves_for_class,
     count_narrow_leaves_for_role,

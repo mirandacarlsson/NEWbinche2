@@ -15,7 +15,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from calculations.fishers_calculations import normalize_id
+from chebin.calculations.fishers_calculations import normalize_id
 
 MODEL_URL_TEMPLATE = "http://bigg.ucsd.edu/static/models/{model_id}.json"
 UNICHEM_URL = "https://www.ebi.ac.uk/unichem/api/v1/compounds"

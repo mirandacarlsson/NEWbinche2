@@ -20,6 +20,6 @@ source .venv/bin/activate
 # Optional first arg selects the source preset: wikidata_hs (default), hmdb, or wikidata_at
 SOURCE=${1:-wikidata_hs}
 
-python preparing_data/wikidata/find_missing_chebis.py --source "$SOURCE"
+python -m chebin.preparing_data.wikidata.find_missing_chebis --source "$SOURCE"
 
 echo Done!

@@ -13,18 +13,18 @@ from flask import Flask, redirect, render_template, request, session, url_for
 from rdkit import Chem  # type: ignore
 from rdkit.Chem import inchi  # type: ignore
 
-from calculations.fishers_calculations import (
+from chebin.calculations.fishers_calculations import (
     run_enrichment_analysis,
     run_enrichment_analysis_plain_enrich_pruning_strategy,
 )
-from calculations.log_utils import preview
-from calculations.visualitations_and_pruning import graph_to_cytospace_json
-from calculations.weighted_calculations import (
+from chebin.calculations.log_utils import preview
+from chebin.calculations.visualitations_and_pruning import graph_to_cytospace_json
+from chebin.calculations.weighted_calculations import (
     run_weighted_enrichment_analysis,
     run_weighted_narrow_background_enrichment_analysis,
     run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy,
 )
-from preparing_data.wikidata.narrow_background_fishers import (
+from chebin.preparing_data.wikidata.narrow_background_fishers import (
     run_narrow_background_enrichment_analysis,
     run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy,
 )
@@ -49,6 +49,35 @@ NARROW_BACKGROUND_LEAVES_JSON = {
     "arabidopsis_thaliana": "data/arabidopsis_thaliana_leaves.json",
     "endogenous_human": "data/recon3d_leaves.json",
 }
+
+# Human-readable names for the backgrounds, used when one is unavailable.
+BACKGROUND_LABELS = {
+    "human": "Homo sapiens-based background 1",
+    "arabidopsis_thaliana": "Arabidopsis thaliana-based background",
+    "endogenous_human": "Homo sapiens-based background 2",
+}
+
+
+def _missing_background_file(background):
+    """Path of the leaves JSON a narrow background needs, if it isn't on disk.
+
+    Some backgrounds are optional in the data pipeline: the first human background is
+    only built when the HMDB XML was present, so a local data folder may legitimately
+    lack it. Checked per request rather than at import, since the file appears as soon
+    as the pipeline is re-run.
+    """
+    leaves_json = NARROW_BACKGROUND_LEAVES_JSON.get(background)
+    if leaves_json is None:
+        return None
+    return None if os.path.exists(leaves_json) else leaves_json
+
+
+def _render_background_unavailable(background, leaves_json):
+    return render_template(
+        "background_unavailable.html",
+        background_label=BACKGROUND_LABELS.get(background, background),
+        leaves_json=leaves_json,
+    )
 
 
 def _clean_lookup_value(value):
@@ -238,6 +267,10 @@ def submission():
         smiles_option = request.form.get("smiles_option")
         session["smiles_option"] = smiles_option  # Store smiles option in session
         background = request.form.get("background")
+        # Catch an unavailable background here, before the user fills in a study set.
+        missing_leaves_json = _missing_background_file(background)
+        if missing_leaves_json:
+            return _render_background_unavailable(background, missing_leaves_json)
         session["background"] = background  # Store background in session
         # Store user's preference for expanding the human background (checkbox)
         expand_background = bool(request.form.get("expand_background"))
@@ -546,6 +579,13 @@ def run_analysis():
     # Get background from form (allow changing it during re-run)
     background_from_form = request.form.get("background")
     if background_from_form:
+        # Same guard as in submission(), for the re-run form on the graph page.
+        missing_leaves_json = _missing_background_file(background_from_form)
+        if missing_leaves_json:
+            return _render_background_unavailable(
+                background_from_form,
+                missing_leaves_json,
+            )
         session["background"] = background_from_form
 
     # Get expand_background from form (allow changing it during re-run)

@@ -16,6 +16,6 @@ cd /idiap/temp/mcarlsson/chebin/binche2 || exit
 # shellcheck source=/dev/null
 source .venv/bin/activate
 
-python -m preparing_data.create_files
+python -m chebin.preparing_data.create_files
 
 echo Done!

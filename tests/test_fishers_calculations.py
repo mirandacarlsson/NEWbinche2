@@ -14,12 +14,14 @@ import math
 
 import pytest
 
-from calculations.fishers_calculations import (
+from chebin.calculations.fishers_calculations import (
     calculate_p_value,
     get_n_ss_annotated,
     normalize_id,
 )
-from calculations.multiple_test_corrections import benjamini_hochberg_fdr_correction
+from chebin.calculations.multiple_test_corrections import (
+    benjamini_hochberg_fdr_correction,
+)
 
 
 class TestCalculatePValue:

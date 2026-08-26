@@ -17,6 +17,6 @@ cd /idiap/temp/mcarlsson/chebin/binche2 || exit
 # shellcheck source=/dev/null
 source .venv/bin/activate
 
-python preparing_data/hmdb/extract_hmdb.py
+python -m chebin.preparing_data.hmdb.extract_hmdb
 
 echo Done!

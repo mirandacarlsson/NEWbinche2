@@ -11,7 +11,7 @@ from collections import defaultdict
 
 import pandas as pd
 
-from preparing_data.load_chebi import load_chebi, load_ontology
+from chebin.preparing_data.load_chebi import load_chebi, load_ontology
 
 
 def _has_wildcard(smiles):

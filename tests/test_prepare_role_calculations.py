@@ -13,7 +13,7 @@ import json
 import tempfile
 from pathlib import Path
 
-from calculations.prepare_role_calculations import (
+from chebin.calculations.prepare_role_calculations import (
     _normalize_iri,
     create_class_to_all_roles_map,
     create_leaves_to_all_roles_map,

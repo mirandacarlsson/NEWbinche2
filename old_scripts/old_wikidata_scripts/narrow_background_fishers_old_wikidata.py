@@ -14,7 +14,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
-from calculations.fishers_calculations import (
+from chebin.calculations.fishers_calculations import (
     calculate_p_value,
     get_ancestors_for_inputs,
     get_n_ss_annotated,
@@ -22,11 +22,11 @@ from calculations.fishers_calculations import (
     normalize_id,
     print_enrichment_results,
 )
-from calculations.multiple_test_corrections import (
+from chebin.calculations.multiple_test_corrections import (
     benjamini_hochberg_fdr_correction,
     bonferroni_correction,
 )
-from calculations.visualitations_and_pruning import (
+from chebin.calculations.visualitations_and_pruning import (
     create_graph_with_roles_and_structures,
     high_p_value_branch_pruner,
     id_to_name,

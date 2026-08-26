@@ -14,7 +14,7 @@ import math
 import numpy as np
 import pytest  # deptry: ignore=DEP004
 
-from calculations.weighted_calculations import (
+from chebin.calculations.weighted_calculations import (
     _SaddleSum,
     auto_scale_weights,
 )

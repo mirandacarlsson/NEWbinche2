@@ -1,4 +1,4 @@
-"""Legacy pipeline for creating the old Wikidata-derived files."""
+"""Create all derived data files for the project."""
 
 import json
 import os
@@ -14,9 +14,14 @@ from chebin.calculations.prepare_role_calculations import (
     create_roles_to_all_leaves_map,
     find_has_role_connections_from_owl,
 )
-from chebin.preparing_data.BiGG.get_model import download_model_json, gather_recon3d_leaves
+from chebin.preparing_data.BiGG.get_model import (
+    download_model_json,
+    gather_recon3d_leaves,
+)
 from chebin.preparing_data.hmdb.extract_hmdb import extract_hmdb_to_file
-from chebin.preparing_data.hmdb.filter_hmdb_statuses import filter_hmdb_statuses_main
+from chebin.preparing_data.hmdb.filter_hmdb_statuses import (
+    filter_hmdb_extract_by_status,
+)
 from chebin.preparing_data.load_chebi import load_chebi
 from chebin.preparing_data.pruning_smiles import (
     build_parent_map,
@@ -24,17 +29,22 @@ from chebin.preparing_data.pruning_smiles import (
     map_names_to_classes,
     save_leaf_classes_with_smiles,
 )
-from chebin.preparing_data.pruning_split_up_structure import identify_structural_vs_functional
+from chebin.preparing_data.pruning_split_up_structure import (
+    identify_structural_vs_functional,
+)
 from chebin.preparing_data.wikidata.combine_human_datasets import combine_datasets
 from chebin.preparing_data.wikidata.find_missing_chebis import run_find_missing_chebis
 from chebin.preparing_data.wikidata.get_inchikeys import convert_smiles_file
-from chebin.preparing_data.wikidata.get_wikidata_lotus import (
-    create_wikidata_output_files,
-    keep_taxon_compounds,
+from chebin.preparing_data.wikidata.get_lotus import (
+    download_lotus_arabidopsis_thaliana,
+    download_lotus_homo_sapiens,
 )
-from chebin.preparing_data.wikidata.narrow_background_fishers import gather_narrow_leaves
-
-start_time = time.time()
+from chebin.preparing_data.wikidata.get_wikidata_lotus import (
+    connect_lotus_csv_to_chebi_ids,
+)
+from chebin.preparing_data.wikidata.narrow_background_fishers import (
+    gather_narrow_leaves,
+)
 
 
 def _run_stage(stage_name, stage_timings, func, *args, **kwargs):
@@ -97,20 +107,18 @@ def rename_folder(old_name, new_name):
         return False
 
 
-def create_temp_data_folder():
+def create_temp_data_folder(new_data_folder="data_new"):
     """
-    Create a temporary 'data_new' folder for new files.
+    Create a temporary folder for new files.
     """
-    if os.path.exists("data_new"):
-        print("Warning: 'data_new' already exists. Removing it.")
-        import shutil
-
-        shutil.rmtree("data_new")
-    os.makedirs("data_new")
-    print("Created temporary 'data_new' folder")
+    if os.path.exists(f"{new_data_folder}"):
+        print(f"Warning: '{new_data_folder}' already exists. Removing it.")
+        shutil.rmtree(f"{new_data_folder}")
+    os.makedirs(f"{new_data_folder}")
+    print(f"Created temporary '{new_data_folder}' folder")
 
 
-def finalize_folder_structure():
+def finalize_folder_structure(new_data_folder="data_new", old_data_folder="data"):
     """
     After all files are created, rename folders:
     1. data -> data_last_used_YYYY.MM.DD (or with counter if needed)
@@ -121,40 +129,49 @@ def finalize_folder_structure():
     timestamp = datetime.now(UTC).strftime("%Y.%m.%d")
 
     # Rename old data folder if it exists
-    if os.path.exists("data"):
-        base_name = f"data_last_used_{timestamp}"
+    if os.path.exists(f"{old_data_folder}"):
+        base_name = f"{old_data_folder}_last_used_{timestamp}"
         old_data_name = base_name
         counter = 1
         while os.path.exists(old_data_name):
             old_data_name = f"{base_name}_{counter}"
             counter += 1
-        rename_folder("data", old_data_name)
+        rename_folder(f"{old_data_folder}", old_data_name)
 
-    # Rename data_new to data
-    if os.path.exists("data_new"):
-        rename_folder("data_new", "data")
+    # Rename the temporary folder into place
+    if os.path.exists(f"{new_data_folder}"):
+        rename_folder(f"{new_data_folder}", f"{old_data_folder}")
 
 
-def cleanup_old_data_folders(max_folders=3):
+def cleanup_old_data_folders(old_data_folder="data", max_folders=3):
     """
     Keep only the most recent 'max_folders' of old data folders and delete the rest.
 
     Args:
+        old_data_folder (str): Name of the old data folder
         max_folders (int): Maximum number of old data folders to keep
     """
     import re
 
+    # The backups are written as siblings of the data folder itself, so look for them
+    # there rather than in the current working directory.
+    data_path = Path(old_data_folder)
+    parent_dir = data_path.parent
+    base_name = data_path.name
+
     # Match folders named "data_last_used_YYYY.MM.DD" or "data_last_used_YYYY.MM.DD_N"
-    pattern = re.compile(r"data_last_used_(\d{4}\.\d{2}\.\d{2})(?:_(\d+))?$")
+    pattern = re.compile(
+        rf"{re.escape(base_name)}_last_used_(\d{{4}}\.\d{{2}}\.\d{{2}})(?:_(\d+))?$",
+    )
 
     old_data_folders = []
-    for f in os.listdir("."):
-        if not os.path.isdir(f):
+    for entry in parent_dir.iterdir():
+        if not entry.is_dir():
             continue
-        match = pattern.match(f)
+        match = pattern.match(entry.name)
         if match:
             date_str, counter = match.groups()
-            old_data_folders.append((f, date_str, int(counter) if counter else 0))
+            old_data_folders.append((entry, date_str, int(counter) if counter else 0))
 
     # Sort by the date (and counter, for same-day folders) encoded in the name, newest first
     old_data_folders.sort(key=lambda item: (item[1], item[2]), reverse=True)
@@ -166,40 +183,104 @@ def cleanup_old_data_folders(max_folders=3):
         print(f"Deleting old data folder: {folder}")
         shutil.rmtree(folder)
 
-
-if __name__ == "__main__":
-    stage_timings = []
+def create_all_files_with_backup(data_folder="data"):
+    data_folder_new = f"{data_folder}_new"
 
     ### Create temporary data folder for new files
     print("Creating temporary data folder...")
-    _run_stage("create_temp_data_folder", stage_timings, create_temp_data_folder)
+    create_temp_data_folder(new_data_folder=data_folder_new)
+
+    # Carry the HMDB XML over to the new folder before the rename, if we have it.
+    # It is optional: without it, create_all_files simply skips the first human
+    # background (see the warning it prints).
+    hmdb_xml_src = f"{data_folder}/hmdb_metabolites.xml"
+    hmdb_xml_dst = f"{data_folder_new}/hmdb_metabolites.xml"
+    if os.path.exists(hmdb_xml_src):
+        print(f"Copying HMDB XML to '{data_folder_new}'...")
+        shutil.copy2(hmdb_xml_src, hmdb_xml_dst)
+        print(f"Copied {hmdb_xml_src} to {hmdb_xml_dst}")
+    else:
+        print(f"{hmdb_xml_src} not found; skipping the HMDB copy.")
+
+    create_all_files(data_folder=data_folder_new)
+
+    ### Finalize folder structure: rename old data and move data_new to data
+    print("Finalizing folder structure...")
+    finalize_folder_structure(new_data_folder=data_folder_new, old_data_folder=data_folder)
+
+    ### Clean up old data folders, keeping only the most recent ones
+    print("Cleaning up old data folders...")
+    cleanup_old_data_folders(old_data_folder=data_folder, max_folders=3)
+
+def create_all_files(data_folder="data"):
+    stage_timings = []
+    start_time = time.time()
+
+    hmdb_xml_file = f"{data_folder}/hmdb_metabolites.xml"
+    hmdb_xml_exists = os.path.exists(hmdb_xml_file)
+
+    # Warn the user already if HMDB XML is missing, so they can download it before the long process starts
+    if not hmdb_xml_exists:
+        print(
+            f"{hmdb_xml_file} not found. The process will continue unless you stop it. "
+            f"This file is only needed for one of the human backgrounds. "
+            f"To be able to use it, please download it from https://hmdb.ca/downloads "
+            f"and place it in the '{data_folder}' folder.",
+        )
 
     ### Define properties and file paths
     smiles_property = "https://w3id.org/chemrof/smiles_string"
     deprecated_property = "http://www.w3.org/2002/07/owl#deprecated"
     has_role_property = "http://purl.obolibrary.org/obo/RO_0000087"
 
-    chebi_file = "data_new/chebi.owl"
-    subclass_map_file = "data_new/chebi_subclass_map.json"
-    leaf_parents_map_file = "data_new/removed_leaf_classes_to_ALL_parents_map.json"
-    removed_leaf_classes_file = "data_new/removed_leaf_classes_with_smiles.csv"
+    chebi_file = f"{data_folder}/chebi.owl"
+    subclass_map_file = f"{data_folder}/chebi_subclass_map.json"
+    leaf_parents_map_file = f"{data_folder}/removed_leaf_classes_to_ALL_parents_map.json"
+    removed_leaf_classes_file = f"{data_folder}/removed_leaf_classes_with_smiles.csv"
 
     roles_map_json = (
-        "data_new/class_to_direct_roles_map.json"  # output file for roles map
+        f"{data_folder}/class_to_direct_roles_map.json"  # output file for roles map
     )
-    leaves_to_all_parents_json = "data_new/removed_leaf_classes_to_ALL_parents_map.json"
-    leaves_to_all_roles_json = "data_new/removed_leaf_classes_to_ALL_roles_map.json"  # output file for leaves to all roles map
-    parent_map_json = "data_new/chebi_parent_map.json"
+    leaves_to_all_parents_json = f"{data_folder}/removed_leaf_classes_to_ALL_parents_map.json"
+    leaves_to_all_roles_json = f"{data_folder}/removed_leaf_classes_to_ALL_roles_map.json"  # output file for leaves to all roles map
+    parent_map_json = f"{data_folder}/chebi_parent_map.json"
     roles_to_all_leaves_json = (
-        "data_new/roles_to_leaves_map.json"  # output file for roles to all leaves map
+        f"{data_folder}/roles_to_leaves_map.json"  # output file for roles to all leaves map
     )
     class_to_all_roles_json = (
-        "data_new/class_to_all_roles_map.json"  # output file for class to all roles map
+        f"{data_folder}/class_to_all_roles_map.json"  # output file for class to all roles map
     )
-    id_to_name_map_json = "data_new/chebi_id_to_name_map.json"
+    id_to_name_map_json = f"{data_folder}/chebi_id_to_name_map.json"
 
-    leaf_to_ancestors_file = "data_new/removed_leaf_classes_to_ALL_parents_map.json"
-    class_to_leaf_output_file = "data_new/class_to_leaf_descendants_map.json"
+    leaf_to_ancestors_file = f"{data_folder}/removed_leaf_classes_to_ALL_parents_map.json"
+    class_to_leaf_output_file = f"{data_folder}/class_to_leaf_descendants_map.json"
+
+    # Lookup tables used to match compounds to ChEBI IDs. These must be passed
+    # explicitly to every stage below: the underlying functions default to "data/...",
+    # which would silently read the previous run's files when data_folder is a
+    # temporary folder (see create_all_files_with_backup).
+    leaves_smiles_csv = removed_leaf_classes_file
+    leaves_inchikeys_csv = f"{data_folder}/removed_leaf_classes_with_inchikeys.csv"
+
+    lotus_hs_csv = f"{data_folder}/lotus_homo_sapiens.csv"
+    lotus_at_csv = f"{data_folder}/lotus_arabidopsis_thaliana.csv"
+    lotus_hs_chebi_tsv = f"{data_folder}/wikidata/created/lotus_homo_sapiens_with_chebi_ids.tsv"
+    lotus_at_chebi_tsv = (
+        f"{data_folder}/wikidata/created/lotus_arabidopsis_thaliana_with_chebi_ids.tsv"
+    )
+    lotus_hs_updated_tsv = (
+        f"{data_folder}/wikidata/created/lotus_homo_sapiens_with_chebi_ids_updatedchebis.tsv"
+    )
+    lotus_at_updated_tsv = (
+        f"{data_folder}/wikidata/created/lotus_arabidopsis_thaliana_with_chebi_ids_updatedchebis.tsv"
+    )
+
+    hmdb_extract_tsv = f"{data_folder}/hmdb_metabolites_extract.tsv"
+    hmdb_filtered_tsv = f"{data_folder}/hmdb_metabolites_extract_quantified_detected.tsv"
+    hmdb_updated_tsv = (
+        f"{data_folder}/hmdb_metabolites_extract_quantified_detected_updatedchebis.tsv"
+    )
+    combined_human_tsv = f"{data_folder}/combined_hmdb_wikidata.tsv"
 
     ### Download and load the ChEBI ontology
     print("Downloading and loading ChEBI ontology...")
@@ -208,7 +289,7 @@ if __name__ == "__main__":
         "download_and_load_chebi",
         stage_timings,
         load_chebi,
-        download_dir="data_new",
+        download_dir=f"{data_folder}",
     )
 
     ### Find and filter leaf classes with SMILES and deprecated classes, and save the filtered ontology
@@ -333,22 +414,6 @@ if __name__ == "__main__":
         class_to_leaf_output_file,
     )
 
-    # Copy HMDB XML to data_new before folder rename
-    print("Copying HMDB XML to temporary data folder...")
-    hmdb_xml_src = "data/hmdb_metabolites.xml"
-    hmdb_xml_dst = "data_new/hmdb_metabolites.xml"
-    print("Copying HMDB XML to data_new...")
-    if os.path.exists(hmdb_xml_src):
-        shutil.copy2(hmdb_xml_src, hmdb_xml_dst)
-        print(f"Copied {hmdb_xml_src} to {hmdb_xml_dst}")
-    else:
-        raise FileNotFoundError(
-            f"{hmdb_xml_src} not found. Please download it before running.",
-        )
-
-    ### Finalize folder structure: rename old data and move data_new to data
-    print("Finalizing folder structure...")
-    _run_stage("finalize_folder_structure", stage_timings, finalize_folder_structure)
 
     ### Convert SMILES to InChIKeys for the removed leaf classes (needed by find_missing_chebis and the website)
     print("Generating InChIKeys for removed leaf classes...")
@@ -356,85 +421,125 @@ if __name__ == "__main__":
         "convert_smiles_to_inchikeys",
         stage_timings,
         convert_smiles_file,
-        "data/removed_leaf_classes_with_smiles.csv",
-        "data/removed_leaf_classes_with_inchikeys.csv",
+        leaves_smiles_csv,
+        leaves_inchikeys_csv,
     )
 
-    print("Creating Wikidata output files...")
+    ### The first human background combines HMDB with LOTUS Homo sapiens, so without the
+    ### HMDB XML the whole LOTUS Homo sapiens chain would produce files nothing reads.
+    ### Skip it all together rather than paying for the download and the matching.
+    if not hmdb_xml_exists:
+        print(
+            "HMDB XML file not found. Skipping the first human background "
+            "(HMDB + LOTUS Homo sapiens) and everything feeding into it.",
+        )
+    else:
+        print("Downloading LOTUS Homo sapiens explorer CSV...")
+        _run_stage(
+            "download_lotus_homo_sapiens",
+            stage_timings,
+            download_lotus_homo_sapiens,
+            lotus_hs_csv,
+        )
+
+        print("Matching ChEBI IDs for LOTUS Homo sapiens compounds...")
+        _run_stage(
+            "connect_lotus_homo_sapiens_to_chebi_ids",
+            stage_timings,
+            connect_lotus_csv_to_chebi_ids,
+            lotus_hs_csv,
+            lotus_hs_chebi_tsv,
+            inchikeys_csv=leaves_inchikeys_csv,
+            smiles_csv=leaves_smiles_csv,
+        )
+
+        print("Creating HMDB output file...")
+        _run_stage(
+            "create_hmdb_output_file",
+            stage_timings,
+            extract_hmdb_to_file,
+            hmdb_xml_file,
+            hmdb_extract_tsv,
+        )
+
+        print("Filtering HMDB statuses...")
+        _run_stage(
+            "filter_hmdb_statuses",
+            stage_timings,
+            filter_hmdb_extract_by_status,
+            input_file=hmdb_extract_tsv,
+            output_file=hmdb_filtered_tsv,
+        )
+
+        print("Finding missing ChEBI IDs for LOTUS (Homo sapiens)...")
+        _run_stage(
+            "find_missing_chebis_lotus_hs",
+            stage_timings,
+            run_find_missing_chebis,
+            "lotus_hs",
+            compounds_file=lotus_hs_chebi_tsv,
+            output_file=lotus_hs_updated_tsv,
+        )
+
+        print("Finding missing ChEBI IDs for HMDB...")
+        _run_stage(
+            "find_missing_chebis_hmdb",
+            stage_timings,
+            run_find_missing_chebis,
+            "hmdb",
+            compounds_file=hmdb_filtered_tsv,
+            output_file=hmdb_updated_tsv,
+        )
+
+        print("Combining human datasets...")
+        _run_stage(
+            "combine_datasets",
+            stage_timings,
+            combine_datasets,
+            hmdb_path=hmdb_updated_tsv,
+            wikidata_path=lotus_hs_updated_tsv,
+            output_path=combined_human_tsv,
+        )
+
+        print("Gathering narrow leaf classes (Homo sapiens)...")
+        _run_stage(
+            "gather_narrow_leaves_homo_sapiens",
+            stage_timings,
+            gather_narrow_leaves,
+            compounds_tsv=combined_human_tsv,
+            leaves_csv=leaves_smiles_csv,
+            class_to_leaf_map=class_to_leaf_output_file,
+            output_json=f"{data_folder}/human_entities_leaves.json",
+            taxon_label="homo_sapiens",
+        )
+
+    print("Downloading LOTUS Arabidopsis thaliana explorer CSV...")
     _run_stage(
-        "create_wikidata_output_files",
+        "download_lotus_arabidopsis_thaliana",
         stage_timings,
-        create_wikidata_output_files,
-        include_download=True,
+        download_lotus_arabidopsis_thaliana,
+        lotus_at_csv,
     )
 
-    print("Filtering Wikidata compounds for Arabidopsis thaliana...")
+    print("Matching ChEBI IDs for LOTUS Arabidopsis thaliana compounds...")
     _run_stage(
-        "filter_wikidata_arabidopsis_thaliana",
+        "connect_lotus_arabidopsis_thaliana_to_chebi_ids",
         stage_timings,
-        keep_taxon_compounds,
-        "data/wikidata/created/compounds_with_chebi_ids.tsv",
-        "data/wikidata/created/compounds_with_chebi_ids_arabidopsis_thaliana.tsv",
-        "arabidopsis_thaliana",
+        connect_lotus_csv_to_chebi_ids,
+        lotus_at_csv,
+        lotus_at_chebi_tsv,
+        inchikeys_csv=leaves_inchikeys_csv,
+        smiles_csv=leaves_smiles_csv,
     )
 
-    print("Creating HMDB output file...")
+    print("Finding missing ChEBI IDs for LOTUS (Arabidopsis thaliana)...")
     _run_stage(
-        "create_hmdb_output_file",
-        stage_timings,
-        extract_hmdb_to_file,
-        "data/hmdb_metabolites.xml",
-        "data/hmdb_metabolites_extract.tsv",
-    )
-
-    print("Filtering HMDB statuses...")
-    _run_stage(
-        "filter_hmdb_statuses",
-        stage_timings,
-        filter_hmdb_statuses_main,
-    )
-
-    print("Finding missing ChEBI IDs for Wikidata (Homo sapiens)...")
-    _run_stage(
-        "find_missing_chebis_wikidata_hs",
+        "find_missing_chebis_lotus_at",
         stage_timings,
         run_find_missing_chebis,
-        "wikidata_hs",
-    )
-
-    print("Finding missing ChEBI IDs for Wikidata (Arabidopsis thaliana)...")
-    _run_stage(
-        "find_missing_chebis_wikidata_at",
-        stage_timings,
-        run_find_missing_chebis,
-        "wikidata_at",
-    )
-
-    print("Finding missing ChEBI IDs for HMDB...")
-    _run_stage(
-        "find_missing_chebis_hmdb",
-        stage_timings,
-        run_find_missing_chebis,
-        "hmdb",
-    )
-
-    print("Combining human datasets...")
-    _run_stage(
-        "combine_datasets",
-        stage_timings,
-        combine_datasets,
-    )
-
-    print("Gathering narrow leaf classes (Homo sapiens)...")
-    _run_stage(
-        "gather_narrow_leaves_homo_sapiens",
-        stage_timings,
-        gather_narrow_leaves,
-        compounds_tsv="data/combined_hmdb_wikidata.tsv",
-        leaves_csv="data/removed_leaf_classes_with_smiles.csv",
-        class_to_leaf_map="data/class_to_leaf_descendants_map.json",
-        output_json="data/human_entities_leaves.json",
-        taxon_label="homo_sapiens",
+        "lotus_at",
+        compounds_file=lotus_at_chebi_tsv,
+        output_file=lotus_at_updated_tsv,
     )
 
     print("Gathering narrow leaf classes (Arabidopsis thaliana)...")
@@ -442,10 +547,10 @@ if __name__ == "__main__":
         "gather_narrow_leaves_arabidopsis_thaliana",
         stage_timings,
         gather_narrow_leaves,
-        compounds_tsv="data/wikidata/created/compounds_with_chebi_ids_arabidopsis_thaliana_updatedchebis.tsv",
-        leaves_csv="data/removed_leaf_classes_with_smiles.csv",
-        class_to_leaf_map="data/class_to_leaf_descendants_map.json",
-        output_json="data/arabidopsis_thaliana_leaves.json",
+        compounds_tsv=lotus_at_updated_tsv,
+        leaves_csv=leaves_smiles_csv,
+        class_to_leaf_map=class_to_leaf_output_file,
+        output_json=f"{data_folder}/arabidopsis_thaliana_leaves.json",
         taxon_label="arabidopsis_thaliana",
     )
 
@@ -455,7 +560,7 @@ if __name__ == "__main__":
         stage_timings,
         download_model_json,
         "Recon3D",
-        "data/Recon3D.json",
+        f"{data_folder}/Recon3D.json",
     )
 
     print("Gathering narrow leaf classes (Endogenous human / Recon3D)...")
@@ -463,15 +568,11 @@ if __name__ == "__main__":
         "gather_narrow_leaves_endogenous_human",
         stage_timings,
         gather_recon3d_leaves,
-        model_json_path="data/Recon3D.json",
-        leaves_csv="data/removed_leaf_classes_with_smiles.csv",
-        class_to_leaf_map_json="data/class_to_leaf_descendants_map.json",
-        output_json="data/recon3d_leaves.json",
+        model_json_path=f"{data_folder}/Recon3D.json",
+        leaves_csv=leaves_smiles_csv,
+        class_to_leaf_map_json=class_to_leaf_output_file,
+        output_json=f"{data_folder}/recon3d_leaves.json",
     )
-
-    ### Clean up old data folders, keeping only the most recent ones
-    print("Cleaning up old data folders...")
-    _run_stage("cleanup_old_data_folders", stage_timings, cleanup_old_data_folders)
 
     print("All files created successfully!")
     end_time = time.time()
@@ -480,3 +581,6 @@ if __name__ == "__main__":
     print(
         f"Total execution time: {elapsed_time:.2f} seconds or {elapsed_time / 60:.2f} minutes or {elapsed_time / 3600:.2f} hours",
     )
+
+if __name__ == "__main__":
+    create_all_files_with_backup()

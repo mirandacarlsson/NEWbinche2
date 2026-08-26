@@ -9,12 +9,14 @@ import math
 
 import networkx as nx
 
-from calculations.fishers_calculations import (
+from chebin.calculations.fishers_calculations import (
     calculate_p_value,
     normalize_id,
 )
-from calculations.multiple_test_corrections import benjamini_hochberg_fdr_correction
-from calculations.visualitations_and_pruning import (
+from chebin.calculations.multiple_test_corrections import (
+    benjamini_hochberg_fdr_correction,
+)
+from chebin.calculations.visualitations_and_pruning import (
     create_graph_from_paths,
     high_p_value_branch_pruner,
     linear_branch_collapser_pruner_remove_less,
@@ -22,7 +24,7 @@ from calculations.visualitations_and_pruning import (
     strip_prefix,
     zero_degree_pruner,
 )
-from calculations.weighted_calculations import calculate_weighted_p_value
+from chebin.calculations.weighted_calculations import calculate_weighted_p_value
 
 
 class TestFisherExactStatistics:

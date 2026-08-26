@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+
+{% block head %}
+<title>BinChe2</title>
+{% endblock %}
+
+{% block body %}
+
+<div class="page-container">
+    <div class="main-container">
+        <div class="content-card">
+            <div class="alert alert-warning" role="alert">
+                <h4 class="alert-heading">Background unavailable</h4>
+                <p class="mb-0">
+                    The <strong>{{ background_label }}</strong> is not available in this
+                    installation, so the analysis cannot be run against it.
+                </p>
+            </div>
+
+            <p>
+                Its data file <code>{{ leaves_json }}</code> is missing. The first
+                <em>Homo sapiens</em> background is built from the Human Metabolome Database,
+                whose XML file is optional when the data folder is generated. If it was not
+                present at the time, this background is skipped.
+            </p>
+            <p>
+                To enable it, download <em>All Metabolites</em> from
+                <a href="https://hmdb.ca/downloads" rel="noreferrer noopener">hmdb.ca/downloads</a>,
+                place it in the data folder as <code>hmdb_metabolites.xml</code>, and re-run the
+                data pipeline (<code>create_all_files</code>).
+            </p>
+            <p class="mb-0">
+                In the meantime you can use the full background or one of the other narrow
+                backgrounds.
+            </p>
+
+            <a class="btn btn-primary mt-4" href="{{ url_for('index') }}">Back to start</a>
+        </div>
+    </div>
+</div>
+
+{% endblock %}

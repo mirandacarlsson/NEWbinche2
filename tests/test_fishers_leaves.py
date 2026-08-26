@@ -11,7 +11,7 @@ import json
 import tempfile
 from pathlib import Path
 
-from calculations.fishers_calculations import (
+from chebin.calculations.fishers_calculations import (
     get_ancestors_for_inputs,
     get_leaves,
     normalize_id,

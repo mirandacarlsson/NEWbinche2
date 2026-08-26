@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-from calculations.pre_fishers_calculations import (
+from chebin.calculations.pre_fishers_calculations import (
     build_class_to_leaf_map,
     count_removed_classes_for_class,
     count_removed_classes_for_roles,

@@ -321,7 +321,7 @@ wheels = [
 [[package]]
 name = "chebin"
 version = "0.0.1"
-source = { virtual = "." }
+source = { editable = "." }
 dependencies = [
     { name = "flask" },
     { name = "networkx" },
