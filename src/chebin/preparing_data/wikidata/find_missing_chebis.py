@@ -303,8 +303,8 @@ def run_find_missing_chebis(
     """
     SOURCE_PRESETS = {
         "wikidata_hs": {
-            "input": "data/wikidata/created/compounds_with_chebi_ids_homo_sapiens.tsv",
-            "output": "data/wikidata/created/compounds_with_chebi_ids_homo_sapiens_updatedchebis.tsv",
+            "input": "data/intermediate_files/compounds_with_chebi_ids_homo_sapiens.tsv",
+            "output": "data/intermediate_files/compounds_with_chebi_ids_homo_sapiens_updatedchebis.tsv",
             "smiles_columns": ["canonicalSmiles", "isomericSmiles"],
             "chebi_column": "chebi_id",
         },
@@ -315,20 +315,20 @@ def run_find_missing_chebis(
             "chebi_column": "chebi_id",
         },
         "wikidata_at": {
-            "input": "data/wikidata/created/compounds_with_chebi_ids_arabidopsis_thaliana.tsv",
-            "output": "data/wikidata/created/compounds_with_chebi_ids_arabidopsis_thaliana_updatedchebis.tsv",
+            "input": "data/intermediate_files/compounds_with_chebi_ids_arabidopsis_thaliana.tsv",
+            "output": "data/intermediate_files/compounds_with_chebi_ids_arabidopsis_thaliana_updatedchebis.tsv",
             "smiles_columns": ["canonicalSmiles", "isomericSmiles"],
             "chebi_column": "chebi_id",
         },
         "lotus_hs": {
-            "input": "data/wikidata/created/lotus_homo_sapiens_with_chebi_ids.tsv",
-            "output": "data/wikidata/created/lotus_homo_sapiens_with_chebi_ids_updatedchebis.tsv",
+            "input": "data/intermediate_files/lotus_homo_sapiens_with_chebi_ids.tsv",
+            "output": "data/intermediate_files/lotus_homo_sapiens_with_chebi_ids_updatedchebis.tsv",
             "smiles_columns": ["compound_smiles_conn", "compound_smiles_iso"],
             "chebi_column": "chebi_id",
         },
         "lotus_at": {
-            "input": "data/wikidata/created/lotus_arabidopsis_thaliana_with_chebi_ids.tsv",
-            "output": "data/wikidata/created/lotus_arabidopsis_thaliana_with_chebi_ids_updatedchebis.tsv",
+            "input": "data/intermediate_files/lotus_arabidopsis_thaliana_with_chebi_ids.tsv",
+            "output": "data/intermediate_files/lotus_arabidopsis_thaliana_with_chebi_ids_updatedchebis.tsv",
             "smiles_columns": ["compound_smiles_conn", "compound_smiles_iso"],
             "chebi_column": "chebi_id",
         },
@@ -369,8 +369,8 @@ def main_find_missing_chebis(source):
 
     SOURCE_PRESETS = {
         "wikidata_hs": {
-            "input": "data/wikidata/created/compounds_with_chebi_ids_homo_sapiens.tsv",
-            "output": "data/wikidata/created/compounds_with_chebi_ids_homo_sapiens_updatedchebis.tsv",
+            "input": "data/intermediate_files/compounds_with_chebi_ids_homo_sapiens.tsv",
+            "output": "data/intermediate_files/compounds_with_chebi_ids_homo_sapiens_updatedchebis.tsv",
             "smiles_columns": ["canonicalSmiles", "isomericSmiles"],
             "chebi_column": "chebi_id",
         },
@@ -381,20 +381,20 @@ def main_find_missing_chebis(source):
             "chebi_column": "chebi_id",
         },
         "wikidata_at": {
-            "input": "data/wikidata/created/compounds_with_chebi_ids_arabidopsis_thaliana.tsv",
-            "output": "data/wikidata/created/compounds_with_chebi_ids_arabidopsis_thaliana_updatedchebis.tsv",
+            "input": "data/intermediate_files/compounds_with_chebi_ids_arabidopsis_thaliana.tsv",
+            "output": "data/intermediate_files/compounds_with_chebi_ids_arabidopsis_thaliana_updatedchebis.tsv",
             "smiles_columns": ["canonicalSmiles", "isomericSmiles"],
             "chebi_column": "chebi_id",
         },
         "lotus_hs": {
-            "input": "data/wikidata/created/lotus_homo_sapiens_with_chebi_ids.tsv",
-            "output": "data/wikidata/created/lotus_homo_sapiens_with_chebi_ids_updatedchebis.tsv",
+            "input": "data/intermediate_files/lotus_homo_sapiens_with_chebi_ids.tsv",
+            "output": "data/intermediate_files/lotus_homo_sapiens_with_chebi_ids_updatedchebis.tsv",
             "smiles_columns": ["compound_smiles_conn", "compound_smiles_iso"],
             "chebi_column": "chebi_id",
         },
         "lotus_at": {
-            "input": "data/wikidata/created/lotus_arabidopsis_thaliana_with_chebi_ids.tsv",
-            "output": "data/wikidata/created/lotus_arabidopsis_thaliana_with_chebi_ids_updatedchebis.tsv",
+            "input": "data/intermediate_files/lotus_arabidopsis_thaliana_with_chebi_ids.tsv",
+            "output": "data/intermediate_files/lotus_arabidopsis_thaliana_with_chebi_ids_updatedchebis.tsv",
             "smiles_columns": ["compound_smiles_conn", "compound_smiles_iso"],
             "chebi_column": "chebi_id",
         },

@@ -1,19 +1,19 @@
 import json
 import os
-import sys
 import xml.etree.ElementTree as ET
 from collections import Counter
 from math import inf
-from pathlib import Path
 
 import networkx as nx
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
+from chebin.calculations.data_files import ID_TO_NAME_MAP
+from chebin.config import require_data_path
 
 
-ID_TO_NAME_MAP_FILE = "data/chebi_id_to_name_map.json"
+def _id_to_name_map_file() -> str:
+    """Resolved per call, so set_data_dir() still applies after import."""
+    return require_data_path(ID_TO_NAME_MAP)
+
 
 # (mtime, map) of the last loaded name map. id_to_name is called once per graph
 # node, per tested class and per result entry -- thousands of times per analysis --
@@ -23,10 +23,12 @@ ID_TO_NAME_MAP_FILE = "data/chebi_id_to_name_map.json"
 _id_to_name_cache: tuple[float, dict] | None = None
 
 
-def _load_id_to_name_map(path: str = ID_TO_NAME_MAP_FILE) -> dict:
+def _load_id_to_name_map(path: str | None = None) -> dict:
     """Return the ChEBI id->name map, re-reading it only when the file changes."""
     global _id_to_name_cache
 
+    if path is None:
+        path = _id_to_name_map_file()
     mtime = os.path.getmtime(path)
     if _id_to_name_cache is None or _id_to_name_cache[0] != mtime:
         with open(path) as f:
@@ -735,7 +737,30 @@ def graph_to_cytospace_json(
     enrichment_results=None,
     include_untested_leaves=False,
 ):
-    """Write the graph as Cytoscape JSON.
+    """Write the graph as Cytoscape JSON to `output_file`.
+
+    Thin wrapper around :func:`graph_to_cytoscape_dict`; see there for the meaning of
+    `include_untested_leaves`.
+    """
+    data = graph_to_cytoscape_dict(
+        G,
+        enrichment_results=enrichment_results,
+        include_untested_leaves=include_untested_leaves,
+    )
+
+    # Create the directory if it doesn't exist
+    os.makedirs(os.path.dirname(output_file), exist_ok=True)
+
+    with open(output_file, "w") as f:
+        json.dump(data, f, indent=4)
+
+
+def graph_to_cytoscape_dict(
+    G,
+    enrichment_results=None,
+    include_untested_leaves=False,
+):
+    """Build the Cytoscape elements structure for the graph.
 
     include_untested_leaves: study-set leaf classes are graph nodes (the graph is
     built from leaf->root paths) but are never tested, so they can never carry a
@@ -745,11 +770,11 @@ def graph_to_cytospace_json(
     by default; pass True to keep them for debugging. This only affects what is
     drawn: pruning and all p-values are already final by this point, and the full
     study set is still reported in enrichment_results["study_set"].
+
+    Returns:
+        dict: ``{"elements": [...]}`` ready for Cytoscape.
     """
     data = {"elements": []}
-
-    # Create the directory if it doesn't exist
-    os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
     # Extract the nested enrichment results
     enr_dict = (
@@ -833,8 +858,7 @@ def graph_to_cytospace_json(
         for label, reason in missing_pvalue_nodes[:15]:
             print(f"Graph N/A node: {label} | reason={reason}")
 
-    with open(output_file, "w") as f:
-        json.dump(data, f, indent=4)
+    return data
 
 
 # Example usage:

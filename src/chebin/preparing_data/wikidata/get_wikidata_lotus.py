@@ -92,5 +92,5 @@ def connect_lotus_csv_to_chebi_ids(
 if __name__ == "__main__":
     connect_lotus_csv_to_chebi_ids(
         "data/lotus_homo_sapiens.csv",
-        "data/wikidata/created/lotus_homo_sapiens_with_chebi_ids.tsv",
+        "data/intermediate_files/lotus_homo_sapiens_with_chebi_ids.tsv",
     )

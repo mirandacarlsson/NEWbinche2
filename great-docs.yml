@@ -143,7 +143,6 @@ reference:
       - fishers_calculations.REPO_ROOT
       - fishers_calculations.benjamini_hochberg_correct
       - fishers_calculations.bonferroni_correct
-      - fishers_calculations.check_leaf_classes
       - fishers_calculations.classification
       - fishers_calculations.high_p_value_prune
       - fishers_calculations.levels

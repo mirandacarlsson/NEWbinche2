@@ -6,16 +6,9 @@ OBS: make sure to only count a removed class once.
 
 import json
 import logging
-import sys
 from collections import defaultdict
-from pathlib import Path
 
 import pandas as pd
-
-REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
-
 
 logger = logging.getLogger(__name__)
 _MISSING_ROLE_WARNING_LIMIT = 5

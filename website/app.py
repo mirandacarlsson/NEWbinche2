@@ -24,6 +24,7 @@ from chebin.calculations.weighted_calculations import (
     run_weighted_narrow_background_enrichment_analysis,
     run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy,
 )
+from chebin.config import set_data_dir
 from chebin.preparing_data.wikidata.narrow_background_fishers import (
     run_narrow_background_enrichment_analysis,
     run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy,
@@ -37,6 +38,11 @@ sys.argv[0] = os.path.abspath(
     sys.argv[0],
 )  # keep Werkzeug's debug-reloader re-exec working after chdir below
 os.chdir(BASE_DIR)
+
+# Tell chebin where the data files are, rather than relying on the chdir above:
+# the package resolves them against the working directory by default.
+set_data_dir(os.path.join(BASE_DIR, "data"))
+
 LOCAL_LOOKUP_FILE = os.path.join(
     BASE_DIR,
     "data",

@@ -26,7 +26,7 @@ from pathlib import Path
 
 HMDB_INPUT = "data/hmdb_metabolites_extract_quantified_detected_updatedchebis.tsv"
 WIKIDATA_INPUT = (
-    "data/wikidata/created/lotus_homo_sapiens_with_chebi_ids_updatedchebis.tsv"
+    "data/intermediate_files/lotus_homo_sapiens_with_chebi_ids_updatedchebis.tsv"
 )
 OUTPUT_FILE = "data/combined_hmdb_wikidata.tsv"
 

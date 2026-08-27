@@ -12,11 +12,19 @@ DATA_DIR = "data"
 OWL_PATH = os.path.join(DATA_DIR, "chebi.owl")
 
 
-def download_chebi(download_dir=None):
+def download_chebi(download_dir=None, force=True):
     """Download ChEBI ontology to specified directory (default: data/).
+
+    ChEBI is updated continuously, so the ontology is re-downloaded by default rather
+    than reused: building against whatever copy happens to be on disk would silently
+    produce data files from an outdated release. This matches the other downloads in the
+    pipeline (LOTUS, Recon3D), which always fetch fresh.
 
     Args:
         download_dir (str): Directory to download the OWL file to. If None, uses DATA_DIR ("data/").
+        force (bool): Re-download even when a local copy exists (default). Pass False to
+            deliberately reuse a local copy -- useful when iterating on a later stage,
+            but the result is only as current as that file.
 
     Returns:
         str: Path to the downloaded OWL file
@@ -27,28 +35,29 @@ def download_chebi(download_dir=None):
     os.makedirs(download_dir, exist_ok=True)
     owl_path = os.path.join(download_dir, "chebi.owl")
 
-    # Download the OWL file if it is not already present
-    if not os.path.exists(owl_path):
-        print("⬇ Downloading ChEBI ontology...")
-        urllib.request.urlretrieve(CHEBI_URL, owl_path)
-        print("Download complete.")
-    else:
-        print("ChEBI ontology already exists locally.")
+    if not force and os.path.exists(owl_path):
+        print(f"Reusing existing ChEBI ontology at {owl_path} (force=False).")
+        return owl_path
+
+    print("⬇ Downloading ChEBI ontology...")
+    urllib.request.urlretrieve(CHEBI_URL, owl_path)
+    print("Download complete.")
 
     return owl_path
 
 
-def load_chebi(download_dir=None):
+def load_chebi(download_dir=None, force=True):
     """Load ChEBI ontology from specified directory (default: data/).
 
     Args:
         download_dir (str): Directory to download/load the OWL file from. If None, uses DATA_DIR ("data/").
                            Useful option: "data_new/" to keep the download separate from older versions.
+        force (bool): Re-download even when a local copy exists. See :func:`download_chebi`.
 
     Returns:
         pyhornedowl ontology object
     """
-    owl_file = download_chebi(download_dir=download_dir)
+    owl_file = download_chebi(download_dir=download_dir, force=force)
     print("Loading ChEBI ontology...")
     ontology = pyhornedowl.open_ontology(owl_file)
     print(

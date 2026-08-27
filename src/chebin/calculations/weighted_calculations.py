@@ -20,10 +20,8 @@ import numpy as np
 import pandas as pd
 from scipy.special import ndtr
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
-
+from chebin.calculations.data_files import HUMAN_ENTITIES_LEAVES, load_data_files
+from chebin.config import data_path
 from chebin.calculations.fishers_calculations import (
     get_ancestors_for_inputs,
     get_leaves,
@@ -1032,19 +1030,14 @@ def run_weighted_enrichment_analysis(
               (pruned node names), "enrichment_results" (node -> p-value mapping)
             - pruned_graph is a networkx graph after all pruning operations
     """
-    removed_leaves_csv = "data/removed_leaf_classes_with_smiles.csv"
-    leaf_to_ancestors_map_file = "data/removed_leaf_classes_to_ALL_parents_map.json"
-    class_to_leaf_map_file = "data/class_to_leaf_descendants_map.json"
-    parent_map_file = "data/chebi_parent_map.json"
-    class_to_all_roles_map_json = "data/class_to_all_roles_map.json"
-    roles_to_leaves_map_json = "data/roles_to_leaves_map.json"
-
-    with open(class_to_leaf_map_file) as f:
-        class_to_leaf_map = json.load(f)
-    with open(class_to_all_roles_map_json) as f:
-        class_to_all_roles_map = json.load(f)
-    with open(roles_to_leaves_map_json) as f:
-        roles_to_leaves_map = json.load(f)
+    (
+        class_to_leaf_map,
+        class_to_all_roles_map,
+        roles_to_leaves_map,
+        removed_leaves_csv,
+        leaf_to_ancestors_map_file,
+        parent_map_file,
+    ) = load_data_files()
 
     structural_leaf_ids = get_structural_leaf_ids(removed_leaves_csv)
 
@@ -1229,19 +1222,14 @@ def run_weighted_enrichment_analysis_plain_enrich_pruning_strategy(
         tuple: (results_dict, pruned_graph) where results_dict contains
             "study_set", "removed_nodes", and "enrichment_results" keys.
     """
-    removed_leaves_csv = "data/removed_leaf_classes_with_smiles.csv"
-    leaf_to_ancestors_map_file = "data/removed_leaf_classes_to_ALL_parents_map.json"
-    class_to_leaf_map_file = "data/class_to_leaf_descendants_map.json"
-    parent_map_file = "data/chebi_parent_map.json"
-    class_to_all_roles_map_json = "data/class_to_all_roles_map.json"
-    roles_to_leaves_map_json = "data/roles_to_leaves_map.json"
-
-    with open(class_to_leaf_map_file) as f:
-        class_to_leaf_map = json.load(f)
-    with open(class_to_all_roles_map_json) as f:
-        class_to_all_roles_map = json.load(f)
-    with open(roles_to_leaves_map_json) as f:
-        roles_to_leaves_map = json.load(f)
+    (
+        class_to_leaf_map,
+        class_to_all_roles_map,
+        roles_to_leaves_map,
+        removed_leaves_csv,
+        leaf_to_ancestors_map_file,
+        parent_map_file,
+    ) = load_data_files()
 
     structural_leaf_ids = get_structural_leaf_ids(removed_leaves_csv)
 
@@ -1391,7 +1379,7 @@ def run_weighted_narrow_background_enrichment_analysis(
     p_value_threshold: float = 0.05,
     zero_degree_prune: bool = False,
     classification: str = "structural",
-    narrow_background_leaves_json: str = "data/human_entities_leaves.json",
+    narrow_background_leaves_json: str | None = None,
     expand_background: bool = True,
 ) -> tuple:
     """
@@ -1414,25 +1402,23 @@ def run_weighted_narrow_background_enrichment_analysis(
         zero_degree_prune: Remove unconnected nodes.
         classification: "structural" or "functional" (default: "structural").
         narrow_background_leaves_json: Path to JSON file with restricted leaf set
-            (default: "data/human_entities_leaves.json").
+            (defaults to human_entities_leaves.json in the configured data folder).
         expand_background: Expand narrow leaves to include their ancestors.
 
     Returns:
         Tuple of (results dict, pruned graph, leaves_to_expand, parents_to_expand).
     """
-    removed_leaves_csv = "data/removed_leaf_classes_with_smiles.csv"
-    leaf_to_ancestors_map_file = "data/removed_leaf_classes_to_ALL_parents_map.json"
-    class_to_leaf_map_file = "data/class_to_leaf_descendants_map.json"
-    parent_map_file = "data/chebi_parent_map.json"
-    class_to_all_roles_map_json = "data/class_to_all_roles_map.json"
-    roles_to_leaves_map_json = "data/roles_to_leaves_map.json"
+    if narrow_background_leaves_json is None:
+        narrow_background_leaves_json = data_path(HUMAN_ENTITIES_LEAVES)
 
-    with open(class_to_leaf_map_file) as f:
-        class_to_leaf_map = json.load(f)
-    with open(class_to_all_roles_map_json) as f:
-        class_to_all_roles_map = json.load(f)
-    with open(roles_to_leaves_map_json) as f:
-        roles_to_leaves_map = json.load(f)
+    (
+        class_to_leaf_map,
+        class_to_all_roles_map,
+        roles_to_leaves_map,
+        removed_leaves_csv,
+        leaf_to_ancestors_map_file,
+        parent_map_file,
+    ) = load_data_files()
 
     (
         studyset_leaves,
@@ -1577,7 +1563,7 @@ def run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_stra
     n: int = 0,
     p_value_threshold: float = 0.05,
     classification: str = "structural",
-    narrow_background_leaves_json: str = "data/human_entities_leaves.json",
+    narrow_background_leaves_json: str | None = None,
     expand_background: bool = True,
 ) -> tuple:
     """
@@ -1593,26 +1579,24 @@ def run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_stra
         p_value_threshold: P-value cutoff for high p-value pruning (default: 0.05).
         classification: "structural" or "functional" (default: "structural").
         narrow_background_leaves_json: Path to JSON file with restricted leaf set
-            (default: "data/human_entities_leaves.json").
+            (defaults to human_entities_leaves.json in the configured data folder).
         expand_background: Expand narrow leaves to include their ancestors.
 
     Returns:
         tuple: (results_dict, pruned_graph, leaves_to_expand, parents_to_expand)
             where expand fields track background population expansion.
     """
-    removed_leaves_csv = "data/removed_leaf_classes_with_smiles.csv"
-    leaf_to_ancestors_map_file = "data/removed_leaf_classes_to_ALL_parents_map.json"
-    class_to_leaf_map_file = "data/class_to_leaf_descendants_map.json"
-    parent_map_file = "data/chebi_parent_map.json"
-    class_to_all_roles_map_json = "data/class_to_all_roles_map.json"
-    roles_to_leaves_map_json = "data/roles_to_leaves_map.json"
+    if narrow_background_leaves_json is None:
+        narrow_background_leaves_json = data_path(HUMAN_ENTITIES_LEAVES)
 
-    with open(class_to_leaf_map_file) as f:
-        class_to_leaf_map = json.load(f)
-    with open(class_to_all_roles_map_json) as f:
-        class_to_all_roles_map = json.load(f)
-    with open(roles_to_leaves_map_json) as f:
-        roles_to_leaves_map = json.load(f)
+    (
+        class_to_leaf_map,
+        class_to_all_roles_map,
+        roles_to_leaves_map,
+        removed_leaves_csv,
+        leaf_to_ancestors_map_file,
+        parent_map_file,
+    ) = load_data_files()
 
     (
         studyset_leaves,

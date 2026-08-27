@@ -1,17 +1,12 @@
 """Fisher-based enrichment calculations and helpers."""
 
 import json
-import sys
 import time
-from pathlib import Path
 
 import pandas as pd
 from scipy.stats import fisher_exact
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
-
+from chebin.calculations.data_files import load_data_files
 from chebin.calculations.log_utils import describe
 from chebin.calculations.multiple_test_corrections import (
     benjamini_hochberg_fdr_correction,
@@ -416,28 +411,7 @@ def _load_data_files():
         tuple: (class_to_leaf_map, class_to_all_roles_map, roles_to_leaves_map,
                 removed_leaves_csv, leaf_to_ancestors_map_file, parent_map_file)
     """
-    removed_leaves_csv = "data/removed_leaf_classes_with_smiles.csv"
-    leaf_to_ancestors_map_file = "data/removed_leaf_classes_to_ALL_parents_map.json"
-    class_to_leaf_map_file = "data/class_to_leaf_descendants_map.json"
-    parent_map_file = "data/chebi_parent_map.json"
-    class_to_all_roles_map_json = "data/class_to_all_roles_map.json"
-    roles_to_leaves_map_json = "data/roles_to_leaves_map.json"
-
-    with open(class_to_leaf_map_file) as f:
-        class_to_leaf_map = json.load(f)
-    with open(class_to_all_roles_map_json) as f:
-        class_to_all_roles_map = json.load(f)
-    with open(roles_to_leaves_map_json) as f:
-        roles_to_leaves_map = json.load(f)
-
-    return (
-        class_to_leaf_map,
-        class_to_all_roles_map,
-        roles_to_leaves_map,
-        removed_leaves_csv,
-        leaf_to_ancestors_map_file,
-        parent_map_file,
-    )
+    return load_data_files()
 
 
 def run_enrichment_analysis(
@@ -452,8 +426,34 @@ def run_enrichment_analysis(
     p_value_threshold: float = 0.05,
     zero_degree_prune: bool = False,
     classification: str = "structural",
-    check_leaf_classes: bool = False,
 ) -> tuple[dict, object]:
+
+    
+    """
+    Run enrichment analysis with optional pruning and multiple test correction.
+    
+    Args:
+        studyset_list: List of ChEBI class IDs (IRIs) to analyze.
+        bonferroni_correct: Apply Bonferroni correction to p-values (bool, the standard is False).
+        benjamini_hochberg_correct: Apply Benjamini-Hochberg FDR correction to p-values (bool, the standard is True).
+        root_children_prune: Apply root children pruning before enrichment (bool).
+        levels: Number of levels to prune from root (int, default 2). Only used if root_children_prune is True.
+        linear_branch_prune: Apply linear branch pruning before enrichment (bool).
+        n: Keep every n-th node in linear branches (int, default 2). Only used if linear_branch_prune is True.
+        high_p_value_prune: Apply high p-value pruning after enrichment (bool).
+        p_value_threshold: Threshold for high p-value pruning (float, default 0.05). Only used if high_p_value_prune is True.
+        zero_degree_prune: Apply zero-degree pruning after enrichment, removing nodes with no connections (bool).
+        classification: Classification type for enrichment analysis ("structural", "functional", or "full").
+    """
+
+    # Provide a warning if both Bonferroni and Benjamini-Hochberg corrections are requested
+    if bonferroni_correct and benjamini_hochberg_correct:
+        print(
+            "Warning: Both Bonferroni and Benjamini-Hochberg corrections requested. "
+            "Only one correction method should be applied at a time. "
+            "Proceeding with Benjamini-Hochberg correction.",
+        )
+        bonferroni_correct = False
 
     pruning_before_enrichment = root_children_prune or linear_branch_prune
 
@@ -684,8 +684,20 @@ def run_enrichment_analysis_plain_enrich_pruning_strategy(
     n: int = 0,
     p_value_threshold: float = 0.05,
     classification: str = "structural",
-    check_leaf_classes: bool = False,
 ) -> tuple[dict, object]:
+
+    """
+    Run enrichment analysis with the Plain Enrichment Pruning Strategy. 
+    This strategy first applies the High Value Branch Pruner, the Linear Branch Collapser Pruner, and the Root Children Pruner in the pre-loop phase.
+    Then, in the loop phase, it applies tthe High P-Value Branch Pruner, the Linear Branch Collapser Pruner, and the Zero Degree Vertex Pruner.
+
+    Args:
+        studyset_list: List of ChEBI class IDs (IRIs) to analyze.
+        levels: Number of levels to prune from root (int, default 2). Only used for Root Children Pruner.
+        n: Keep every n-th node in linear branches (int, default 0). Only used for Linear Branch Collapser Pruner.
+        p_value_threshold: Threshold for high p-value pruning (float, default 0.05). Only used for High P-Value Branch Pruner.
+        classification: Classification type for enrichment analysis ("structural", "functional", or "full").
+    """
 
     # Load common data files
     (
@@ -883,8 +895,6 @@ if __name__ == "__main__":
     zero_degree_prune = True
 
     classification = "functional"  # "functional" or "structural" or "full"
-    check_leaf_classes = False  # Checks that the found the leaf classes are of the expected type (Functional or Structural). If the classification is correct,
-    # this should never be a problem and can be set to False.
 
     # For testing purposes, you can use the following study set of two compounds:
 
@@ -905,12 +915,10 @@ if __name__ == "__main__":
         p_value_threshold=p_value_threshold,
         zero_degree_prune=zero_degree_prune,
         classification=classification,
-        check_leaf_classes=check_leaf_classes,
     )
 
     # run_enrichment_analysis_plain_enrich_pruning_strategy(studyset_list,
     #                         levels=2, # for root children pruner
     #                         n=2, # for linear branch pruner
     #                         p_value_threshold=0.05, # for high p-value pruner
-    #                         classification="structural",
-    #                         check_leaf_classes=False)
+    #                         classification="structural")

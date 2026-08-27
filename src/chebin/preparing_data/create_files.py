@@ -83,6 +83,75 @@ def _print_timing_summary(stage_timings, total_elapsed):
     print("=" * 80)
 
 
+#: Subfolder for inputs that were downloaded or supplied by the user.
+SOURCE_SUBDIR = "source_files"
+#: Subfolder for files produced along the way that no calculation ever reads.
+INTERMEDIATE_SUBDIR = "intermediate_files"
+
+
+def find_input_file(data_folder, filename):
+    """Locate an input file in the data folder or any of its immediate subfolders.
+
+    The HMDB XML is the one input that cannot be fetched automatically -- the user
+    downloads it by hand -- so it is worth finding wherever they reasonably put it,
+    whether that is the data folder itself or `source_files/` inside it.
+
+    Returns:
+        str | None: Path to the file, or None if it isn't anywhere we looked.
+    """
+    direct = os.path.join(data_folder, filename)
+    if os.path.exists(direct):
+        return direct
+
+    if os.path.isdir(data_folder):
+        for entry in sorted(os.scandir(data_folder), key=lambda e: e.name):
+            if entry.is_dir():
+                nested = os.path.join(entry.path, filename)
+                if os.path.exists(nested):
+                    return nested
+
+    return None
+
+
+SOURCE_README = """\
+# Source files -- not needed for calculations
+
+Inputs the pipeline downloaded or that you supplied. **No enrichment analysis reads
+anything in this folder**, so you can delete it to reclaim space.
+
+What deleting each file costs:
+
+- `chebi.owl`, `Recon3D.json`, `lotus_*.csv` -- nothing. Every run of `create_all_files()`
+  re-downloads them regardless, so keeping them here saves no work. (ChEBI in particular
+  is deliberately re-fetched each time, because it is updated continuously.)
+- `hmdb_metabolites.xml` -- **this is the one to keep.** It cannot be downloaded
+  automatically. If you delete it you have to fetch 'All Metabolites' again by hand from
+  https://hmdb.ca/downloads, and until you do, the first Homo sapiens background
+  (`human_entities_leaves.json`) is skipped on the next run.
+
+The pipeline looks for `hmdb_metabolites.xml` here and in the data folder itself, so
+either location works.
+"""
+
+INTERMEDIATE_README = """\
+# Intermediate files -- not needed for calculations
+
+Working files produced while building the data folder: each one is written by a stage,
+consumed by the next, and then never read again. **No enrichment analysis reads anything
+in this folder**, so it is safe to delete.
+
+Deleting it costs nothing unless you want the files back, which means re-running
+`create_all_files()`.
+"""
+
+
+def write_folder_readme(folder, text):
+    """Drop a README into a generated subfolder explaining what it is."""
+    os.makedirs(folder, exist_ok=True)
+    with open(os.path.join(folder, "README.md"), "w", encoding="utf-8") as f:
+        f.write(text)
+
+
 def rename_folder(old_name, new_name):
     """
     Rename a folder from old_name to new_name.
@@ -193,14 +262,22 @@ def create_all_files_with_backup(data_folder="data"):
     # Carry the HMDB XML over to the new folder before the rename, if we have it.
     # It is optional: without it, create_all_files simply skips the first human
     # background (see the warning it prints).
-    hmdb_xml_src = f"{data_folder}/hmdb_metabolites.xml"
-    hmdb_xml_dst = f"{data_folder_new}/hmdb_metabolites.xml"
-    if os.path.exists(hmdb_xml_src):
-        print(f"Copying HMDB XML to '{data_folder_new}'...")
+    # The HMDB XML is the only input worth carrying across: ChEBI, Recon3D and the LOTUS
+    # CSVs are re-downloaded on every run anyway, but this one was placed by hand and
+    # cannot be fetched automatically. It may sit in the old folder itself or in a
+    # subfolder, so look in both.
+    hmdb_xml_src = find_input_file(data_folder, "hmdb_metabolites.xml")
+    if hmdb_xml_src:
+        hmdb_xml_dst = f"{data_folder_new}/{SOURCE_SUBDIR}/hmdb_metabolites.xml"
+        os.makedirs(os.path.dirname(hmdb_xml_dst), exist_ok=True)
+        print(f"Copying HMDB XML to '{data_folder_new}/{SOURCE_SUBDIR}'...")
         shutil.copy2(hmdb_xml_src, hmdb_xml_dst)
         print(f"Copied {hmdb_xml_src} to {hmdb_xml_dst}")
     else:
-        print(f"{hmdb_xml_src} not found; skipping the HMDB copy.")
+        print(
+            f"hmdb_metabolites.xml not found in '{data_folder}' or its subfolders; "
+            f"skipping the HMDB copy.",
+        )
 
     create_all_files(data_folder=data_folder_new)
 
@@ -216,33 +293,77 @@ def create_all_files(data_folder="data"):
     stage_timings = []
     start_time = time.time()
 
-    hmdb_xml_file = f"{data_folder}/hmdb_metabolites.xml"
-    hmdb_xml_exists = os.path.exists(hmdb_xml_file)
+    ### Two subfolders keep the data folder itself down to just the files the
+    ### calculations read; everything else is sorted into one of these, each carrying a
+    ### README saying it is safe to delete. Created up front because not every stage
+    ### makes its own output directory (prepare_role_calculations does not).
+    source_dir = f"{data_folder}/{SOURCE_SUBDIR}"
+    intermediate_dir = f"{data_folder}/{INTERMEDIATE_SUBDIR}"
+    os.makedirs(source_dir, exist_ok=True)
+    os.makedirs(intermediate_dir, exist_ok=True)
+
+    # The HMDB XML is placed by hand, so accept it in the data folder or any subfolder.
+    hmdb_xml_file = find_input_file(data_folder, "hmdb_metabolites.xml")
+    hmdb_xml_exists = hmdb_xml_file is not None
 
     # Warn the user already if HMDB XML is missing, so they can download it before the long process starts
     if not hmdb_xml_exists:
         print(
-            f"{hmdb_xml_file} not found. The process will continue unless you stop it. "
+            f"hmdb_metabolites.xml not found in '{data_folder}' or its subfolders. "
+            f"The process will continue unless you stop it. "
             f"This file is only needed for one of the human backgrounds. "
             f"To be able to use it, please download it from https://hmdb.ca/downloads "
-            f"and place it in the '{data_folder}' folder.",
+            f"and place it in '{source_dir}'.",
         )
+    else:
+        print(f"Using HMDB XML at {hmdb_xml_file}")
+        # Found, but not where the rest of the inputs live. Suggest rather than move:
+        # it is the user's file and it is large, so relocating it silently would be rude.
+        if os.path.dirname(os.path.abspath(hmdb_xml_file)) == os.path.abspath(data_folder):
+            print(
+                f"  (tip: moving it into '{source_dir}' keeps the data folder itself to "
+                f"just the files the calculations need -- both locations work)",
+            )
 
     ### Define properties and file paths
     smiles_property = "https://w3id.org/chemrof/smiles_string"
     deprecated_property = "http://www.w3.org/2002/07/owl#deprecated"
     has_role_property = "http://purl.obolibrary.org/obo/RO_0000087"
 
-    chebi_file = f"{data_folder}/chebi.owl"
-    subclass_map_file = f"{data_folder}/chebi_subclass_map.json"
+    # --- source files: downloaded or user-supplied, read only during the build
+    chebi_file = f"{source_dir}/chebi.owl"
+    recon3d_json = f"{source_dir}/Recon3D.json"
+    lotus_hs_csv = f"{source_dir}/lotus_homo_sapiens.csv"
+    lotus_at_csv = f"{source_dir}/lotus_arabidopsis_thaliana.csv"
+
+    # --- intermediates: written by one stage, consumed by the next, then dead
+    subclass_map_file = f"{intermediate_dir}/chebi_subclass_map.json"
+    roles_map_json = (
+        f"{intermediate_dir}/class_to_direct_roles_map.json"  # output file for roles map
+    )
+    leaves_to_all_roles_json = f"{intermediate_dir}/removed_leaf_classes_to_ALL_roles_map.json"  # output file for leaves to all roles map
+
+    lotus_hs_chebi_tsv = f"{intermediate_dir}/lotus_homo_sapiens_with_chebi_ids.tsv"
+    lotus_at_chebi_tsv = f"{intermediate_dir}/lotus_arabidopsis_thaliana_with_chebi_ids.tsv"
+    lotus_hs_updated_tsv = (
+        f"{intermediate_dir}/lotus_homo_sapiens_with_chebi_ids_updatedchebis.tsv"
+    )
+    lotus_at_updated_tsv = (
+        f"{intermediate_dir}/lotus_arabidopsis_thaliana_with_chebi_ids_updatedchebis.tsv"
+    )
+
+    hmdb_extract_tsv = f"{intermediate_dir}/hmdb_metabolites_extract.tsv"
+    hmdb_filtered_tsv = f"{intermediate_dir}/hmdb_metabolites_extract_quantified_detected.tsv"
+    hmdb_updated_tsv = (
+        f"{intermediate_dir}/hmdb_metabolites_extract_quantified_detected_updatedchebis.tsv"
+    )
+    combined_human_tsv = f"{intermediate_dir}/combined_hmdb_wikidata.tsv"
+
+    # --- runtime files: everything below stays at the top level of the data folder,
+    # --- because these are what the enrichment analyses and the website actually read.
     leaf_parents_map_file = f"{data_folder}/removed_leaf_classes_to_ALL_parents_map.json"
     removed_leaf_classes_file = f"{data_folder}/removed_leaf_classes_with_smiles.csv"
-
-    roles_map_json = (
-        f"{data_folder}/class_to_direct_roles_map.json"  # output file for roles map
-    )
     leaves_to_all_parents_json = f"{data_folder}/removed_leaf_classes_to_ALL_parents_map.json"
-    leaves_to_all_roles_json = f"{data_folder}/removed_leaf_classes_to_ALL_roles_map.json"  # output file for leaves to all roles map
     parent_map_json = f"{data_folder}/chebi_parent_map.json"
     roles_to_all_leaves_json = (
         f"{data_folder}/roles_to_leaves_map.json"  # output file for roles to all leaves map
@@ -262,26 +383,6 @@ def create_all_files(data_folder="data"):
     leaves_smiles_csv = removed_leaf_classes_file
     leaves_inchikeys_csv = f"{data_folder}/removed_leaf_classes_with_inchikeys.csv"
 
-    lotus_hs_csv = f"{data_folder}/lotus_homo_sapiens.csv"
-    lotus_at_csv = f"{data_folder}/lotus_arabidopsis_thaliana.csv"
-    lotus_hs_chebi_tsv = f"{data_folder}/wikidata/created/lotus_homo_sapiens_with_chebi_ids.tsv"
-    lotus_at_chebi_tsv = (
-        f"{data_folder}/wikidata/created/lotus_arabidopsis_thaliana_with_chebi_ids.tsv"
-    )
-    lotus_hs_updated_tsv = (
-        f"{data_folder}/wikidata/created/lotus_homo_sapiens_with_chebi_ids_updatedchebis.tsv"
-    )
-    lotus_at_updated_tsv = (
-        f"{data_folder}/wikidata/created/lotus_arabidopsis_thaliana_with_chebi_ids_updatedchebis.tsv"
-    )
-
-    hmdb_extract_tsv = f"{data_folder}/hmdb_metabolites_extract.tsv"
-    hmdb_filtered_tsv = f"{data_folder}/hmdb_metabolites_extract_quantified_detected.tsv"
-    hmdb_updated_tsv = (
-        f"{data_folder}/hmdb_metabolites_extract_quantified_detected_updatedchebis.tsv"
-    )
-    combined_human_tsv = f"{data_folder}/combined_hmdb_wikidata.tsv"
-
     ### Download and load the ChEBI ontology
     print("Downloading and loading ChEBI ontology...")
     # Option: download directly to data_new/ to keep separate from old versions
@@ -289,7 +390,7 @@ def create_all_files(data_folder="data"):
         "download_and_load_chebi",
         stage_timings,
         load_chebi,
-        download_dir=f"{data_folder}",
+        download_dir=source_dir,
     )
 
     ### Find and filter leaf classes with SMILES and deprecated classes, and save the filtered ontology
@@ -560,7 +661,7 @@ def create_all_files(data_folder="data"):
         stage_timings,
         download_model_json,
         "Recon3D",
-        f"{data_folder}/Recon3D.json",
+        recon3d_json,
     )
 
     print("Gathering narrow leaf classes (Endogenous human / Recon3D)...")
@@ -568,13 +669,23 @@ def create_all_files(data_folder="data"):
         "gather_narrow_leaves_endogenous_human",
         stage_timings,
         gather_recon3d_leaves,
-        model_json_path=f"{data_folder}/Recon3D.json",
+        model_json_path=recon3d_json,
         leaves_csv=leaves_smiles_csv,
         class_to_leaf_map_json=class_to_leaf_output_file,
         output_json=f"{data_folder}/recon3d_leaves.json",
     )
 
+    ### Label the two subfolders so a user opening the data folder can tell at a glance
+    ### which files matter and what deleting the rest costs.
+    write_folder_readme(source_dir, SOURCE_README)
+    write_folder_readme(intermediate_dir, INTERMEDIATE_README)
+
     print("All files created successfully!")
+    print(
+        f"  Files needed for calculations: {data_folder}/\n"
+        f"  Safe to delete:                {source_dir}/ and {intermediate_dir}/ "
+        f"(see the README in each)",
+    )
     end_time = time.time()
     elapsed_time = end_time - start_time
     _print_timing_summary(stage_timings, elapsed_time)

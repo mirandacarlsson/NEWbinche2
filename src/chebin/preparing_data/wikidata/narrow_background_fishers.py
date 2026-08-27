@@ -12,10 +12,12 @@ from pathlib import Path
 
 import pandas as pd
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
-
+from chebin.calculations.data_files import (
+    CLASS_TO_LEAF_MAP,
+    HUMAN_ENTITIES_LEAVES,
+    load_data_files,
+)
+from chebin.config import data_path
 from chebin.calculations.fishers_calculations import (
     calculate_p_value,
     get_ancestors_for_inputs,
@@ -512,26 +514,27 @@ def run_narrow_background_enrichment_analysis(
     p_value_threshold=0.05,
     zero_degree_prune=False,
     classification="structural",
-    narrow_background_leaves_json="data/human_entities_leaves.json",
+    narrow_background_leaves_json=None,
     expand_background=True,
 ):
+
+    if narrow_background_leaves_json is None:
+        narrow_background_leaves_json = data_path(HUMAN_ENTITIES_LEAVES)
 
     pruning_before_enrichment = root_children_prune or linear_branch_prune
 
     # Files
-    removed_leaves_full_csv = "data/removed_leaf_classes_with_smiles.csv"
-    leaf_to_ancestors_map_file = "data/removed_leaf_classes_to_ALL_parents_map.json"
-    class_to_leaf_map_file = "data/class_to_leaf_descendants_map.json"
-    parent_map_file = "data/chebi_parent_map.json"
-    class_to_all_roles_map_json = "data/class_to_all_roles_map.json"
-    roles_to_leaves_map_json = "data/roles_to_leaves_map.json"
-
-    with open(class_to_leaf_map_file) as f:
-        class_to_leaf_map = json.load(f)
-    with open(class_to_all_roles_map_json) as f:
-        class_to_all_roles_map = json.load(f)
-    with open(roles_to_leaves_map_json) as f:
-        roles_to_leaves_map = json.load(f)
+    (
+        class_to_leaf_map,
+        class_to_all_roles_map,
+        roles_to_leaves_map,
+        removed_leaves_full_csv,
+        leaf_to_ancestors_map_file,
+        parent_map_file,
+    ) = load_data_files()
+    # get_studyset_leaves_narrow re-reads this one itself, so it needs the path
+    # rather than the loaded map.
+    class_to_leaf_map_file = data_path(CLASS_TO_LEAF_MAP)
     with open(narrow_background_leaves_json) as f:
         json.load(f)
 
@@ -757,24 +760,25 @@ def run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy(
     n=0,  # for linear branch pruner (0 = remove all intermediate nodes)
     p_value_threshold=0.05,
     classification="structural",
-    narrow_background_leaves_json="data/human_entities_leaves.json",
+    narrow_background_leaves_json=None,
     expand_background=True,
 ):
 
-    # Files
-    removed_leaves_full_csv = "data/removed_leaf_classes_with_smiles.csv"
-    leaf_to_ancestors_map_file = "data/removed_leaf_classes_to_ALL_parents_map.json"
-    class_to_leaf_map_file = "data/class_to_leaf_descendants_map.json"
-    parent_map_file = "data/chebi_parent_map.json"
-    class_to_all_roles_map_json = "data/class_to_all_roles_map.json"
-    roles_to_leaves_map_json = "data/roles_to_leaves_map.json"
+    if narrow_background_leaves_json is None:
+        narrow_background_leaves_json = data_path(HUMAN_ENTITIES_LEAVES)
 
-    with open(class_to_leaf_map_file) as f:
-        class_to_leaf_map = json.load(f)
-    with open(class_to_all_roles_map_json) as f:
-        class_to_all_roles_map = json.load(f)
-    with open(roles_to_leaves_map_json) as f:
-        roles_to_leaves_map = json.load(f)
+    # Files
+    (
+        class_to_leaf_map,
+        class_to_all_roles_map,
+        roles_to_leaves_map,
+        removed_leaves_full_csv,
+        leaf_to_ancestors_map_file,
+        parent_map_file,
+    ) = load_data_files()
+    # get_studyset_leaves_narrow re-reads this one itself, so it needs the path
+    # rather than the loaded map.
+    class_to_leaf_map_file = data_path(CLASS_TO_LEAF_MAP)
 
     studyset_list = [normalize_id(cls) for cls in studyset_list]
 
@@ -970,7 +974,7 @@ if __name__ == "__main__":
             "output_json": "data/human_entities_leaves.json",
         },
         "arabidopsis_thaliana": {
-            "compounds_tsv": "data/wikidata/created/lotus_arabidopsis_thaliana_with_chebi_ids_updatedchebis.tsv",
+            "compounds_tsv": "data/intermediate_files/lotus_arabidopsis_thaliana_with_chebi_ids_updatedchebis.tsv",
             "output_json": "data/arabidopsis_thaliana_leaves.json",
         },
     }

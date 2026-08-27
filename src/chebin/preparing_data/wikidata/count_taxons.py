@@ -33,10 +33,10 @@ def count_classes_in_file(class_file):
 if __name__ == "__main__":
     top_n_taxons(5)
 
-    class_file_hs = "data/wikidata/created/compounds_with_chebi_ids_homo_sapiens.tsv"
+    class_file_hs = "data/intermediate_files/compounds_with_chebi_ids_homo_sapiens.tsv"
     count_classes_in_file(class_file_hs)
 
     class_file_at = (
-        "data/wikidata/created/compounds_with_chebi_ids_arabidopsis_thaliana.tsv"
+        "data/intermediate_files/compounds_with_chebi_ids_arabidopsis_thaliana.tsv"
     )
     count_classes_in_file(class_file_at)
