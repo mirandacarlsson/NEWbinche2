@@ -36,11 +36,11 @@ jobs:
 
       - name: Run tests
         run: |
-          uv run coverage run --source=calculations -m pytest tests/ -v
+          uv run coverage run --source=src/chebin -m pytest tests/ -v
           uv run coverage report -m
 
-  # Packaging is not wired up yet: pyproject sets `package = false` and there is no
-  # src/ layout for the uv_build backend. Manual-dispatch only until that changes.
+  # Packaging is wired up: pyproject sets `package = true` with the uv_build backend
+  # over the src/ layout. Manual-dispatch only until we publish on a release trigger.
   build:
     runs-on: ubuntu-latest
     name: Build and Package

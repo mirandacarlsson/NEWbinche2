@@ -21,6 +21,7 @@ from chebin.calculations.log_utils import preview
 from chebin.calculations.visualitations_and_pruning import graph_to_cytospace_json
 from chebin.calculations.weighted_calculations import (
     run_weighted_enrichment_analysis,
+    run_weighted_enrichment_analysis_plain_enrich_pruning_strategy,
     run_weighted_narrow_background_enrichment_analysis,
     run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy,
 )
@@ -633,9 +634,11 @@ def run_analysis():
         if background == "full":
             # Use weighted analysis if weights are present, otherwise use standard analysis
             if weights_dict:
-                results, pruned_G = run_weighted_enrichment_analysis(
-                    weights_dict,
-                    classification=session.get("classification") or "structural",
+                results, pruned_G = (
+                    run_weighted_enrichment_analysis_plain_enrich_pruning_strategy(
+                        weights_dict,
+                        classification=session.get("classification") or "structural",
+                    )
                 )
             else:
                 results, pruned_G = (

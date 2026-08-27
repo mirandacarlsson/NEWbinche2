@@ -41,3 +41,18 @@ cose = "cose"
 
 [tool.uv]
 package = true
+
+# Everything under src/chebin/ ships by default. These are development leftovers
+# that live inside the package tree but are not part of the library: without the
+# excludes, plotting_children.ipynb alone was 183 KB of a 327 KB wheel.
+[tool.uv.build-backend]
+source-exclude = [
+  "**/*.ipynb",
+  "**/wikidata/test.py",
+  "**/wikidata/data/**",
+]
+wheel-exclude = [
+  "**/*.ipynb",
+  "**/wikidata/test.py",
+  "**/wikidata/data/**",
+]

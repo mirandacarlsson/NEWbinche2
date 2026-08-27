@@ -26,12 +26,6 @@ def canonical_smiles(smiles):
     return Chem.MolToSmiles(mol) if mol is not None else None
 
 
-# Example
-smiles = "[H]C(=Nc1ccccc1NS(=O)(=O)c1ccc(C)cc1)c1ccccc1NS(=O)(=O)c1ccc(C)cc1"
-inchikey = smiles_to_inchikey(smiles)
-print(inchikey)
-
-
 def convert_smiles_file(input_file, output_file):
 
     starcount = 0  # count how many SMILES had a star in them, which means they are not valid for conversion
