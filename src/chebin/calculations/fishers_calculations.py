@@ -402,7 +402,9 @@ def print_enrichment_results(enrichment_results):
 
 
 def write_enrichment_csv(enrichment_results: dict, csv_path: str) -> None:
-    pd.DataFrame(list(enrichment_results.values())).to_csv(csv_path, index=False)
+    df = pd.DataFrame(list(enrichment_results.values()))
+    columns = [col for col in ["class", "p_value", "p_value_corrected"] if col in df.columns]
+    df[columns].to_csv(csv_path, index=False)
 
 
 # Graphing and pruning strategies.
