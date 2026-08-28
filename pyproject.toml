@@ -1,7 +1,8 @@
 [project]
 name = "chebin"
-version = "1.0.0"
+version = "1.0.1"
 description = "ChEBI-N enrichment analysis tooling"
+readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
   "flask>=3.1.3",
