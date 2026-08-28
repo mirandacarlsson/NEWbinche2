@@ -7,6 +7,8 @@ import time
 from datetime import UTC
 from pathlib import Path
 
+from rdkit import RDLogger  # type: ignore
+
 from chebin.calculations.pre_fishers_calculations import build_class_to_leaf_map
 from chebin.calculations.prepare_role_calculations import (
     create_class_to_all_roles_map,
@@ -290,6 +292,13 @@ def create_all_files_with_backup(data_folder="data"):
     cleanup_old_data_folders(old_data_folder=data_folder, max_folders=3)
 
 def create_all_files(data_folder="data"):
+    # ChEBI's SMILES routinely trip RDKit's "Omitted undefined stereo", "Can't
+    # kekulize mol" and "Proton(s) added/removed" warnings, which the pipeline
+    # already handles by falling back or skipping. Left on, they produced ~11 MB
+    # of stderr per run -- 30x the size of the actual log. Scoped to this
+    # function so importing chebin elsewhere (the website) keeps the warnings.
+    RDLogger.DisableLog("rdApp.*")
+
     stage_timings = []
     start_time = time.time()
 

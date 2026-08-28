@@ -27,6 +27,7 @@ from chebin.calculations.fishers_calculations import (
     get_leaves,
     normalize_id,
     print_enrichment_results,
+    write_enrichment_csv,
 )
 from chebin.calculations.multiple_test_corrections import (
     benjamini_hochberg_fdr_correction,
@@ -1001,6 +1002,8 @@ def run_weighted_enrichment_analysis(
     p_value_threshold: float = 0.05,
     zero_degree_prune: bool = False,
     classification: str = "structural",
+    print_results: bool = False,
+    csv_output_path: str | None = None,
 ) -> tuple[dict, object]:
     """
     Run weighted enrichment analysis on study set with weights.
@@ -1023,6 +1026,8 @@ def run_weighted_enrichment_analysis(
         zero_degree_prune: Remove unconnected nodes from result graph.
         classification: Ontology classification type: "structural" or "functional"
             (default: "structural").
+        print_results: Print a results table to stdout before returning (bool, default False).
+        csv_output_path: If given, write the enrichment results to this CSV path (default None).
 
     Returns:
         tuple: (results_dict, pruned_graph) where:
@@ -1182,6 +1187,10 @@ def run_weighted_enrichment_analysis(
             id_to_name(cls): vals for cls, vals in enrichment_results.items()
         },
     }
+    if print_results:
+        print_enrichment_results(results["enrichment_results"])
+    if csv_output_path:
+        write_enrichment_csv(results["enrichment_results"], csv_output_path)
 
     return results, pruned_G
 
@@ -1197,6 +1206,8 @@ def run_weighted_enrichment_analysis_plain_enrich_pruning_strategy(
     n: int = 0,
     p_value_threshold: float = 0.05,
     classification: str = "structural",
+    print_results: bool = False,
+    csv_output_path: str | None = None,
 ) -> tuple[dict, object]:
     """
     Run weighted enrichment analysis with fixed pruning strategy.
@@ -1217,6 +1228,8 @@ def run_weighted_enrichment_analysis_plain_enrich_pruning_strategy(
         p_value_threshold: P-value cutoff for high p-value pruning (default: 0.05).
         classification: Ontology classification type: "structural" or "functional"
             (default: "structural").
+        print_results: Print a results table to stdout before returning (bool, default False).
+        csv_output_path: If given, write the enrichment results to this CSV path (default None).
 
     Returns:
         tuple: (results_dict, pruned_graph) where results_dict contains
@@ -1356,6 +1369,10 @@ def run_weighted_enrichment_analysis_plain_enrich_pruning_strategy(
             id_to_name(cls): vals for cls, vals in current_enrichment.items()
         },
     }
+    if print_results:
+        print_enrichment_results(results["enrichment_results"])
+    if csv_output_path:
+        write_enrichment_csv(results["enrichment_results"], csv_output_path)
 
     return results, G
 
@@ -1381,6 +1398,8 @@ def run_weighted_narrow_background_enrichment_analysis(
     classification: str = "structural",
     narrow_background_leaves_json: str | None = None,
     expand_background: bool = True,
+    print_results: bool = False,
+    csv_output_path: str | None = None,
 ) -> tuple:
     """
     Run weighted enrichment with restricted (narrow) background population.
@@ -1404,6 +1423,8 @@ def run_weighted_narrow_background_enrichment_analysis(
         narrow_background_leaves_json: Path to JSON file with restricted leaf set
             (defaults to human_entities_leaves.json in the configured data folder).
         expand_background: Expand narrow leaves to include their ancestors.
+        print_results: Print a results table to stdout before returning (bool, default False).
+        csv_output_path: If given, write the enrichment results to this CSV path (default None).
 
     Returns:
         Tuple of (results dict, pruned graph, leaves_to_expand, parents_to_expand).
@@ -1548,6 +1569,10 @@ def run_weighted_narrow_background_enrichment_analysis(
             id_to_name(cls): vals for cls, vals in enrichment_results.items()
         },
     }
+    if print_results:
+        print_enrichment_results(results["enrichment_results"])
+    if csv_output_path:
+        write_enrichment_csv(results["enrichment_results"], csv_output_path)
 
     return results, pruned_G, leaves_to_expand_background, parents_to_expand_background
 
@@ -1565,6 +1590,8 @@ def run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_stra
     classification: str = "structural",
     narrow_background_leaves_json: str | None = None,
     expand_background: bool = True,
+    print_results: bool = False,
+    csv_output_path: str | None = None,
 ) -> tuple:
     """
     Run weighted enrichment with narrow background and fixed pruning strategy.
@@ -1581,6 +1608,8 @@ def run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_stra
         narrow_background_leaves_json: Path to JSON file with restricted leaf set
             (defaults to human_entities_leaves.json in the configured data folder).
         expand_background: Expand narrow leaves to include their ancestors.
+        print_results: Print a results table to stdout before returning (bool, default False).
+        csv_output_path: If given, write the enrichment results to this CSV path (default None).
 
     Returns:
         tuple: (results_dict, pruned_graph, leaves_to_expand, parents_to_expand)
@@ -1725,5 +1754,9 @@ def run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_stra
             id_to_name(cls): vals for cls, vals in current_enrichment.items()
         },
     }
+    if print_results:
+        print_enrichment_results(results["enrichment_results"])
+    if csv_output_path:
+        write_enrichment_csv(results["enrichment_results"], csv_output_path)
 
     return results, G, leaves_to_expand_background, parents_to_expand_background

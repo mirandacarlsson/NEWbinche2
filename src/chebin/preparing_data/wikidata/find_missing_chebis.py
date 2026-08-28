@@ -1,10 +1,16 @@
 import argparse
 import re
 import time
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import cast
 
 import pandas as pd
 import requests
+
+# convert_smiles_to_chebi is a blocking HTTP call to a third-party API, so rows
+# resolve concurrently on a thread pool rather than one at a time. Kept modest
+# to stay a well-behaved client of a service we don't control.
+_RESOLVE_WORKERS = 8
 
 
 def normalize_chebi_id(raw_value):
@@ -146,6 +152,37 @@ def _choose_smiles_columns(df, requested_smiles_columns=None):
     return chosen
 
 
+def _resolve_smiles_candidates(smiles_candidates):
+    """Resolve one row's SMILES candidates to ChEBI IDs.
+
+    Tries each candidate in order, preferring a direct match; falls back to
+    the first candidate's parent-based match if no candidate resolves
+    directly. Runs on the thread pool in find_missing_chebis, so it must not
+    touch the DataFrame -- only the network and its own locals.
+    """
+    chebi_ids = []
+    was_resolved_directly = False
+    parents_found = False
+    first_parent_ids = None
+
+    for smiles_to_query in smiles_candidates:
+        candidate_ids, candidate_direct, candidate_parents = convert_smiles_to_chebi(
+            smiles_to_query,
+        )
+
+        if candidate_direct and candidate_ids:
+            return candidate_ids, True, False
+
+        if candidate_parents and candidate_ids and first_parent_ids is None:
+            first_parent_ids = candidate_ids
+
+    if first_parent_ids:
+        chebi_ids = first_parent_ids
+        parents_found = True
+
+    return chebi_ids, was_resolved_directly, parents_found
+
+
 def find_missing_chebis(
     compounds_file,
     output_file_path=None,
@@ -203,7 +240,10 @@ def find_missing_chebis(
     # Counter for how many rows were resolved via InChIKey mapping.
     inchikey_match_count = 0
 
-    for i, idx in enumerate(missing_indices, start=1):
+    # First pass (cheap, local only): resolve what we can from the InChIKey
+    # map, and work out which rows actually need an API call.
+    pending_candidates = {}
+    for idx in missing_indices:
         smiles_candidates = []
         for smiles_column in selected_smiles_columns:
             candidates = pick_smiles_candidates(df.at[idx, smiles_column])
@@ -230,44 +270,37 @@ def find_missing_chebis(
             df.at[idx, "chebi_source"] = "unresolved"
             continue
 
-        chebi_ids = []
-        was_resolved_directly = False
-        parents_found = False
-        first_parent_ids = None
+        pending_candidates[idx] = smiles_candidates
 
-        # Prefer a direct match from any available SMILES candidate.
-        # If none is found, fall back to the first parent-based match.
-        for smiles_to_query in smiles_candidates:
-            candidate_ids, candidate_direct, candidate_parents = (
-                convert_smiles_to_chebi(smiles_to_query)
-            )
+    # Second pass: resolve the remaining rows concurrently. Each row is an
+    # independent 1-2 request round trip to the Chebifier API, so this is
+    # waiting on network latency rather than doing CPU work -- a thread pool
+    # lets those round trips overlap instead of running one at a time.
+    print(f"Resolving {len(pending_candidates)} rows via Chebifier API...")
+    processed = 0
+    with ThreadPoolExecutor(max_workers=_RESOLVE_WORKERS) as executor:
+        future_to_idx = {
+            executor.submit(_resolve_smiles_candidates, candidates): idx
+            for idx, candidates in pending_candidates.items()
+        }
+        for future in as_completed(future_to_idx):
+            idx = future_to_idx[future]
+            chebi_ids, was_resolved_directly, parents_found = future.result()
 
-            if candidate_direct and candidate_ids:
-                chebi_ids = candidate_ids
-                was_resolved_directly = True
-                parents_found = False
-                break
-
-            if candidate_parents and candidate_ids and first_parent_ids is None:
-                first_parent_ids = candidate_ids
-
-        if not was_resolved_directly and first_parent_ids:
-            chebi_ids = first_parent_ids
-            parents_found = True
-
-        if chebi_ids:
-            df.at[idx, chebi_column] = normalize_chebi_id("|".join(chebi_ids))
-            if was_resolved_directly:
-                df.at[idx, "chebi_source"] = "found_directly"
-            elif parents_found:
-                df.at[idx, "chebi_source"] = "parents_compounds"
+            if chebi_ids:
+                df.at[idx, chebi_column] = normalize_chebi_id("|".join(chebi_ids))
+                if was_resolved_directly:
+                    df.at[idx, "chebi_source"] = "found_directly"
+                elif parents_found:
+                    df.at[idx, "chebi_source"] = "parents_compounds"
+                else:
+                    df.at[idx, "chebi_source"] = "unresolved"
             else:
                 df.at[idx, "chebi_source"] = "unresolved"
-        else:
-            df.at[idx, "chebi_source"] = "unresolved"
 
-        if i % 50 == 0:
-            print(f"Processed {i}/{len(missing_indices)} missing rows")
+            processed += 1
+            if processed % 50 == 0:
+                print(f"Processed {processed}/{len(pending_candidates)} missing rows")
 
     save_path = output_file_path if output_file_path else compounds_file
     df.to_csv(save_path, sep="\t", index=False)

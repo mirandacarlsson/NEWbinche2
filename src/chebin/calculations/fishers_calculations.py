@@ -400,6 +400,10 @@ def print_enrichment_results(enrichment_results):
         print(f"{r['class']:45} {r['p_value']:.4e}      {corrected_p_str:20}")
 
 
+def write_enrichment_csv(enrichment_results: dict, csv_path: str) -> None:
+    pd.DataFrame(list(enrichment_results.values())).to_csv(csv_path, index=False)
+
+
 # Graphing and pruning strategies.
 
 
@@ -426,14 +430,16 @@ def run_enrichment_analysis(
     p_value_threshold: float = 0.05,
     zero_degree_prune: bool = False,
     classification: str = "structural",
+    print_results: bool = False,
+    csv_output_path: str | None = None,
 ) -> tuple[dict, object]:
 
-    
+
     """
     Run enrichment analysis with optional pruning and multiple test correction.
-    
+
     Args:
-        studyset_list: List of ChEBI class IDs (IRIs) to analyze.
+        studyset_list: List of ChEBI class IDs (IRIs) to analyse.
         bonferroni_correct: Apply Bonferroni correction to p-values (bool, the standard is False).
         benjamini_hochberg_correct: Apply Benjamini-Hochberg FDR correction to p-values (bool, the standard is True).
         root_children_prune: Apply root children pruning before enrichment (bool).
@@ -444,6 +450,14 @@ def run_enrichment_analysis(
         p_value_threshold: Threshold for high p-value pruning (float, default 0.05). Only used if high_p_value_prune is True.
         zero_degree_prune: Apply zero-degree pruning after enrichment, removing nodes with no connections (bool).
         classification: Classification type for enrichment analysis ("structural", "functional", or "full").
+        print_results: Print a results table to stdout before returning (bool, default False).
+        csv_output_path: If given, write the enrichment results to this CSV path (default None).
+
+    Returns:
+        tuple: (results_dict, pruned_graph) where:
+            - results_dict contains keys: "study_set" (item names), "removed_nodes"
+              (pruned node names), "enrichment_results" (node -> p-value mapping)
+            - pruned_graph is a networkx graph after all pruning operations
     """
 
     # Provide a warning if both Bonferroni and Benjamini-Hochberg corrections are requested
@@ -664,6 +678,10 @@ def run_enrichment_analysis(
             id_to_name(cls): vals for cls, vals in enrichment_results.items()
         },
     }
+    if print_results:
+        print_enrichment_results(results["enrichment_results"])
+    if csv_output_path:
+        write_enrichment_csv(results["enrichment_results"], csv_output_path)
     return results, pruned_G
 
 
@@ -684,19 +702,28 @@ def run_enrichment_analysis_plain_enrich_pruning_strategy(
     n: int = 0,
     p_value_threshold: float = 0.05,
     classification: str = "structural",
+    print_results: bool = False,
+    csv_output_path: str | None = None,
 ) -> tuple[dict, object]:
 
     """
-    Run enrichment analysis with the Plain Enrichment Pruning Strategy. 
+    Run enrichment analysis with the Plain Enrichment Pruning Strategy.
     This strategy first applies the High Value Branch Pruner, the Linear Branch Collapser Pruner, and the Root Children Pruner in the pre-loop phase.
-    Then, in the loop phase, it applies tthe High P-Value Branch Pruner, the Linear Branch Collapser Pruner, and the Zero Degree Vertex Pruner.
+    Then, in the loop phase, it applies the High P-Value Branch Pruner, the Linear Branch Collapser Pruner, and the Zero Degree Vertex Pruner.
 
     Args:
-        studyset_list: List of ChEBI class IDs (IRIs) to analyze.
+        studyset_list: List of ChEBI class IDs (IRIs) to analyse.
         levels: Number of levels to prune from root (int, default 2). Only used for Root Children Pruner.
         n: Keep every n-th node in linear branches (int, default 0). Only used for Linear Branch Collapser Pruner.
         p_value_threshold: Threshold for high p-value pruning (float, default 0.05). Only used for High P-Value Branch Pruner.
         classification: Classification type for enrichment analysis ("structural", "functional", or "full").
+        print_results: Print a results table to stdout before returning (bool, default False).
+        csv_output_path: If given, write the enrichment results to this CSV path (default None).
+
+    Returns:
+        tuple: (results_dict, graph) where results_dict contains keys:
+            "study_set" (item names), "removed_nodes" (pruned node names), and
+            "enrichment_results" (node -> p-value mapping).
     """
 
     # Load common data files
@@ -873,6 +900,10 @@ def run_enrichment_analysis_plain_enrich_pruning_strategy(
             id_to_name(cls): vals for cls, vals in final_enrichment.items()
         },
     }
+    if print_results:
+        print_enrichment_results(results["enrichment_results"])
+    if csv_output_path:
+        write_enrichment_csv(results["enrichment_results"], csv_output_path)
 
     return results, G
 

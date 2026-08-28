@@ -313,7 +313,7 @@ def find_leaf_classes_with_smiles_and_deprecated(
                             has_smiles = True
                             smiles_value = str(ann.av)
                             i += 1
-                            if i % 1000 == 0:
+                            if i % 25000 == 0:
                                 print(f"Found {i} classes with SMILES so far...")
 
             # Add to correct lists
@@ -374,7 +374,7 @@ def find_leaf_classes_with_smiles_and_deprecated(
             ancestor_cache_from_parent_map,
         )
         leaf_to_parents[leaf] = all_ancestors
-        if i % 1000 == 0:
+        if i % 25000 == 0:
             print(f"Processed {i} leaf classes for ancestor mapping...")
 
     # Save leaf to ALL ancestors map
@@ -781,7 +781,7 @@ def map_names_to_classes(chebi_ontology, output_json):
         iri_to_name[short_id] = name
 
         i += 1
-        if i % 1000 == 0:
+        if i % 25000 == 0:
             print(f"Processed {i} classes for name mapping...")
 
     with open(output_json, "w") as f:

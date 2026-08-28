@@ -25,6 +25,7 @@ from chebin.calculations.fishers_calculations import (
     get_n_ss_annotated_for_roles,
     normalize_id,
     print_enrichment_results,
+    write_enrichment_csv,
 )
 from chebin.calculations.log_utils import describe
 from chebin.calculations.multiple_test_corrections import (
@@ -49,6 +50,10 @@ from chebin.calculations.visualitations_and_pruning import (
 # If the CHEBI_Id is a leaf, we include it (and count is as 1 leaf), and all of its ancetsors.
 # If the CHEBI_Id is not a leaf, we include all of its leaf descendants, and all of its ancestors.
 
+# A seed class with more leaf descendants than this is not expanded into the
+# background, to keep high-level classes from inflating it.
+LEAF_EXPANSION_LIMIT = 150
+
 
 def _calculate_depth_to_root(chebi_iri, parent_map, memo=None):
     """Recursively calculate depth (path length) from a node to the root.
@@ -72,19 +77,22 @@ def _calculate_depth_to_root(chebi_iri, parent_map, memo=None):
     return depth
 
 
-def filter_chebifier_parents(parent_chebis, chebi_parent_map_json):
+def filter_chebifier_parents(parent_chebis, chebi_parent_map):
     """If Chebifier finds several parent classes for a given class (that does not have its own CHEBI ID),
     we want to only keep the parent(s) furthest down the hierarchy, i.e. the one(s) with the longest path to the root.
     This is to avoid inflating the background with very high-level classes.
 
-    Input: list of parent CHEBI IDs (strings)
+    Input: list of parent CHEBI IDs (strings), and the CHEBI parent-child map --
+           either a ready dict or a path to its JSON file. Callers iterating over
+           many entities should load the JSON once and pass the dict, since this
+           function is typically called once per multi-ID entity.
     Output: list of parent CHEBI IDs (strings) that are furthest down the hierarchy.
             should only be one parent unless there is a tie
     """
 
-    # open json file with parent-child relationships in CHEBI
-    with open(chebi_parent_map_json, encoding="utf-8") as f:
-        chebi_parent_map = json.load(f)
+    if isinstance(chebi_parent_map, str):
+        with open(chebi_parent_map, encoding="utf-8") as f:
+            chebi_parent_map = json.load(f)
 
     # calculate path length to root for each parent CHEBI ID using memoization
     memo = {}
@@ -147,6 +155,12 @@ def gather_narrow_leaves(
         with open(class_to_leaf_map, encoding="utf-8") as f:
             class_to_leaf_map = json.load(f)
 
+    # Load once up front: filter_chebifier_parents is called once per multi-ID
+    # entity below, and re-reading/re-parsing this file on every call was the
+    # dominant cost for taxa with many multi-ID entities.
+    with open(chebi_parent_map_json, encoding="utf-8") as f:
+        chebi_parent_map = json.load(f)
+
     # Fast leaf lookup set from the existing removed-leaves CSV.
     leaf_iris = set()
     with open(leaves_csv, encoding="utf-8", newline="") as f:
@@ -161,6 +175,8 @@ def gather_narrow_leaves(
     # Collect all CHEBI seeds for the taxon and expand non-leaf seeds to descendants.
     narrow_leaves = set()
     seeds_seen = 0
+    multi_id_entities = 0
+    skipped_classes = set()
 
     with open(compounds_tsv, encoding="utf-8", newline="") as f:
         reader = csv.DictReader(f, delimiter="\t")
@@ -180,10 +196,8 @@ def gather_narrow_leaves(
 
             # If multiple ChEBI IDs, filter to keep only the deepest ones in hierarchy.
             if len(seed_iris) > 1:
-                seed_iris = filter_chebifier_parents(seed_iris, chebi_parent_map_json)
-                print(
-                    f"Entity has {len(tokens)} ChEBI IDs; filtered to {len(seed_iris)} deepest: {seed_iris}",
-                )
+                seed_iris = filter_chebifier_parents(seed_iris, chebi_parent_map)
+                multi_id_entities += 1
 
             # Process each (filtered) ChEBI ID.
             for seed_iri in seed_iris:
@@ -195,18 +209,25 @@ def gather_narrow_leaves(
 
                 descendants = class_to_leaf_map.get(seed_iri, [])
 
-                # If a class has over 150 leaf descendants, do not keep any of them,
-                # to avoid inflating the background with high-level classes.
-
-                if len(descendants) > 150:
-                    print(
-                        f"Class {seed_iri} has {len(descendants)} leaf descendants, which exceeds the threshold. Skipping expansion to avoid inflating background.",
-                    )
+                # Classes with very many leaf descendants are not expanded, to avoid
+                # inflating the background with high-level classes. Recorded as a set
+                # so the summary counts distinct classes rather than occurrences --
+                # the same handful of classes recurs across many rows.
+                if len(descendants) > LEAF_EXPANSION_LIMIT:
+                    skipped_classes.add(seed_iri)
 
                 else:
                     narrow_leaves.update(descendants)
 
     print(f"Processed {seeds_seen} ChEBI seed IDs")
+    print(
+        f"Filtered {multi_id_entities} entities with multiple ChEBI IDs "
+        f"to their deepest classes",
+    )
+    print(
+        f"Skipped expansion for {len(skipped_classes)} classes over the "
+        f"{LEAF_EXPANSION_LIMIT}-leaf threshold",
+    )
 
     payload = {
         "taxon_label": taxon_label,
@@ -516,6 +537,8 @@ def run_narrow_background_enrichment_analysis(
     classification="structural",
     narrow_background_leaves_json=None,
     expand_background=True,
+    print_results=False,
+    csv_output_path=None,
 ):
 
     if narrow_background_leaves_json is None:
@@ -751,6 +774,10 @@ def run_narrow_background_enrichment_analysis(
             id_to_name(cls): vals for cls, vals in enrichment_results.items()
         },
     }
+    if print_results:
+        print_enrichment_results(results["enrichment_results"])
+    if csv_output_path:
+        write_enrichment_csv(results["enrichment_results"], csv_output_path)
     return results, pruned_G, leaves_to_expand_background, parents_to_expand_background
 
 
@@ -762,6 +789,8 @@ def run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy(
     classification="structural",
     narrow_background_leaves_json=None,
     expand_background=True,
+    print_results=False,
+    csv_output_path=None,
 ):
 
     if narrow_background_leaves_json is None:
@@ -954,6 +983,10 @@ def run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy(
             id_to_name(cls): vals for cls, vals in final_enrichment.items()
         },
     }
+    if print_results:
+        print_enrichment_results(results["enrichment_results"])
+    if csv_output_path:
+        write_enrichment_csv(results["enrichment_results"], csv_output_path)
 
     return results, G, leaves_to_expand_background, parents_to_expand_background
 

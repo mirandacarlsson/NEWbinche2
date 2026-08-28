@@ -12,6 +12,7 @@ The page is regenerated from the website template by
 from __future__ import annotations
 
 import json
+import warnings
 from pathlib import Path
 
 from chebin.calculations.visualitations_and_pruning import graph_to_cytoscape_dict
@@ -73,6 +74,12 @@ def export_graph_html(
         >>> export_graph_html(graph, "enrichment.html", results)
         'enrichment.html'
     """
+    if enrichment_results is None:
+        warnings.warn(
+            "export_graph_html called without enrichment_results -- every node in "
+            "the exported graph will have no p-value.",
+            stacklevel=2,
+        )
     data = graph_to_cytoscape_dict(
         G,
         enrichment_results=enrichment_results,
