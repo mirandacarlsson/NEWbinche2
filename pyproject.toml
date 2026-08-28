@@ -1,6 +1,6 @@
 [project]
 name = "chebin"
-version = "0.0.2"
+version = "1.0.0"
 description = "ChEBI-N enrichment analysis tooling"
 requires-python = ">=3.12"
 dependencies = [
