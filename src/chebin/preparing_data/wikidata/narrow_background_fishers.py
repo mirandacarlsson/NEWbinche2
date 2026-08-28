@@ -14,8 +14,8 @@ import pandas as pd
 
 from chebin.calculations.data_files import (
     CLASS_TO_LEAF_MAP,
-    HUMAN_ENTITIES_LEAVES,
     load_data_files,
+    resolve_narrow_background_leaves_json,
 )
 from chebin.config import data_path
 from chebin.calculations.fishers_calculations import (
@@ -32,6 +32,7 @@ from chebin.calculations.multiple_test_corrections import (
     benjamini_hochberg_fdr_correction,
     bonferroni_correction,
 )
+from chebin.calculations.smiles_lookup import smiles_list_to_studyset
 from chebin.calculations.visualitations_and_pruning import (
     create_graph_with_roles_and_structures,
     high_p_value_branch_pruner,
@@ -540,9 +541,44 @@ def run_narrow_background_enrichment_analysis(
     print_results=False,
     csv_output_path=None,
 ):
+    """
+    Run enrichment analysis restricted to a narrow (e.g. species-specific) background.
 
-    if narrow_background_leaves_json is None:
-        narrow_background_leaves_json = data_path(HUMAN_ENTITIES_LEAVES)
+    Like run_enrichment_analysis, but tests the study set against a restricted
+    background population instead of the whole ChEBI ontology -- see the
+    Background section of the README for the available narrow backgrounds.
+
+    Args:
+        studyset_list: List of ChEBI class IDs (IRIs) to analyse.
+        bonferroni_correct: Apply Bonferroni correction to p-values (bool, the standard is False).
+        benjamini_hochberg_correct: Apply Benjamini-Hochberg FDR correction to p-values (bool, the standard is True).
+        root_children_prune: Apply root children pruning before enrichment (bool).
+        levels: Number of levels to prune from root (int, default 2). Only used if root_children_prune is True.
+        linear_branch_prune: Apply linear branch pruning before enrichment (bool).
+        n: Keep every n-th node in linear branches (int, default 2). Only used if linear_branch_prune is True.
+        high_p_value_prune: Apply high p-value pruning after enrichment (bool).
+        p_value_threshold: Threshold for high p-value pruning (float, default 0.05). Only used if high_p_value_prune is True.
+        zero_degree_prune: Apply zero-degree pruning after enrichment, removing nodes with no connections (bool).
+        classification: Classification type for enrichment analysis ("structural", "functional", or "full").
+        narrow_background_leaves_json: Path to a narrow-background leaves JSON file
+            (e.g. data/human_entities_leaves.json, data/arabidopsis_thaliana_leaves.json,
+            or data/recon3d_leaves.json). Defaults to the first Homo sapiens background
+            (human_entities_leaves.json) in the configured data folder.
+        expand_background: If True (default), study-set leaves that fall outside the
+            narrow background are added to the background too, so every input compound
+            still gets tested. If False, they are excluded from the study set instead.
+        print_results: Print a results table to stdout before returning (bool, default False).
+        csv_output_path: If given, write the enrichment results to this CSV path (default None).
+
+    Returns:
+        tuple: (results_dict, pruned_graph, leaves_to_expand_background, parents_to_expand_background)
+            where results_dict contains the same keys as run_enrichment_analysis, and
+            leaves_to_expand_background/parents_to_expand_background list the study-set
+            leaves/classes that fell outside the narrow background.
+    """
+    narrow_background_leaves_json = resolve_narrow_background_leaves_json(
+        narrow_background_leaves_json,
+    )
 
     pruning_before_enrichment = root_children_prune or linear_branch_prune
 
@@ -781,6 +817,47 @@ def run_narrow_background_enrichment_analysis(
     return results, pruned_G, leaves_to_expand_background, parents_to_expand_background
 
 
+def run_narrow_background_enrichment_analysis_from_smiles(
+    smiles_list: list,
+    use_parents: bool = False,
+    **kwargs,
+) -> tuple:
+    """Run run_narrow_background_enrichment_analysis on SMILES strings.
+
+    Each SMILES is resolved to ChEBI ID(s) via chebin.calculations.smiles_lookup
+    before delegating to run_narrow_background_enrichment_analysis; see that
+    function for the remaining arguments (passed through as **kwargs) and return
+    value.
+
+    Args:
+        smiles_list: List of SMILES strings to analyse.
+        use_parents: If a SMILES can't be resolved to a direct ChEBI ID, fall back
+            to a remote classification call and use its direct parent ChEBI IDs.
+
+    Returns:
+        tuple: (results_dict, pruned_graph, leaves_to_expand_background,
+            parents_to_expand_background, smiles_diagnostics) where
+            smiles_diagnostics is {"unresolved_smiles": [...], "ambiguous_matches": [...]}.
+    """
+    studyset_list, unresolved_smiles, ambiguous_matches = smiles_list_to_studyset(
+        smiles_list,
+        use_parents=use_parents,
+    )
+    (
+        results,
+        pruned_G,
+        leaves_to_expand_background,
+        parents_to_expand_background,
+    ) = run_narrow_background_enrichment_analysis(studyset_list, **kwargs)
+    return (
+        results,
+        pruned_G,
+        leaves_to_expand_background,
+        parents_to_expand_background,
+        {"unresolved_smiles": unresolved_smiles, "ambiguous_matches": ambiguous_matches},
+    )
+
+
 def run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy(
     studyset_list,
     levels=2,  # for root children pruner
@@ -792,9 +869,38 @@ def run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy(
     print_results=False,
     csv_output_path=None,
 ):
+    """
+    Run enrichment analysis with a narrow background and the Plain Enrichment Pruning Strategy.
 
-    if narrow_background_leaves_json is None:
-        narrow_background_leaves_json = data_path(HUMAN_ENTITIES_LEAVES)
+    Combines narrow background restriction (species/domain-specific) with the
+    fixed pruning strategy applied by run_enrichment_analysis_plain_enrich_pruning_strategy.
+
+    Args:
+        studyset_list: List of ChEBI class IDs (IRIs) to analyse.
+        levels: Number of levels to prune from root (int, default 2). Only used for Root Children Pruner.
+        n: Keep every n-th node in linear branches (int, default 0). Only used for Linear Branch Collapser Pruner.
+        p_value_threshold: Threshold for high p-value pruning (float, default 0.05). Only used for High P-Value Branch Pruner.
+        classification: Classification type for enrichment analysis ("structural", "functional", or "full").
+        narrow_background_leaves_json: Path to a narrow-background leaves JSON file
+            (e.g. data/human_entities_leaves.json, data/arabidopsis_thaliana_leaves.json,
+            or data/recon3d_leaves.json). Defaults to the first Homo sapiens background
+            (human_entities_leaves.json) in the configured data folder.
+        expand_background: If True (default), study-set leaves that fall outside the
+            narrow background are added to the background too, so every input compound
+            still gets tested. If False, they are excluded from the study set instead.
+        print_results: Print a results table to stdout before returning (bool, default False).
+        csv_output_path: If given, write the enrichment results to this CSV path (default None).
+
+    Returns:
+        tuple: (results_dict, graph, leaves_to_expand_background, parents_to_expand_background)
+            where results_dict contains "study_set", "removed_nodes", and
+            "enrichment_results" keys, and leaves_to_expand_background/
+            parents_to_expand_background list the study-set leaves/classes that fell
+            outside the narrow background.
+    """
+    narrow_background_leaves_json = resolve_narrow_background_leaves_json(
+        narrow_background_leaves_json,
+    )
 
     # Files
     (
@@ -989,6 +1095,51 @@ def run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy(
         write_enrichment_csv(results["enrichment_results"], csv_output_path)
 
     return results, G, leaves_to_expand_background, parents_to_expand_background
+
+
+def run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy_from_smiles(
+    smiles_list: list,
+    use_parents: bool = False,
+    **kwargs,
+) -> tuple:
+    """Run run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy on SMILES.
+
+    Each SMILES is resolved to ChEBI ID(s) via chebin.calculations.smiles_lookup
+    before delegating to
+    run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy; see
+    that function for the remaining arguments (passed through as **kwargs) and
+    return value.
+
+    Args:
+        smiles_list: List of SMILES strings to analyse.
+        use_parents: If a SMILES can't be resolved to a direct ChEBI ID, fall back
+            to a remote classification call and use its direct parent ChEBI IDs.
+
+    Returns:
+        tuple: (results_dict, graph, leaves_to_expand_background,
+            parents_to_expand_background, smiles_diagnostics) where
+            smiles_diagnostics is {"unresolved_smiles": [...], "ambiguous_matches": [...]}.
+    """
+    studyset_list, unresolved_smiles, ambiguous_matches = smiles_list_to_studyset(
+        smiles_list,
+        use_parents=use_parents,
+    )
+    (
+        results,
+        G,
+        leaves_to_expand_background,
+        parents_to_expand_background,
+    ) = run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy(
+        studyset_list,
+        **kwargs,
+    )
+    return (
+        results,
+        G,
+        leaves_to_expand_background,
+        parents_to_expand_background,
+        {"unresolved_smiles": unresolved_smiles, "ambiguous_matches": ambiguous_matches},
+    )
 
 
 if __name__ == "__main__":

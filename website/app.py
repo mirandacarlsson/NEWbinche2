@@ -2,22 +2,19 @@ import os
 import sys
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
-import csv
 import glob
 import re
 import time
 import uuid
 
-import requests
 from flask import Flask, redirect, render_template, request, session, url_for
-from rdkit import Chem  # type: ignore
-from rdkit.Chem import inchi  # type: ignore
 
+from chebin.calculations.data_files import NARROW_BACKGROUND_LEAVES
 from chebin.calculations.fishers_calculations import (
     run_enrichment_analysis,
     run_enrichment_analysis_plain_enrich_pruning_strategy,
 )
-from chebin.calculations.log_utils import preview
+from chebin.calculations.smiles_lookup import convert_smiles_to_chebi, is_smiles
 from chebin.calculations.visualitations_and_pruning import graph_to_cytospace_json
 from chebin.calculations.weighted_calculations import (
     run_weighted_enrichment_analysis,
@@ -25,7 +22,7 @@ from chebin.calculations.weighted_calculations import (
     run_weighted_narrow_background_enrichment_analysis,
     run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy,
 )
-from chebin.config import set_data_dir
+from chebin.config import data_path, set_data_dir
 from chebin.preparing_data.wikidata.narrow_background_fishers import (
     run_narrow_background_enrichment_analysis,
     run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy,
@@ -44,19 +41,6 @@ os.chdir(BASE_DIR)
 # the package resolves them against the working directory by default.
 set_data_dir(os.path.join(BASE_DIR, "data"))
 
-LOCAL_LOOKUP_FILE = os.path.join(
-    BASE_DIR,
-    "data",
-    "removed_leaf_classes_with_inchikeys.csv",
-)
-
-# Maps a "background" form value to its narrow-background leaves JSON file.
-NARROW_BACKGROUND_LEAVES_JSON = {
-    "human": "data/human_entities_leaves.json",
-    "arabidopsis_thaliana": "data/arabidopsis_thaliana_leaves.json",
-    "endogenous_human": "data/recon3d_leaves.json",
-}
-
 # Human-readable names for the backgrounds, used when one is unavailable.
 BACKGROUND_LABELS = {
     "human": "Homo sapiens-based background 1",
@@ -73,9 +57,10 @@ def _missing_background_file(background):
     lack it. Checked per request rather than at import, since the file appears as soon
     as the pipeline is re-run.
     """
-    leaves_json = NARROW_BACKGROUND_LEAVES_JSON.get(background)
-    if leaves_json is None:
+    filename = NARROW_BACKGROUND_LEAVES.get(background)
+    if filename is None:
         return None
+    leaves_json = data_path(filename)
     return None if os.path.exists(leaves_json) else leaves_json
 
 
@@ -85,150 +70,6 @@ def _render_background_unavailable(background, leaves_json):
         background_label=BACKGROUND_LABELS.get(background, background),
         leaves_json=leaves_json,
     )
-
-
-def _clean_lookup_value(value):
-    if value is None:
-        return ""
-    return str(value).strip().strip('"')
-
-
-def _canonical_smiles(smiles):
-    """RDKit-canonical form of a SMILES string, or None if it can't be parsed.
-
-    ChEBI's asserted SMILES aren't guaranteed to be in any particular canonical
-    form, so comparing raw strings misses matches between differently-written
-    SMILES for the same molecule. Canonicalizing both the lookup table and any
-    incoming SMILES through RDKit makes exact-match comparison toolkit-consistent.
-    """
-    try:
-        mol = Chem.MolFromSmiles(smiles)
-    except Exception:  # noqa: BLE001
-        return None
-    return Chem.MolToSmiles(mol) if mol is not None else None
-
-
-def _normalize_chebi_id(raw_value):
-    value = _clean_lookup_value(raw_value)
-    if not value:
-        return ""
-
-    if value.startswith("http://purl.obolibrary.org/obo/CHEBI_"):
-        value = value.rsplit("/", 1)[-1]
-
-    if value.startswith("CHEBI:"):
-        return value.replace(":", "_", 1)
-
-    if value.startswith("CHEBI_"):
-        return value
-
-    if value.isdigit():
-        return f"CHEBI_{value}"
-
-    return value
-
-
-def _chebi_sort_key(chebi_id):
-    """Numeric sort key for 'CHEBI_12345' ids, so collision tie-breaks are by
-    ChEBI ID number rather than CSV row order (which is incidental).
-    """
-    try:
-        return int(chebi_id.rsplit("_", 1)[-1])
-    except (ValueError, AttributeError):
-        return float("inf")
-
-
-def _resolve_lookup_collisions(candidates, label):
-    """Pick a deterministic winner (lowest ChEBI ID) for each key asserted by more
-    than one ChEBI term, and return both the winner map and a {key: [all_ids]} map
-    of only the keys that actually collided, so callers can surface the ones that
-    were dropped. Logs a single summary line rather than one line per collision,
-    since this table has thousands of them; per-match ambiguity is surfaced to
-    end users in the Processing Summary instead (see convert_smiles_to_chebi).
-    """
-    resolved = {}
-    collisions = {}
-    for key, chebi_ids in candidates.items():
-        ordered = sorted(chebi_ids, key=_chebi_sort_key)
-        resolved[key] = ordered[0]
-        if len(ordered) > 1:
-            collisions[key] = ordered
-    if collisions:
-        print(
-            f"Warning: {len(collisions)} distinct {label} values in {LOCAL_LOOKUP_FILE} "
-            f"are each asserted by more than one ChEBI term; using the lowest ChEBI ID "
-            f"as a deterministic tie-break for each.",
-        )
-    return resolved, collisions
-
-
-def _load_local_smiles_and_inchikey_maps():
-    smiles_candidates = {}
-    inchikey_candidates = {}
-
-    with open(LOCAL_LOOKUP_FILE, encoding="utf-8", newline="") as handle:
-        reader = csv.DictReader(handle)
-        fieldnames = reader.fieldnames or []
-
-        smiles_column = None
-        inchikey_column = None
-        iri_column = None
-
-        for candidate in ("SMILES", "smiles"):
-            if candidate in fieldnames:
-                smiles_column = candidate
-                break
-
-        for candidate in ("InChIKey", "InChIkey", "inchikey", "InChIKEY"):
-            if candidate in fieldnames:
-                inchikey_column = candidate
-                break
-
-        for candidate in ("IRI", "iri"):
-            if candidate in fieldnames:
-                iri_column = candidate
-                break
-
-        if smiles_column is None or iri_column is None:
-            raise KeyError(
-                f"{LOCAL_LOOKUP_FILE} must contain SMILES and IRI columns to build local lookup maps",
-            )
-
-        for row in reader:
-            chebi_id = _normalize_chebi_id(row.get(iri_column))
-            smiles = _clean_lookup_value(row.get(smiles_column))
-            inchikey_value = (
-                _clean_lookup_value(row.get(inchikey_column)) if inchikey_column else ""
-            )
-
-            if smiles:
-                ids = smiles_candidates.setdefault(smiles, [])
-                if chebi_id not in ids:
-                    ids.append(chebi_id)
-            if inchikey_value:
-                inchikey_key = inchikey_value.upper()
-                ids = inchikey_candidates.setdefault(inchikey_key, [])
-                if chebi_id not in ids:
-                    ids.append(chebi_id)
-
-    smiles_to_chebi, smiles_collisions = _resolve_lookup_collisions(
-        smiles_candidates,
-        "SMILES",
-    )
-    inchikey_to_chebi, inchikey_collisions = _resolve_lookup_collisions(
-        inchikey_candidates,
-        "InChIKey",
-    )
-
-    return smiles_to_chebi, inchikey_to_chebi, smiles_collisions, inchikey_collisions
-
-
-(
-    LOCAL_SMILES_TO_CHEBI,
-    LOCAL_INCHIKEY_TO_CHEBI,
-    LOCAL_SMILES_COLLISIONS,
-    LOCAL_INCHIKEY_COLLISIONS,
-) = _load_local_smiles_and_inchikey_maps()
 
 
 def cleanup_old_graph_files(max_age_hours=24):
@@ -309,16 +150,6 @@ def parse_studyset(studyset: str):
             return value.replace(":", "_")
         return value.replace(":", "_")
 
-    def is_smiles(value: str) -> bool:
-        """Detect if a string is likely a SMILES string."""
-        value = value.strip()
-        # Not a SMILES if it starts with CHEBI: or http
-        if value.startswith(("CHEBI:", "http://", "https://")):
-            return False
-        # SMILES typically contain lowercase letters, parentheses, or specific chars
-        smiles_chars = set("cCnNoOpPsSFfIiBbr[]()=#@+-\\/")
-        return any(c in smiles_chars for c in value)
-
     def record_ambiguous(smiles, ambiguous_match):
         if ambiguous_match is None:
             return
@@ -330,6 +161,8 @@ def parse_studyset(studyset: str):
                 "alternatives": [cid for cid in all_ids if cid != chosen],
             },
         )
+
+    use_parents = session.get("smiles_option") == "use_parents"
 
     # Split by lines first to support optional weights per line
     for line in studyset.splitlines():
@@ -346,6 +179,7 @@ def parse_studyset(studyset: str):
                 if is_smiles(parts[0]):
                     chebi_ids, was_resolved, ambiguous_match = convert_smiles_to_chebi(
                         parts[0],
+                        use_parents=use_parents,
                     )
                     if not was_resolved:
                         unresolved_smiles.append(parts[0])
@@ -366,7 +200,10 @@ def parse_studyset(studyset: str):
         # Fallback: treat all parts as IDs without weights
         for part in parts:
             if is_smiles(part):
-                chebi_ids, was_resolved, ambiguous_match = convert_smiles_to_chebi(part)
+                chebi_ids, was_resolved, ambiguous_match = convert_smiles_to_chebi(
+                    part,
+                    use_parents=use_parents,
+                )
                 if not was_resolved:
                     unresolved_smiles.append(part)
                 record_ambiguous(part, ambiguous_match)
@@ -378,171 +215,6 @@ def parse_studyset(studyset: str):
                 studyset_list.append(class_id)
 
     return studyset_list, weights_dict, unresolved_smiles, ambiguous_smiles_matches
-
-
-def convert_smiles_to_chebi(smiles_string):
-    """Convert a single SMILES string to ChEBI IDs.
-
-    Returns (chebi_ids_list, was_resolved, ambiguous_match). ambiguous_match is
-    None unless the matched SMILES/InChIKey is asserted by more than one ChEBI
-    term in the local lookup table, in which case it's (chosen_chebi_id,
-    all_chebi_ids) so the caller can surface the ambiguity to the user.
-    """
-    chebi_ids = []
-    was_resolved = False
-    ambiguous_match = None
-    cleaned_smiles = _clean_lookup_value(smiles_string)
-    try:
-        mol = Chem.MolFromSmiles(cleaned_smiles)
-    except Exception as error:  # noqa: BLE001
-        print(f"Warning: failed to parse SMILES {cleaned_smiles}: {error}")
-        mol = None
-    canonical_smiles = Chem.MolToSmiles(mol) if mol is not None else None
-
-    # First try a direct SMILES lookup against the local leaf-class table, comparing
-    # canonical forms so the match doesn't depend on how either SMILES was written.
-    lookup_key = canonical_smiles or cleaned_smiles
-    local_chebi_id = LOCAL_SMILES_TO_CHEBI.get(lookup_key)
-    if local_chebi_id:
-        chosen_id = local_chebi_id.replace("_", ":", 1)
-        chebi_ids.append(chosen_id)
-        was_resolved = True
-        if lookup_key in LOCAL_SMILES_COLLISIONS:
-            ambiguous_match = (
-                chosen_id,
-                [
-                    candidate.replace("_", ":", 1)
-                    for candidate in LOCAL_SMILES_COLLISIONS[lookup_key]
-                ],
-            )
-        print(
-            f"Found local ChEBI ID from exact SMILES match: {chosen_id} for SMILES {cleaned_smiles}",
-        )
-        return chebi_ids, was_resolved, ambiguous_match
-
-    # If no direct SMILES match exists, try InChIKey -> ChEBI using RDKit to
-    # compute the InChIKey for the submitted SMILES.
-    try:
-        if mol is not None:
-            user_inchikey = inchi.MolToInchiKey(mol).upper()
-            local_chebi_id = LOCAL_INCHIKEY_TO_CHEBI.get(user_inchikey)
-            if local_chebi_id:
-                chosen_id = local_chebi_id.replace("_", ":", 1)
-                chebi_ids.append(chosen_id)
-                was_resolved = True
-                if user_inchikey in LOCAL_INCHIKEY_COLLISIONS:
-                    ambiguous_match = (
-                        chosen_id,
-                        [
-                            candidate.replace("_", ":", 1)
-                            for candidate in LOCAL_INCHIKEY_COLLISIONS[user_inchikey]
-                        ],
-                    )
-                print(
-                    f"Found local ChEBI ID from InChIKey match: {chosen_id} "
-                    f"for SMILES {cleaned_smiles} (InChIKey {user_inchikey})",
-                )
-                return chebi_ids, was_resolved, ambiguous_match
-    except Exception as error:  # noqa: BLE001
-        print(
-            f"Warning: failed to compute InChIKey for SMILES {cleaned_smiles}: {error}",
-        )
-
-    # Get details from ChEBI lookup to check for a direct match to a ChEBI ID
-    response = requests.post(
-        "https://chebifier.hastingslab.org/api/details",
-        json={
-            "type": "type",
-            "smiles": cleaned_smiles,
-            "selectedModels": {
-                "ChEBI Lookup": True,
-            },
-        },
-    )
-
-    lookup_model = response.json().get("models", {}).get("ChEBI Lookup", {})
-
-    # Prefer the API's structured chebi_ids list, falling back to pulling the
-    # IDs out of the human-readable highlights text.
-    lookup_ids = lookup_model.get("chebi_ids")
-    if not lookup_ids:
-        lookup_infotext = lookup_model.get("highlights", [])
-        if lookup_infotext:
-            lookup_ids = re.findall(r"CHEBI:(\d+)", lookup_infotext[0][1])
-
-    if lookup_ids:
-        # As with the local lookups above, an ambiguous hit contributes a single
-        # node and reports the runners-up as alternatives rather than adding
-        # every candidate to the study set. The lowest ChEBI ID is used as the
-        # tie-break so that every ambiguous match resolves the same way,
-        # whichever table or lookup produced it.
-        matched_ids = sorted(
-            (f"CHEBI:{chebi_id}" for chebi_id in lookup_ids),
-            key=lambda cid: int(cid.split(":")[1]),
-        )
-        chebi_ids.append(matched_ids[0])
-        was_resolved = True
-        if len(matched_ids) > 1:
-            ambiguous_match = (matched_ids[0], matched_ids[1:])
-        print(
-            f"Found ChEBI ID from lookup: {matched_ids[0]} for SMILES {cleaned_smiles}"
-            + (
-                f" (ambiguous, also matched {', '.join(matched_ids[1:])})"
-                if len(matched_ids) > 1
-                else ""
-            ),
-        )
-    else:
-        # Get direct parents from classification
-        smiles_option = session.get("smiles_option")
-
-        if smiles_option == "use_parents":
-            print(
-                f"No direct ChEBI ID found from lookup for SMILES {cleaned_smiles}, attempting classification...",
-            )
-            response = requests.post(
-                "https://chebifier.hastingslab.org/api/classify",
-                json={
-                    "smiles": cleaned_smiles,
-                    "ontology": False,
-                    "selectedModels": {
-                        "ELECTRA (ChEBI50-3STAR)": True,
-                    },
-                },
-            )
-
-            direct_parents = response.json().get("direct_parents")
-            if direct_parents:
-                # Extract ChEBI IDs from all parent lists
-                for parent_list in direct_parents:
-                    if parent_list is not None:
-                        parent_ids = [f"CHEBI:{parent[0]}" for parent in parent_list]
-                        chebi_ids.extend(parent_ids)
-                        # Print the parent IDs found
-                        print(
-                            f"Found direct parent ChEBI IDs from classification for SMILES {cleaned_smiles}: {parent_ids}",
-                        )
-                    else:
-                        print(
-                            f"No parents found in one of the classification results for SMILES {cleaned_smiles}",
-                        )
-                        # print response content for debugging
-                        print(
-                            f"Classification response content: {preview(response.content)}",
-                        )
-                if chebi_ids:
-                    was_resolved = True
-
-                print(
-                    f"Found {len(chebi_ids)} ChEBI IDs from classification for SMILES {cleaned_smiles}",
-                )
-
-        else:
-            print(
-                f"No direct ChEBI ID found from lookup for SMILES {cleaned_smiles}, excluding from analysis.",
-            )
-
-    return chebi_ids, was_resolved, ambiguous_match
 
 
 def map_p_value_correction_method(method_name):
@@ -670,7 +342,7 @@ def run_analysis():
                 background=session.get("background", "full"),
             )
 
-        elif background in NARROW_BACKGROUND_LEAVES_JSON:
+        elif background in NARROW_BACKGROUND_LEAVES:
             if weights_dict:
                 (
                     results,
@@ -680,9 +352,7 @@ def run_analysis():
                 ) = run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy(
                     weights_dict,
                     classification=session.get("classification") or "structural",
-                    narrow_background_leaves_json=NARROW_BACKGROUND_LEAVES_JSON[
-                        background
-                    ],
+                    narrow_background_leaves_json=background,
                     expand_background=session.get("expand_background", True),
                 )
             else:
@@ -694,9 +364,7 @@ def run_analysis():
                 ) = run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy(
                     studyset_list,
                     classification=session.get("classification") or "structural",
-                    narrow_background_leaves_json=NARROW_BACKGROUND_LEAVES_JSON[
-                        background
-                    ],
+                    narrow_background_leaves_json=background,
                     expand_background=session.get("expand_background", True),
                 )
 
@@ -744,7 +412,7 @@ def run_analysis():
 
     # Use weighted analysis if weights are present, otherwise use standard analysis
     if weights_dict:
-        if background in NARROW_BACKGROUND_LEAVES_JSON:
+        if background in NARROW_BACKGROUND_LEAVES:
             (
                 results,
                 pruned_G,
@@ -762,7 +430,7 @@ def run_analysis():
                 zero_degree_prune=zero_degree_prune,
                 bonferroni_correct=bonferroni_correct,
                 benjamini_hochberg_correct=benjamini_hochberg_correct,
-                narrow_background_leaves_json=NARROW_BACKGROUND_LEAVES_JSON[background],
+                narrow_background_leaves_json=background,
                 expand_background=session.get("expand_background", True),
             )
         else:
@@ -780,7 +448,7 @@ def run_analysis():
                 benjamini_hochberg_correct=benjamini_hochberg_correct,
             )
     else:
-        if background in NARROW_BACKGROUND_LEAVES_JSON:
+        if background in NARROW_BACKGROUND_LEAVES:
             (
                 results,
                 pruned_G,
@@ -798,7 +466,7 @@ def run_analysis():
                 p_value_threshold=p_value_threshold,
                 zero_degree_prune=zero_degree_prune,
                 classification=session.get("classification") or "structural",
-                narrow_background_leaves_json=NARROW_BACKGROUND_LEAVES_JSON[background],
+                narrow_background_leaves_json=background,
                 expand_background=session.get("expand_background", True),
             )
         else:

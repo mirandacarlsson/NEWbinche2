@@ -18,6 +18,7 @@ from chebin.calculations.pre_fishers_calculations import (
     count_removed_leaves,
     get_structural_leaf_ids,
 )
+from chebin.calculations.smiles_lookup import smiles_list_to_studyset
 from chebin.calculations.visualitations_and_pruning import (
     create_graph_with_roles_and_structures,
     high_p_value_branch_pruner,
@@ -685,6 +686,38 @@ def run_enrichment_analysis(
     return results, pruned_G
 
 
+def run_enrichment_analysis_from_smiles(
+    smiles_list: list[str],
+    use_parents: bool = False,
+    **kwargs,
+) -> tuple[dict, object, dict]:
+    """Run run_enrichment_analysis on a list of SMILES strings instead of ChEBI IDs.
+
+    Each SMILES is resolved to ChEBI ID(s) via chebin.calculations.smiles_lookup
+    before delegating to run_enrichment_analysis; see that function for the
+    remaining arguments (passed through as **kwargs) and return value.
+
+    Args:
+        smiles_list: List of SMILES strings to analyse.
+        use_parents: If a SMILES can't be resolved to a direct ChEBI ID, fall back
+            to a remote classification call and use its direct parent ChEBI IDs.
+
+    Returns:
+        tuple: (results_dict, pruned_graph, smiles_diagnostics) where
+            smiles_diagnostics is {"unresolved_smiles": [...], "ambiguous_matches": [...]}.
+    """
+    studyset_list, unresolved_smiles, ambiguous_matches = smiles_list_to_studyset(
+        smiles_list,
+        use_parents=use_parents,
+    )
+    results, pruned_G = run_enrichment_analysis(studyset_list, **kwargs)
+    return (
+        results,
+        pruned_G,
+        {"unresolved_smiles": unresolved_smiles, "ambiguous_matches": ambiguous_matches},
+    )
+
+
 ####################################
 # Combine pruning strategies
 ####################################
@@ -906,6 +939,42 @@ def run_enrichment_analysis_plain_enrich_pruning_strategy(
         write_enrichment_csv(results["enrichment_results"], csv_output_path)
 
     return results, G
+
+
+def run_enrichment_analysis_plain_enrich_pruning_strategy_from_smiles(
+    smiles_list: list[str],
+    use_parents: bool = False,
+    **kwargs,
+) -> tuple[dict, object, dict]:
+    """Run run_enrichment_analysis_plain_enrich_pruning_strategy on SMILES strings.
+
+    Each SMILES is resolved to ChEBI ID(s) via chebin.calculations.smiles_lookup
+    before delegating to run_enrichment_analysis_plain_enrich_pruning_strategy; see
+    that function for the remaining arguments (passed through as **kwargs) and
+    return value.
+
+    Args:
+        smiles_list: List of SMILES strings to analyse.
+        use_parents: If a SMILES can't be resolved to a direct ChEBI ID, fall back
+            to a remote classification call and use its direct parent ChEBI IDs.
+
+    Returns:
+        tuple: (results_dict, graph, smiles_diagnostics) where smiles_diagnostics
+            is {"unresolved_smiles": [...], "ambiguous_matches": [...]}.
+    """
+    studyset_list, unresolved_smiles, ambiguous_matches = smiles_list_to_studyset(
+        smiles_list,
+        use_parents=use_parents,
+    )
+    results, G = run_enrichment_analysis_plain_enrich_pruning_strategy(
+        studyset_list,
+        **kwargs,
+    )
+    return (
+        results,
+        G,
+        {"unresolved_smiles": unresolved_smiles, "ambiguous_matches": ambiguous_matches},
+    )
 
 
 if __name__ == "__main__":

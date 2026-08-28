@@ -48,8 +48,8 @@ def _embed_json(data: dict) -> str:
 
 def export_graph_html(
     G,
+    enrichment_results,
     output_file,
-    enrichment_results=None,
     include_untested_leaves=False,
 ):
     """Write the graph as a standalone interactive HTML page.
@@ -60,9 +60,9 @@ def export_graph_html(
     Args:
         G: The pruned graph returned by any of the ``run_*_enrichment_analysis``
             functions.
+        enrichment_results: The results dict returned alongside `G`. Pass ``None`` if
+            you don't have one -- the graph still renders, but no node carries a p-value.
         output_file: Path of the ``.html`` file to write.
-        enrichment_results: The results dict returned alongside `G`. Without it the graph
-            still renders, but no node carries a p-value.
         include_untested_leaves: Keep study-set leaf nodes, which are never tested and so
             never coloured. Excluded by default -- they are the large majority of nodes.
 
@@ -71,7 +71,7 @@ def export_graph_html(
 
     Example:
         >>> results, graph = run_enrichment_analysis(["CHEBI:15377"])
-        >>> export_graph_html(graph, "enrichment.html", results)
+        >>> export_graph_html(graph, results, "enrichment.html")
         'enrichment.html'
     """
     if enrichment_results is None:

@@ -25,6 +25,31 @@ ID_TO_NAME_MAP = "chebi_id_to_name_map.json"
 #: Optional -- create_all_files only builds it when the HMDB XML is present.
 HUMAN_ENTITIES_LEAVES = "human_entities_leaves.json"
 
+#: Short names for the available narrow backgrounds, mapped to their leaves JSON
+#: filename (relative to the data folder). Shared by the narrow-background
+#: run_* functions and the website, so there's one place that knows the mapping.
+NARROW_BACKGROUND_LEAVES = {
+    "human": HUMAN_ENTITIES_LEAVES,
+    "arabidopsis_thaliana": "arabidopsis_thaliana_leaves.json",
+    "endogenous_human": "recon3d_leaves.json",
+}
+
+
+def resolve_narrow_background_leaves_json(value: str | None) -> str:
+    """Resolve a narrow-background selector to a leaves JSON path.
+
+    ``value`` may be a short name from :data:`NARROW_BACKGROUND_LEAVES`
+    (``"human"``, ``"arabidopsis_thaliana"``, ``"endogenous_human"``), an
+    explicit path to a leaves JSON, or ``None`` (defaults to ``"human"``). Short
+    names are resolved against the configured data folder; anything else is
+    returned unchanged, so an explicit path works exactly as before.
+    """
+    if value is None:
+        value = "human"
+    if value in NARROW_BACKGROUND_LEAVES:
+        return data_path(NARROW_BACKGROUND_LEAVES[value])
+    return value
+
 
 def load_data_files():
     """Load the common data files needed for enrichment analysis.

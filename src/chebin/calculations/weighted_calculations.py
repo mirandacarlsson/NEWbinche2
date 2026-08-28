@@ -20,8 +20,10 @@ import numpy as np
 import pandas as pd
 from scipy.special import ndtr
 
-from chebin.calculations.data_files import HUMAN_ENTITIES_LEAVES, load_data_files
-from chebin.config import data_path
+from chebin.calculations.data_files import (
+    load_data_files,
+    resolve_narrow_background_leaves_json,
+)
 from chebin.calculations.fishers_calculations import (
     get_ancestors_for_inputs,
     get_leaves,
@@ -39,6 +41,7 @@ from chebin.calculations.pre_fishers_calculations import (
     count_removed_leaves,
     get_structural_leaf_ids,
 )
+from chebin.calculations.smiles_lookup import smiles_weights_to_chebi_weights
 from chebin.calculations.visualitations_and_pruning import (
     create_graph_with_roles_and_structures,
     high_p_value_branch_pruner,
@@ -1195,6 +1198,39 @@ def run_weighted_enrichment_analysis(
     return results, pruned_G
 
 
+def run_weighted_enrichment_analysis_from_smiles(
+    smiles_weights: dict,
+    use_parents: bool = False,
+    **kwargs,
+) -> tuple[dict, object, dict]:
+    """Run run_weighted_enrichment_analysis on {SMILES: weight} instead of {ChEBI ID: weight}.
+
+    Each SMILES is resolved to ChEBI ID(s) via chebin.calculations.smiles_lookup
+    (its weight applied to every resulting ChEBI ID) before delegating to
+    run_weighted_enrichment_analysis; see that function for the remaining
+    arguments (passed through as **kwargs) and return value.
+
+    Args:
+        smiles_weights: Dictionary mapping SMILES strings to weight values.
+        use_parents: If a SMILES can't be resolved to a direct ChEBI ID, fall back
+            to a remote classification call and use its direct parent ChEBI IDs.
+
+    Returns:
+        tuple: (results_dict, pruned_graph, smiles_diagnostics) where
+            smiles_diagnostics is {"unresolved_smiles": [...], "ambiguous_matches": [...]}.
+    """
+    weights_dict, unresolved_smiles, ambiguous_matches = smiles_weights_to_chebi_weights(
+        smiles_weights,
+        use_parents=use_parents,
+    )
+    results, pruned_G = run_weighted_enrichment_analysis(weights_dict, **kwargs)
+    return (
+        results,
+        pruned_G,
+        {"unresolved_smiles": unresolved_smiles, "ambiguous_matches": ambiguous_matches},
+    )
+
+
 # ---------------------------------------------------------------------------
 # run_weighted_enrichment_analysis_plain_enrich_pruning_strategy
 # ---------------------------------------------------------------------------
@@ -1377,6 +1413,43 @@ def run_weighted_enrichment_analysis_plain_enrich_pruning_strategy(
     return results, G
 
 
+def run_weighted_enrichment_analysis_plain_enrich_pruning_strategy_from_smiles(
+    smiles_weights: dict,
+    use_parents: bool = False,
+    **kwargs,
+) -> tuple[dict, object, dict]:
+    """Run run_weighted_enrichment_analysis_plain_enrich_pruning_strategy on SMILES.
+
+    Each SMILES is resolved to ChEBI ID(s) via chebin.calculations.smiles_lookup
+    (its weight applied to every resulting ChEBI ID) before delegating to
+    run_weighted_enrichment_analysis_plain_enrich_pruning_strategy; see that
+    function for the remaining arguments (passed through as **kwargs) and return
+    value.
+
+    Args:
+        smiles_weights: Dictionary mapping SMILES strings to weight values.
+        use_parents: If a SMILES can't be resolved to a direct ChEBI ID, fall back
+            to a remote classification call and use its direct parent ChEBI IDs.
+
+    Returns:
+        tuple: (results_dict, graph, smiles_diagnostics) where smiles_diagnostics
+            is {"unresolved_smiles": [...], "ambiguous_matches": [...]}.
+    """
+    weights_dict, unresolved_smiles, ambiguous_matches = smiles_weights_to_chebi_weights(
+        smiles_weights,
+        use_parents=use_parents,
+    )
+    results, G = run_weighted_enrichment_analysis_plain_enrich_pruning_strategy(
+        weights_dict,
+        **kwargs,
+    )
+    return (
+        results,
+        G,
+        {"unresolved_smiles": unresolved_smiles, "ambiguous_matches": ambiguous_matches},
+    )
+
+
 # ---------------------------------------------------------------------------
 # run_weighted_narrow_background_enrichment_analysis
 # (mirrors run_narrow_background_enrichment_analysis in
@@ -1429,8 +1502,9 @@ def run_weighted_narrow_background_enrichment_analysis(
     Returns:
         Tuple of (results dict, pruned graph, leaves_to_expand, parents_to_expand).
     """
-    if narrow_background_leaves_json is None:
-        narrow_background_leaves_json = data_path(HUMAN_ENTITIES_LEAVES)
+    narrow_background_leaves_json = resolve_narrow_background_leaves_json(
+        narrow_background_leaves_json,
+    )
 
     (
         class_to_leaf_map,
@@ -1577,6 +1651,47 @@ def run_weighted_narrow_background_enrichment_analysis(
     return results, pruned_G, leaves_to_expand_background, parents_to_expand_background
 
 
+def run_weighted_narrow_background_enrichment_analysis_from_smiles(
+    smiles_weights: dict,
+    use_parents: bool = False,
+    **kwargs,
+) -> tuple[dict, object, list, list, dict]:
+    """Run run_weighted_narrow_background_enrichment_analysis on {SMILES: weight}.
+
+    Each SMILES is resolved to ChEBI ID(s) via chebin.calculations.smiles_lookup
+    (its weight applied to every resulting ChEBI ID) before delegating to
+    run_weighted_narrow_background_enrichment_analysis; see that function for the
+    remaining arguments (passed through as **kwargs) and return value.
+
+    Args:
+        smiles_weights: Dictionary mapping SMILES strings to weight values.
+        use_parents: If a SMILES can't be resolved to a direct ChEBI ID, fall back
+            to a remote classification call and use its direct parent ChEBI IDs.
+
+    Returns:
+        tuple: (results_dict, pruned_graph, leaves_to_expand_background,
+            parents_to_expand_background, smiles_diagnostics) where
+            smiles_diagnostics is {"unresolved_smiles": [...], "ambiguous_matches": [...]}.
+    """
+    weights_dict, unresolved_smiles, ambiguous_matches = smiles_weights_to_chebi_weights(
+        smiles_weights,
+        use_parents=use_parents,
+    )
+    (
+        results,
+        pruned_G,
+        leaves_to_expand_background,
+        parents_to_expand_background,
+    ) = run_weighted_narrow_background_enrichment_analysis(weights_dict, **kwargs)
+    return (
+        results,
+        pruned_G,
+        leaves_to_expand_background,
+        parents_to_expand_background,
+        {"unresolved_smiles": unresolved_smiles, "ambiguous_matches": ambiguous_matches},
+    )
+
+
 # ---------------------------------------------------------------------------
 # run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy
 # ---------------------------------------------------------------------------
@@ -1615,8 +1730,9 @@ def run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_stra
         tuple: (results_dict, pruned_graph, leaves_to_expand, parents_to_expand)
             where expand fields track background population expansion.
     """
-    if narrow_background_leaves_json is None:
-        narrow_background_leaves_json = data_path(HUMAN_ENTITIES_LEAVES)
+    narrow_background_leaves_json = resolve_narrow_background_leaves_json(
+        narrow_background_leaves_json,
+    )
 
     (
         class_to_leaf_map,
@@ -1760,3 +1876,48 @@ def run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_stra
         write_enrichment_csv(results["enrichment_results"], csv_output_path)
 
     return results, G, leaves_to_expand_background, parents_to_expand_background
+
+
+def run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy_from_smiles(
+    smiles_weights: dict,
+    use_parents: bool = False,
+    **kwargs,
+) -> tuple[dict, object, list, list, dict]:
+    """Run run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy on {SMILES: weight}.
+
+    Each SMILES is resolved to ChEBI ID(s) via chebin.calculations.smiles_lookup
+    (its weight applied to every resulting ChEBI ID) before delegating to
+    run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy;
+    see that function for the remaining arguments (passed through as **kwargs) and
+    return value.
+
+    Args:
+        smiles_weights: Dictionary mapping SMILES strings to weight values.
+        use_parents: If a SMILES can't be resolved to a direct ChEBI ID, fall back
+            to a remote classification call and use its direct parent ChEBI IDs.
+
+    Returns:
+        tuple: (results_dict, graph, leaves_to_expand_background,
+            parents_to_expand_background, smiles_diagnostics) where
+            smiles_diagnostics is {"unresolved_smiles": [...], "ambiguous_matches": [...]}.
+    """
+    weights_dict, unresolved_smiles, ambiguous_matches = smiles_weights_to_chebi_weights(
+        smiles_weights,
+        use_parents=use_parents,
+    )
+    (
+        results,
+        G,
+        leaves_to_expand_background,
+        parents_to_expand_background,
+    ) = run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy(
+        weights_dict,
+        **kwargs,
+    )
+    return (
+        results,
+        G,
+        leaves_to_expand_background,
+        parents_to_expand_background,
+        {"unresolved_smiles": unresolved_smiles, "ambiguous_matches": ambiguous_matches},
+    )

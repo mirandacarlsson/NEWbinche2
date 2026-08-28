@@ -255,6 +255,9 @@ def cleanup_old_data_folders(old_data_folder="data", max_folders=3):
         shutil.rmtree(folder)
 
 def create_all_files_with_backup(data_folder="data"):
+    """
+    Create all derived data files for the project, with a backup of the old data folder. Observe that this function can take up to an hour to run.
+    """
     data_folder_new = f"{data_folder}_new"
 
     ### Create temporary data folder for new files
@@ -292,6 +295,13 @@ def create_all_files_with_backup(data_folder="data"):
     cleanup_old_data_folders(old_data_folder=data_folder, max_folders=3)
 
 def create_all_files(data_folder="data"):
+
+    """
+    Create all derived data files for the project. Observe that this function can take up to an hour to run.
+    Args:
+        data_folder (str): Path to the folder where the data files will be created. Defaults to "data".
+    """
+
     # ChEBI's SMILES routinely trip RDKit's "Omitted undefined stereo", "Can't
     # kekulize mol" and "Proton(s) added/removed" warnings, which the pipeline
     # already handles by falling back or skipping. Left on, they produced ~11 MB

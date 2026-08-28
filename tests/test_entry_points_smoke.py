@@ -147,7 +147,7 @@ def test_export_graph_html_is_self_contained(tmp_path):
 
     result, graph = run_enrichment_analysis(STUDY_SET)
     out = tmp_path / "graph.html"
-    export_graph_html(graph, str(out), result)
+    export_graph_html(graph, result, str(out))
 
     page = out.read_text()
     assert 'src="http' not in page

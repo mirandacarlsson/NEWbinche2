@@ -10,7 +10,7 @@ background population.
 
 The web application is available at https://chebin.hastingslab.org/.
 
-NOTE: We are also working on turning ChEBI-N into a package.
+ChEBI-N is also soon avaliable as a package. Scroll down for more info!
 
 ### Running The Analysis
 
@@ -244,6 +244,216 @@ Leaf classes are not shown in the graph, since they do not receive p-values.
 Beyond the initial display described above, nodes can also be shown or hidden
 manually: options are available to hide all insignificant nodes (p-value >
 0.05), to show all nodes, or to show/hide only the currently selected ones.
+
+## Package usage
+
+### Installation
+
+ChEBI-N is not yet published to PyPI. Until then, install it
+from a locally built wheel:
+
+```bash
+cd binche2
+uv build
+```
+
+This produces `dist/chebin-<version>-py3-none-any.whl` (e.g.
+`chebin-0.0.2-py3-none-any.whl`). Point another project at it:
+
+- With `uv`, add to your `pyproject.toml`:
+  ```toml
+  [project]
+  dependencies = ["chebin"]
+
+  [tool.uv.sources]
+  chebin = { path = "/path/to/binche2/dist/chebin-0.0.2-py3-none-any.whl" }
+  ```
+  then run `uv sync`.
+- With plain `pip`:
+  `pip install /path/to/binche2/dist/chebin-0.0.2-py3-none-any.whl`.
+
+Whenever the source changes, rebuild the wheel (`uv build`) and re-sync to pick it
+up. With `uv`, that's `uv lock --upgrade-package chebin && uv sync` --- the wheel
+is pinned in `uv.lock` by exact file hash, so a same-version rebuild isn't picked
+up automatically otherwise.
+
+### 1. Generate the data files (required first)
+
+Every function below needs a generated data folder. Build one with:
+
+```python
+from chebin import create_all_files
+
+create_all_files(data_folder="data")
+```
+
+**This can take up to an hour** --- it downloads and processes the full ChEBI
+ontology, LOTUS/Wikidata compound data, and the Recon3D model. It only needs to be
+run once (re-run it later to refresh with newer ChEBI/LOTUS data).
+
+One input has to be supplied by hand: `hmdb_metabolites.xml` (the 'All
+Metabolites' export from [HMDB](https://hmdb.ca/downloads)), placed in `data/` or
+`data/source_files/`. Without it, `create_all_files` still runs and prints a
+warning, but skips the first Homo sapiens background (HMDB + LOTUS) and everything
+that depends on it.
+
+Once it finishes, `data_folder` (`data/` by default) holds everything the
+enrichment functions read directly; the `source_files/` and `intermediate_files/`
+subfolders it also creates are working files nothing reads afterwards --- safe to
+delete (each has its own README explaining what it is).
+
+If you're regenerating an existing data folder rather than building one from
+scratch, use `create_all_files_with_backup` instead --- it isn't re-exported at
+the top level, so import it directly:
+
+```python
+from chebin.preparing_data.create_files import create_all_files_with_backup
+
+create_all_files_with_backup(data_folder="data")
+```
+
+This renames the current `data/` to `data_last_used_YYYY.MM.DD` before building
+the replacement, and keeps only the 3 most recent backups.
+
+See the [Workflow](#workflow) section below for a step-by-step breakdown of what
+each stage does.
+
+### Enrichment analysis functions
+
+For enrichment analysis calculations, there are different functions for different options. For the simplest usage, scroll down to the [example](#2-quick-example-run-an-analysis-then-export-the-graph) below: 
+
+All functions follow one naming pattern:
+
+```
+run_[weighted_][narrow_background_]enrichment_analysis[_plain_enrich_pruning_strategy][_from_smiles]
+```
+
+Four independent choices combine to give the full name:
+
+- **`weighted_`** --- plain Fisher's exact test (unweighted) vs. the
+  SaddleSum-derived weighted method (see [Calculations](#calculations)).
+  Unweighted functions take `studyset_list` (a list of ChEBI IDs); weighted
+  functions take `weights_dict` (ChEBI ID -> weight, all weights must be real and
+  positive), written as a plain dict:
+  ```python
+  weights_dict = {"CHEBI:15377": 1.5, "CHEBI:16236": 0.8, "CHEBI:17234": 3.0}
+  results, graph = run_weighted_enrichment_analysis(weights_dict)
+  ```
+  The `_from_smiles` weighted variants take the same shape with SMILES keys
+  instead (a `{SMILES: weight}` dict), e.g.
+  `{"CC(=O)Oc1ccccc1C(=O)O": 1.5, "CHEBI:16236": 0.8}` --- SMILES and ChEBI ID
+  keys can be mixed freely.
+- **`narrow_background_`** --- the whole ChEBI ontology as background vs. a
+  restricted background (see [Background](#background)). Choose which by passing
+  `narrow_background_leaves_json`:
+
+  | Background | `narrow_background_leaves_json` |
+  |---|---|
+  | Homo sapiens 1 (LOTUS + HMDB) --- default | `"human"` |
+  | Homo sapiens 2 (Recon3D) | `"endogenous_human"` |
+  | Arabidopsis thaliana | `"arabidopsis_thaliana"` |
+
+  An explicit path to a leaves JSON also still works (e.g. a custom background
+  for another taxon) --- the three short names above are just a convenience for
+  the built-in ones, resolved the same way the website's background dropdown
+  resolves them.
+
+  `expand_background` (default `True`) controls what happens to study-set
+  compounds outside the chosen background: kept and added to the background too
+  (so every input still gets tested) if `True`, excluded from the study set
+  entirely if `False`. The two extra return values,
+  `leaves_to_expand_background`/`parents_to_expand_background`, report which
+  leaves/input classes triggered that expansion either way.
+- **`_plain_enrich_pruning_strategy`** --- the fixed
+  [Plain Enrichment Pruning Strategy](#pruning-strategies) vs. manually choosing
+  which pruners to apply and when.
+- **`_from_smiles`** --- takes SMILES instead of ChEBI IDs (a `list[str]`, or
+  `{SMILES: weight}` for weighted variants), resolved to ChEBI ID(s) the same way
+  described in [Study Set](#study-set), plus a `use_parents: bool = False`
+  parameter (fall back to predicted parent classes when a SMILES has no direct
+  ChEBI match). Returns everything the ChEBI-ID version does, plus one extra
+  dict: `{"unresolved_smiles": [...], "ambiguous_matches": [...]}`. A mixture of SMILES and ChEBI IDs can be used.
+
+| Function | Input | Background | Pruning | Returns |
+|---|---|---|---|---|
+| `run_enrichment_analysis` | ChEBI IDs | whole ontology | manual | `(results, graph)` |
+| `run_enrichment_analysis_plain_enrich_pruning_strategy` | ChEBI IDs | whole ontology | plain strategy | `(results, graph)` |
+| `run_enrichment_analysis_from_smiles` | SMILES | whole ontology | manual | `(results, graph, smiles_diagnostics)` |
+| `run_enrichment_analysis_plain_enrich_pruning_strategy_from_smiles` | SMILES | whole ontology | plain strategy | `(results, graph, smiles_diagnostics)` |
+| `run_weighted_enrichment_analysis` | ChEBI IDs + weights | whole ontology | manual | `(results, graph)` |
+| `run_weighted_enrichment_analysis_plain_enrich_pruning_strategy` | ChEBI IDs + weights | whole ontology | plain strategy | `(results, graph)` |
+| `run_weighted_enrichment_analysis_from_smiles` | SMILES + weights | whole ontology | manual | `(results, graph, smiles_diagnostics)` |
+| `run_weighted_enrichment_analysis_plain_enrich_pruning_strategy_from_smiles` | SMILES + weights | whole ontology | plain strategy | `(results, graph, smiles_diagnostics)` |
+| `run_narrow_background_enrichment_analysis` | ChEBI IDs | narrow | manual | `(results, graph, leaves_to_expand_background, parents_to_expand_background)` |
+| `run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy` | ChEBI IDs | narrow | plain strategy | `(results, graph, leaves_to_expand_background, parents_to_expand_background)` |
+| `run_narrow_background_enrichment_analysis_from_smiles` | SMILES | narrow | manual | `(results, graph, leaves_to_expand_background, parents_to_expand_background, smiles_diagnostics)` |
+| `run_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy_from_smiles` | SMILES | narrow | plain strategy | `(results, graph, leaves_to_expand_background, parents_to_expand_background, smiles_diagnostics)` |
+| `run_weighted_narrow_background_enrichment_analysis` | ChEBI IDs + weights | narrow | manual | `(results, graph, leaves_to_expand_background, parents_to_expand_background)` |
+| `run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy` | ChEBI IDs + weights | narrow | plain strategy | `(results, graph, leaves_to_expand_background, parents_to_expand_background)` |
+| `run_weighted_narrow_background_enrichment_analysis_from_smiles` | SMILES + weights | narrow | manual | `(results, graph, leaves_to_expand_background, parents_to_expand_background, smiles_diagnostics)` |
+| `run_weighted_narrow_background_enrichment_analysis_plain_enrich_pruning_strategy_from_smiles` | SMILES + weights | narrow | plain strategy | `(results, graph, leaves_to_expand_background, parents_to_expand_background, smiles_diagnostics)` |
+
+All are importable directly from `chebin`, e.g.
+`from chebin import run_weighted_narrow_background_enrichment_analysis_from_smiles`.
+
+#### Shared parameters
+
+These appear on most or all of the functions above (see the linked sections for
+what each option means):
+
+| Parameter | Default | Meaning |
+|---|---|---|
+| `bonferroni_correct` | `False` | Apply Bonferroni correction ([Correction Method](#correction-method)) |
+| `benjamini_hochberg_correct` | `True` | Apply Benjamini-Hochberg FDR correction (overrides Bonferroni if both are `True`) |
+| `root_children_prune` | `False` | Apply the [Root Children Pruner](#pruning-strategies) |
+| `levels` | `2` | Levels pruned by the Root Children Pruner (manual functions), or its equivalent in the plain strategy |
+| `linear_branch_prune` | `False` | Apply the [Linear Branch Collapser Pruner](#pruning-strategies) |
+| `n` | `2` (manual) / `0` (plain strategy) | Nodes kept per branch by the Linear Branch Collapser Pruner |
+| `high_p_value_prune` | `False` | Apply the [High P-Value Branch Pruner](#pruning-strategies) |
+| `p_value_threshold` | `0.05` | Threshold used by the High P-Value Branch Pruner |
+| `zero_degree_prune` | `False` | Apply the [Zero-degree Pruner](#pruning-strategies) |
+| `classification` | `"structural"` | Which part of the ontology to run on: `"structural"`, `"functional"`, or `"full"` (see [Background](#background)) |
+| `print_results` | `False` | Print a p-value table to stdout |
+| `csv_output_path` | `None` | If given, write the results table to this CSV path |
+
+The `_plain_enrich_pruning_strategy` functions don't take the individual
+`*_prune` toggles --- the plain strategy always applies its fixed pruner sequence
+--- but still take `levels`, `n`, and `p_value_threshold` to tune it.
+
+### Visualization
+
+```python
+export_graph_html(G, enrichment_results, output_file, include_untested_leaves=False)
+```
+
+Writes `G` (the graph returned by any `run_*` function above) as a self-contained
+interactive HTML page --- no server or network access needed to view it.
+`enrichment_results` is the results dict returned alongside `G`; pass `None` if
+you don't have one (the graph still renders, just without p-values or coloring).
+`include_untested_leaves` is off by default: study-set leaves are never tested
+(so never coloured) and are typically the large majority of nodes, so including
+them mostly just slows down rendering --- set it to `True` to keep them anyway,
+e.g. for debugging.
+
+### 2. Quick example: run an analysis, then export the graph
+
+```python
+from chebin import run_enrichment_analysis_plain_enrich_pruning_strategy, export_graph_html
+
+results, graph = run_enrichment_analysis_plain_enrich_pruning_strategy(
+    ["CHEBI:15377", "CHEBI:16236", "CHEBI:17234"],
+    print_results=True,             # print a p-value table to stdout
+    csv_output_path="results.csv",  # and write it to CSV
+)
+
+export_graph_html(graph, results, "enrichment_graph.html")
+```
+
+`results` is a dict with `"study_set"` (input names), `"removed_nodes"` (names of
+nodes pruned away), and `"enrichment_results"` (class name -> p-value details).
+`graph` is the pruned `networkx` graph, ready to hand to `export_graph_html`,
+which writes a self-contained interactive HTML page --- no server or network
+access needed to view it.
 
 ## Workflow
 
