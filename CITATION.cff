@@ -1,11 +1,11 @@
 cff-version: 1.2.0
+message: "If you use this software, please cite it using these metadata."
 type: software
 title: "ChEBI-N: Chemical Enrichment Analysis Tool"
 authors:
-  - family-names: "TODO"
-    given-names: "TODO"
-    orcid: "https://orcid.org/0000-0000-0000-0000"
-description: "A Python enrichment analysis tool for chemical ontologies using ChEBI"
+  - family-names: "Carlsson"
+    given-names: "Miranda"
+abstract: "A Python enrichment analysis tool for chemical ontologies using ChEBI"
 repository-code: "https://github.com/ontology-tools/chebin"
 license: "MIT"
 keywords:
@@ -14,18 +14,18 @@ keywords:
   - "ontology analysis"
   - "Fisher's exact test"
   - "weighted enrichment"
-version: "0.1.0"
-date-released: 2024-08-10
+version: "1.0.1"
+date-released: 2026-09-05
 contact:
-  - family-names: "TODO"
-    given-names: "TODO"
+  - family-names: "Carlsson"
+    given-names: "Miranda"
 preferred-citation:
   type: software
   authors:
-    - family-names: "TODO"
-      given-names: "TODO"
+    - family-names: "Carlsson"
+      given-names: "Miranda"
   title: "ChEBI-N: Chemical Enrichment Analysis Tool"
-  version: "0.1.0"
-  date-released: 2024-08-10
+  version: "1.0.1"
+  date-released: 2026-09-05
   url: "https://github.com/ontology-tools/chebin"
   repository-code: "https://github.com/ontology-tools/chebin"
